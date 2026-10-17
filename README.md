@@ -18,7 +18,7 @@ Early. Sub-project 1 of 6, the **kernel**, is complete and tested:
 | `@karigor/store` | Typed artifacts (spec, backlog, test reports, gate results, cost ledger...) and an append-only event log that is the single source of truth. Crash anywhere; `resume` replays to the exact state. |
 | `@karigor/process` | Declarative process templates (`iterative`, `linear`, `spike-then-build`, `maintenance`) and a pure state machine with failure ladders: retry, send back, shrink, park, stop. |
 | `@karigor/gates` | Mechanical gates (tests, lint, build, security scan, preview health, rollback) and judged gates (reviewer and skeptic with rubrics). A judged verdict with no citations is a fail. |
-| `@karigor/runtime` | Role prompts and output schemas, a worker runner (schema rejection, retry with the error quoted, tier escalation), and model adapters: Claude via structured outputs, and a free mock. |
+| `@karigor/runtime` | Role prompts and output schemas, a worker runner (schema rejection, retry with the error quoted, tier escalation), and model adapters: Claude Code headless (no key), the Anthropic API via structured outputs, and a free mock. |
 | `@karigor/budget` | Prices, a three-tier estimate (free, cheap, best), a running meter, and the overspend ladder: downgrade the model, then park optional work, then stop. Never silent. |
 | `@karigor/cli` | `karigor new`, `run`, `resume`, `status`, `cost`, `explain`, `park`, `unpark`. Plain language throughout. |
 
@@ -42,7 +42,14 @@ node packages/cli/dist/bin.js explain <projectId>
 node packages/cli/dist/bin.js cost <projectId>
 ```
 
-To run with Claude, set `ANTHROPIC_API_KEY` and drop `--adapter demo`. The default budget tier is `cheap`; pass `--tier best` for the strongest model on decisions and reviews. Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
+To run with real models you do **not** need an API key. If you have [Claude Code](https://claude.com/claude-code) installed and signed in, just drop `--adapter demo`: the default `claude-code` adapter drives Claude Code in headless mode under your own login. Calls cost nothing extra on a subscription, so the default tier is `best`; the cost meter still shows what the same calls would have cost on the pay-per-token API.
+
+```sh
+node packages/cli/dist/bin.js new "..." --run                       # Claude Code login, no key
+node packages/cli/dist/bin.js new "..." --adapter claude --run      # Anthropic API key in ANTHROPIC_API_KEY
+```
+
+Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
 
 ## How it works
 
@@ -75,7 +82,7 @@ The design is documented in [`docs/superpowers/specs/2026-10-16-karigor-kernel-d
 pnpm install
 pnpm test        # unit, golden-path, failure and crash-replay suites; all on the mock adapter, zero cost
 pnpm typecheck   # builds every package in dependency order
-KARIGOR_REAL_MODEL=1 pnpm test packages/runtime   # one live Claude call; costs well under a cent
+KARIGOR_REAL_MODEL=1 pnpm test packages/runtime   # two small live calls through your Claude Code login (and the API if a key is set)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
