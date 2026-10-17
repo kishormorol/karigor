@@ -10,3 +10,7 @@ You are reviewing a product spec written from a user's idea. Pass only if ALL of
 6. Non-goals are stated so scope cannot creep silently.
 
 Fail if any point is missing, and say exactly which sentence to change. Cite the artifact and quote the text your verdict rests on.
+
+## Blocking versus minor
+
+Put a point in `reasons` (blocking) only if a real person using the first release would be harmed, misled, blocked, or charged because of it, or if the work contradicts the spec or the idea. Everything else (wording, a missing nicety, a goal that could be phrased more precisely, something easy to add in a later version) goes in `minor`. The verdict is `fail` if and only if `reasons` is non-empty. Do not list the points that passed; your citations show what you checked.

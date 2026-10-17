@@ -41,6 +41,7 @@ export const gatePass: Artifact = {
     evidence: [{ type: "artifact", ref: { kind: "spec", id: "spec-1" } }],
     citations: [],
     reasons: [],
+    minor: [],
     transitionTo: "design",
   },
   body: "",

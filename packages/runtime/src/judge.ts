@@ -23,7 +23,7 @@ export function makeJudge(adapter: ModelAdapter, budget: JudgeBudget): Judge {
     const allowance = budget.allow(tier);
     if (!allowance.ok) {
       if (allowance.action === "downgrade") tier = "routine";
-      else return { verdict: "fail", citations: [], reasons: [`could not run the ${req.role}: ${allowance.reason}`] };
+      else return { verdict: "fail", citations: [], reasons: [`could not run the ${req.role}: ${allowance.reason}`], minor: [] };
     }
     let feedback = "";
     for (let attempt = 1; attempt <= 2; attempt++) {
@@ -42,9 +42,9 @@ export function makeJudge(adapter: ModelAdapter, budget: JudgeBudget): Judge {
         feedback = res.message;
         continue;
       }
-      return { verdict: "fail", citations: [], reasons: [`${req.role} could not produce a usable verdict: ${res.message}`] };
+      return { verdict: "fail", citations: [], reasons: [`${req.role} could not produce a usable verdict: ${res.message}`], minor: [] };
     }
-    return { verdict: "fail", citations: [], reasons: [`${req.role} could not produce a usable verdict`] };
+    return { verdict: "fail", citations: [], reasons: [`${req.role} could not produce a usable verdict`], minor: [] };
   };
 }
 

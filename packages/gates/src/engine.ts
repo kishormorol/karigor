@@ -10,6 +10,7 @@ export interface GateOutcome {
   evidence: GateResultMeta["evidence"];
   citations: GateResultMeta["citations"];
   reasons: string[];
+  minor?: string[];
   /** Extra artifacts the gate wrote (a test report, for instance). */
   artifactIds?: string[];
 }
@@ -51,6 +52,7 @@ export async function evaluate(ctx: GateContext): Promise<GateResult> {
     evidence: out.evidence,
     citations: out.citations,
     reasons: out.reasons,
+    minor: out.minor ?? [],
     ...(ctx.transitionTo !== undefined ? { transitionTo: ctx.transitionTo } : {}),
     ...(ctx.itemId !== undefined ? { itemId: ctx.itemId } : {}),
   };
@@ -62,7 +64,8 @@ export async function evaluate(ctx: GateContext): Promise<GateResult> {
 
 function renderBody(m: GateResultMeta): string {
   const lines = [`# Gate ${m.gate}: ${m.verdict.toUpperCase()}`, "", `Phase: ${m.phase ?? ""}${m.itemId ? `, item ${m.itemId}` : ""}`, ""];
-  if (m.reasons.length) lines.push("## Reasons", ...m.reasons.map((r) => `- ${r}`), "");
+  if (m.reasons.length) lines.push("## Blocking", ...m.reasons.map((r) => `- ${r}`), "");
+  if (m.minor.length) lines.push("## Suggestions (not blocking)", ...m.minor.map((r) => `- ${r}`), "");
   if (m.citations.length) lines.push("## Citations", ...m.citations.map((c) => `- ${c.ref.kind} ${c.ref.id}${c.ref.locator ? ` (${c.ref.locator})` : ""}: "${c.quote}"`), "");
   lines.push("## Evidence", ...m.evidence.map((e) => (e.type === "artifact" ? `- ${e.ref.kind} ${e.ref.id}` : `- ${e.text.split("\n")[0]}`)));
   return lines.join("\n") + "\n";

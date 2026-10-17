@@ -70,7 +70,7 @@ export function answerFor(req: ModelRequest<unknown>, attempt: number, o: Script
       return { summary: "Implemented the item with tests.", files: [{ path: "src/a.ts", content: "export const a = 1;\n" }, { path: "src/a.test.ts", content: "test('a', () => {});\n" }], notes: [], assumptions: [] };
     case "reviewer":
     case "skeptic":
-      return { verdict: "pass", citations: citeFirst(req.user), reasons: ["checked every point"] };
+      return { verdict: "pass", citations: citeFirst(req.user), reasons: [], minor: ["checked every point"] };
     case "releaser": {
       const url = o.deployUrl === undefined ? "https://toolshare.pages.dev" : o.deployUrl;
       return {

@@ -157,6 +157,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
       try {
         const r = await store.readArtifact("gate-result", g.resultId);
         reasons.push(...(r.meta.reasons.length ? r.meta.reasons.map((x) => `${r.meta.gate}: ${x}`) : [`${r.meta.gate} failed`]));
+        reasons.push(...r.meta.minor.map((x) => `${r.meta.gate} (optional improvement): ${x}`));
       } catch {
         reasons.push(`${key} failed`);
       }
@@ -290,6 +291,25 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
           }
         }
         const judgeBudget = budgetFor(action.phase, action.gate === "skeptic-review" ? "skeptic" : "reviewer", action.itemId);
+        // The same gate's verdict from the previous attempt (previous phase entry, or previous item round).
+        let previousReview: GateContext["previousReview"];
+        {
+          const entry = state.entry!;
+          const prevKey = action.itemId !== undefined && action.round !== undefined && action.round > 0
+            ? `${scope}:${action.gate}:${action.itemId}@${action.round - 1}`
+            : action.itemId === undefined && entry.n > 1
+              ? `${scopeOf(entry.phase, entry.n - 1)}:${action.gate}`
+              : undefined;
+          const g = prevKey ? state.gates[prevKey] : undefined;
+          if (g) {
+            try {
+              const r = await store.readArtifact("gate-result", g.resultId);
+              previousReview = { verdict: r.meta.verdict, reasons: r.meta.reasons, minor: r.meta.minor };
+            } catch {
+              /* missing artifact: review without history */
+            }
+          }
+        }
         const ctx: GateContext = {
           gate: action.gate,
           key: action.key,
@@ -305,6 +325,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
             const a = budgetFor(action.phase, "developer", action.itemId).allow("routine");
             return { ok: a.ok, reason: a.reason };
           },
+          ...(previousReview ? { previousReview } : {}),
           ...(action.itemId !== undefined ? { itemId: action.itemId } : {}),
           ...(action.round !== undefined ? { round: action.round } : {}),
           ...(action.transitionTo !== undefined ? { transitionTo: action.transitionTo } : {}),

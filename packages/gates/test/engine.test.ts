@@ -136,6 +136,31 @@ describe("judged gates", () => {
     expect(sandbox.calls).toContain("diff:b1");
   });
 
+  it("derives the verdict from blocking reasons and keeps suggestions separate", async () => {
+    const nitpick = scriptedJudge(() => ({ verdict: "fail", reasons: [], minor: ["goal 2 could be phrased more precisely"] }));
+    const r = await evaluate(await ctx("spec-complete", {}, nitpick));
+    expect(r.verdict).toBe("pass");
+    const a = await store.readArtifact("gate-result", r.resultId);
+    expect(a.meta.minor[0]).toBe("goal 2 could be phrased more precisely");
+    expect(a.meta.minor[1]).toMatch(/verdict corrected from fail/);
+    expect(a.body).toMatch(/## Suggestions \(not blocking\)/);
+    const strict = scriptedJudge(() => ({ verdict: "pass", reasons: ["a must feature depends on a should feature"] }));
+    expect((await evaluate(await ctx("spec-complete", {}, strict))).verdict).toBe("fail");
+  });
+
+  it("shows the judge its previous review of the same work", async () => {
+    let seen = "";
+    const judge: Judge = async (req) => {
+      seen = req.extras["previous-review"] ?? "";
+      return { verdict: "pass", citations: [{ ref: { kind: "spec", id: "spec-1" }, quote: "x" }], reasons: [], minor: [] };
+    };
+    await evaluate(await ctx("spec-complete", { previousReview: { verdict: "fail", reasons: ["goal 1 is vague"], minor: ["add a sixth goal"] } }, judge));
+    expect(seen).toMatch(/previous verdict on this same work was: FAIL/);
+    expect(seen).toMatch(/- goal 1 is vague/);
+    expect(seen).toMatch(/- add a sixth goal/);
+    expect(seen).toMatch(/could not have been raised before/);
+  });
+
   it("fails when there is nothing to judge", async () => {
     state.artifacts = {};
     const r = await evaluate(await ctx("architecture-sound", { produced: [] }));

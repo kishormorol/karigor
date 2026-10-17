@@ -73,6 +73,14 @@ export async function runJudged(ctx: GateContext): Promise<GateOutcome> {
     return { verdict: "fail", evidence: [{ type: "text", text: "nothing to judge" }], citations: [], reasons: ["no artifacts were available to review"] };
   }
   const rubric = await readRubric(ctx.gate);
+  if (ctx.previousReview) {
+    extras["previous-review"] = [
+      `Your previous verdict on this same work was: ${ctx.previousReview.verdict.toUpperCase()}.`,
+      ctx.previousReview.reasons.length ? `Blocking objections you raised then:\n${ctx.previousReview.reasons.map((r) => `- ${r}`).join("\n")}` : "You raised no blocking objections then.",
+      ctx.previousReview.minor.length ? `Suggestions you made then:\n${ctx.previousReview.minor.map((r) => `- ${r}`).join("\n")}` : "",
+      "The author has revised the work in response. Check whether each earlier objection is now addressed. Raise a NEW blocking objection only if it is material and could not have been raised before; anything else goes in `minor`.",
+    ].filter(Boolean).join("\n\n");
+  }
   const v = await ctx.judge({
     gate: ctx.gate,
     role: JUDGED[ctx.gate],
@@ -92,5 +100,8 @@ export async function runJudged(ctx: GateContext): Promise<GateOutcome> {
   if (bad.length) {
     return { verdict: "fail", evidence, citations: v.citations, reasons: [`${JUDGED[ctx.gate]} cited artifacts it was not shown: ${bad.map((c) => c.ref.id).join(", ")}`, ...v.reasons] };
   }
-  return { verdict: v.verdict, evidence, citations: v.citations, reasons: v.reasons };
+  // The verdict follows the blocking list, so a judge cannot fail work on suggestions alone.
+  const verdict = v.reasons.length > 0 ? "fail" : "pass";
+  const minor = v.verdict !== verdict ? [...v.minor, `(verdict corrected from ${v.verdict}: ${verdict === "pass" ? "no blocking objections were given" : "blocking objections were given"})`] : v.minor;
+  return { verdict, evidence, citations: v.citations, reasons: v.reasons, minor };
 }

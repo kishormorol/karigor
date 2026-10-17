@@ -15,7 +15,7 @@ phases:
       - to: spike
         gates: [spec-complete, skeptic-review]
         onFail:
-          - { action: retry, times: 2 }
+          - { action: retry, times: 3 }
           - { action: stop }
   spike:
     description: Architect names the risk; developer proves or disproves it; the skeptic gate challenges.

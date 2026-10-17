@@ -6,8 +6,10 @@ export const JudgedVerdictSchema = z.object({
   verdict: z.enum(["pass", "fail"]),
   /** Specific places in the inputs that support the verdict. Required for either verdict. */
   citations: z.array(CitationSchema),
-  /** Plain-language reasons or objections. */
+  /** Blocking objections only: things that would harm or mislead a real person using the first release. */
   reasons: z.array(z.string().min(1)),
+  /** Improvements worth making that do not block. */
+  minor: z.array(z.string().min(1)).default([]),
 });
 export type JudgedVerdict = z.infer<typeof JudgedVerdictSchema>;
 
@@ -36,8 +38,8 @@ export function scriptedJudge(script: (req: JudgeRequest) => Partial<JudgedVerdi
     const cite = req.inputs[0]
       ? [{ ref: { kind: req.inputs[0].meta.kind, id: req.inputs[0].meta.id }, quote: req.inputs[0].body.slice(0, 40) || req.inputs[0].meta.id }]
       : [];
-    if (r === "pass") return { verdict: "pass", citations: cite, reasons: ["scripted pass"] };
-    if (r === "fail") return { verdict: "fail", citations: cite, reasons: ["scripted fail"] };
-    return { verdict: r.verdict ?? "pass", citations: r.citations ?? cite, reasons: r.reasons ?? [] };
+    if (r === "pass") return { verdict: "pass", citations: cite, reasons: [], minor: ["scripted pass"] };
+    if (r === "fail") return { verdict: "fail", citations: cite, reasons: ["scripted fail"], minor: [] };
+    return { verdict: r.verdict ?? "pass", citations: r.citations ?? cite, reasons: r.reasons ?? [], minor: r.minor ?? [] };
   };
 }

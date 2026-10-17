@@ -14,7 +14,7 @@ phases:
       - to: design
         gates: [spec-complete, skeptic-review]
         onFail:
-          - { action: retry, times: 2 }
+          - { action: retry, times: 3 }
           - { action: stop }
   design:
     roles: [architect]

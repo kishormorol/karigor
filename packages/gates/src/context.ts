@@ -22,6 +22,8 @@ export interface GateContext {
   /** Artifacts produced in this scope (and for this item, when item-scoped). */
   produced: ArtifactRef[];
   backlogItem?: BacklogItem;
+  /** The same gate's previous verdict in the previous attempt, so a re-review does not move the goalposts. */
+  previousReview?: { verdict: "pass" | "fail"; reasons: string[]; minor: string[] };
   /** Injected by the orchestrator from the budget package. */
   budgetCheck?: () => { ok: boolean; reason: string };
   clock: () => Date;

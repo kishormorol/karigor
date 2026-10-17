@@ -11,3 +11,7 @@ Look for, in order:
 5. A step that cannot be undone (data deletion, payment, public posting) with no safeguard.
 
 If you find one, FAIL and cite exactly where. If you genuinely find none after looking for each item above, PASS and cite the places you checked. A pass with no citations is not a pass.
+
+## Blocking versus minor
+
+Put a point in `reasons` (blocking) only if a real person using the first release would be harmed, misled, blocked, or charged because of it, or if the work contradicts the spec or the idea. Everything else (wording, a missing nicety, a goal that could be phrased more precisely, something easy to add in a later version) goes in `minor`. The verdict is `fail` if and only if `reasons` is non-empty. Do not list the points that passed; your citations show what you checked.

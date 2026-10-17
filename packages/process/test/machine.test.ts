@@ -116,7 +116,7 @@ describe("machine: phase failures", () => {
       worker: (a) => ({ type: "worker", outcome: a.role === "product-owner" ? "failed" : "ok", attempt: 2, artifacts: [] }),
     });
     expect(r.state.status).toBe("stopped");
-    expect(r.state.phaseFails["specify"]).toBe(3);
+    expect(r.state.phaseFails["specify"]).toBe(4);
     expect(r.state.stopReason).toMatch(/product-owner could not produce valid work/);
   });
 

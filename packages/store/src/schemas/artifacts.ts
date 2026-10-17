@@ -113,8 +113,10 @@ export const GateResultMeta = meta("gate-result", {
   evidence: z.array(GateEvidenceSchema).min(1),
   /** Judged gates must cite. */
   citations: z.array(CitationSchema).default([]),
-  /** Objections or reasons, plain language. */
+  /** Blocking objections, plain language. A judged verdict fails if and only if this is non-empty. */
   reasons: z.array(z.string()).default([]),
+  /** Non-blocking suggestions carried forward as advice. */
+  minor: z.array(z.string()).default([]),
   transitionTo: z.string().optional(),
   itemId: z.string().optional(),
 });

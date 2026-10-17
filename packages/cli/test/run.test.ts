@@ -147,9 +147,11 @@ describe("runProject: retries carry feedback", () => {
     const { root: r, projectId } = await fresh();
     let specCalls = 0;
     let secondPrompt = "";
+    const reviewPrompts: string[] = [];
     const adapter = scriptedAdapter({
       override: (req) => {
         if (req.role === "product-owner" && ++specCalls === 2) secondPrompt = req.user;
+        if (req.role === "reviewer" && req.user.includes("Gate: spec-complete")) reviewPrompts.push(req.user);
         if (req.role === "reviewer" && req.user.includes("Gate: spec-complete") && specCalls === 1) {
           return { verdict: "fail", citations: citeFirst(req.user), reasons: ["goal 1 is not observable"] };
         }
@@ -162,6 +164,9 @@ describe("runProject: retries carry feedback", () => {
     expect(secondPrompt).toMatch(/Your previous attempt was rejected/);
     expect(secondPrompt).toMatch(/spec-complete: goal 1 is not observable/);
     expect(secondPrompt).toMatch(/Your previous spec \(revise this\)/);
+    // the re-review sees its own earlier verdict
+    expect(reviewPrompts[1]).toMatch(/previous verdict on this same work was: FAIL/);
+    expect(reviewPrompts[1]).toMatch(/goal 1 is not observable/);
     const store = await FsStore.open(r, projectId, { committer: noopCommitter });
     const ledger = await store.readArtifact("ledger", state.artifacts.ledger!.at(-1)!);
     expect(ledger.meta.assumptions.map((a) => a.topic)).toEqual(["process", "kind of software", "language", "hosting"]);
