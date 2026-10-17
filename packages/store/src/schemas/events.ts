@@ -39,6 +39,7 @@ export const EventSchema = z.discriminatedUnion("type", [
     outcome: z.enum(["ok", "invalid", "failed", "over-budget"]),
     artifactIds: z.array(Id).default([]),
     error: z.string().optional(),
+    itemId: z.string().optional(),
   }),
   ev("artifact-written", { kind: ArtifactKindSchema, id: Id }),
   ev("gate-evaluated", {
