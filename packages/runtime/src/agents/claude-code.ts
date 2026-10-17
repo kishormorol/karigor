@@ -34,6 +34,48 @@ export const DENIED_COMMANDS = [
   "Bash(open:*)",
 ];
 
+/** Development tooling the developer may run without asking. Deny rules win over these. */
+export const ALLOWED_COMMANDS = [
+  "Bash(pnpm:*)",
+  "Bash(npm:*)",
+  "Bash(npx:*)",
+  "Bash(node:*)",
+  "Bash(corepack:*)",
+  "Bash(git:*)",
+  "Bash(ls:*)",
+  "Bash(cat:*)",
+  "Bash(head:*)",
+  "Bash(tail:*)",
+  "Bash(wc:*)",
+  "Bash(grep:*)",
+  "Bash(rg:*)",
+  "Bash(find:*)",
+  "Bash(sort:*)",
+  "Bash(diff:*)",
+  "Bash(echo:*)",
+  "Bash(pwd:*)",
+  "Bash(mkdir:*)",
+  "Bash(touch:*)",
+  "Bash(cp:*)",
+  "Bash(mv:*)",
+  "Bash(rm:*)",
+  "Bash(sed:*)",
+  "Bash(awk:*)",
+  "Bash(tsc:*)",
+  "Bash(vitest:*)",
+  "Bash(eslint:*)",
+  "Bash(next:*)",
+  "Bash(drizzle-kit:*)",
+  "Bash(sqlite3:*)",
+  "Bash(true:*)",
+  "Bash(test:*)",
+  "Bash(env:*)",
+  "Bash(printenv:*)",
+  "Bash(which:*)",
+  "Bash(date:*)",
+  "Bash(timeout:*)",
+];
+
 const TOOLS = "Read,Edit,Write,Bash,Glob,Grep";
 
 export interface ClaudeCodeAgentOptions {
@@ -102,7 +144,7 @@ export class ClaudeCodeAgent implements AgentAdapter {
   async act(req: AgentRequest): Promise<AgentResponse> {
     const tier = req.tier === "routine" ? "routine" : "judgment";
     const alias = tier === "routine" ? this.routineModel : this.judgmentModel;
-    const settings = JSON.stringify({ permissions: { deny: DENIED_COMMANDS, defaultMode: "acceptEdits" } });
+    const settings = JSON.stringify({ permissions: { allow: ALLOWED_COMMANDS, deny: DENIED_COMMANDS, defaultMode: "acceptEdits" } });
     const args = [
       "-p",
       "--output-format", "json",
@@ -111,6 +153,7 @@ export class ClaudeCodeAgent implements AgentAdapter {
       "--system-prompt", req.system,
       "--permission-mode", "acceptEdits",
       "--tools", TOOLS,
+      "--allowedTools", ...ALLOWED_COMMANDS,
       "--disallowedTools", ...DENIED_COMMANDS,
       "--settings", settings,
       "--max-turns", String(req.maxTurns ?? this.maxTurns),

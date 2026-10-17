@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { fixture } from "@karigor/profiles";
 import { Workspace } from "@karigor/sandbox";
-import { ClaudeCodeAgent, DENIED_COMMANDS, type Exec } from "../src/index.js";
+import { ALLOWED_COMMANDS, ClaudeCodeAgent, DENIED_COMMANDS, type Exec } from "../src/index.js";
 
 const req = { tier: "routine" as const, system: "sys", user: "do the thing", cwd: "/tmp/ws", key: "k", role: "developer" as const };
 
@@ -33,7 +33,11 @@ describe("ClaudeCodeAgent (offline)", () => {
     expect(a2[a2.indexOf("--model") + 1]).toBe("sonnet");
     expect(a2[a2.indexOf("--max-turns") + 1]).toBe("80");
     expect(a2).toContain("Bash(sudo:*)");
-    expect(JSON.parse(a2[a2.indexOf("--settings") + 1]!).permissions.deny).toEqual(DENIED_COMMANDS);
+    expect(a2).toContain("Bash(pnpm:*)");
+    const perms = JSON.parse(a2[a2.indexOf("--settings") + 1]!).permissions;
+    expect(perms.deny).toEqual(DENIED_COMMANDS);
+    expect(perms.allow).toEqual(ALLOWED_COMMANDS);
+    expect(perms.allow).toContain("Bash(pnpm:*)");
     expect(a2).not.toContain("--bare");
     expect(a2).not.toContain("--json-schema");
     expect(seen!.env["CLAUDECODE"]).toBeUndefined();
@@ -55,8 +59,11 @@ describe.runIf(process.env["KARIGOR_REAL_MODEL"] === "1")("ClaudeCodeAgent (live
   it("creates a file in the workspace when asked", async () => {
     const ws = await Workspace.create(join(await mkdtemp(join(tmpdir(), "karigor-agent-live-")), "ws"), fixture);
     const a = new ClaudeCodeAgent({ routineModel: "haiku", effort: { judgment: "low", routine: "low" } });
-    const r = await a.act({ ...req, cwd: ws.dir, user: "Create the file src/greet.js exporting a function greet(name) that returns 'hello ' + name. Do not do anything else. Reply with one sentence." });
+    const r = await a.act({ ...req, cwd: ws.dir, user: "Create the file src/greet.js exporting a function greet(name) that returns 'hello ' + name. Then run the shell command `node test.mjs` and, if it prints a JSON report, run `node -e \"require('fs').writeFileSync('ran.txt', 'ok')\"`. Reply with one sentence." });
     expect(r.ok, r.ok ? "" : r.message).toBe(true);
     expect(await readFile(join(ws.dir, "src/greet.js"), "utf8")).toMatch(/greet/);
+    // shell commands from the allow-list must actually run, not be denied
+    expect(await readFile(join(ws.dir, "ran.txt"), "utf8")).toBe("ok");
+    expect(r.ok && r.summary).not.toMatch(/blocked commands/);
   }, 300_000);
 });

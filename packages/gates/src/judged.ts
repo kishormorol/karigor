@@ -33,6 +33,16 @@ async function producedArtifacts(ctx: GateContext): Promise<Artifact[]> {
   return out;
 }
 
+/** The newest test report for this item, written by the tests-pass gate earlier in the round. */
+async function latestTestReport(ctx: GateContext): Promise<Artifact | undefined> {
+  const ids = [...(ctx.state.artifacts["test-report"] ?? [])].reverse().slice(0, 12);
+  for (const id of ids) {
+    const a = await ctx.store.readArtifact("test-report", id);
+    if (!ctx.itemId || a.meta.itemId === ctx.itemId) return a;
+  }
+  return undefined;
+}
+
 /** Which artifacts and extras each judged gate sees. */
 async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: Record<string, string> }> {
   const inputs: Artifact[] = [];
@@ -51,6 +61,7 @@ async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: R
     case "diff-matches-spec":
       push(await latestOf(ctx, "spec"));
       inputs.push(...(await producedArtifacts(ctx)));
+      push(await latestTestReport(ctx));
       if (ctx.backlogItem) extras["backlog-item"] = JSON.stringify(ctx.backlogItem, null, 2);
       extras["diff"] = await ctx.sandbox.diff(ctx.itemId);
       break;
@@ -58,6 +69,7 @@ async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: R
       inputs.push(...(await producedArtifacts(ctx)));
       push(await latestOf(ctx, "spec"));
       if (ctx.itemId) {
+        push(await latestTestReport(ctx));
         if (ctx.backlogItem) extras["backlog-item"] = JSON.stringify(ctx.backlogItem, null, 2);
         extras["diff"] = await ctx.sandbox.diff(ctx.itemId);
       }

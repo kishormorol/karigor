@@ -161,6 +161,25 @@ describe("judged gates", () => {
     expect(seen).toMatch(/could not have been raised before/);
   });
 
+  it("shows item-level reviews the item's latest test report", async () => {
+    const report = (id: string, itemId: string): Artifact => ({
+      meta: { id, kind: "test-report", createdAt: at, createdBy: "system", phase: "build", itemId, suite: "unit", passed: 3, failed: 0, skipped: 0, durationMs: 10 },
+      body: "3 passed",
+    });
+    await store.writeArtifact(report("tr-b1", "b1"));
+    await store.writeArtifact(report("tr-b2", "b2"));
+    state.artifacts["test-report"] = ["tr-b1", "tr-b2"];
+    let shown: string[] = [];
+    const judge: Judge = async (req) => {
+      shown = req.inputs.map((a) => a.meta.id);
+      return { verdict: "pass", citations: [{ ref: { kind: "test-report", id: "tr-b1" }, quote: "3 passed" }], reasons: [], minor: [] };
+    };
+    const r = await evaluate(await ctx("diff-matches-spec", { itemId: "b1" }, judge));
+    expect(r.verdict).toBe("pass");
+    expect(shown).toContain("tr-b1");
+    expect(shown).not.toContain("tr-b2");
+  });
+
   it("fails when there is nothing to judge", async () => {
     state.artifacts = {};
     const r = await evaluate(await ctx("architecture-sound", { produced: [] }));
