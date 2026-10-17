@@ -87,10 +87,12 @@ export class Workspace {
   /** Undo an item's commits with revert commits, so the history stays append-only. */
   async revertItem(itemId: string, reason: string): Promise<string | undefined> {
     const shas = await this.itemCommits(itemId);
-    const real = [];
+    // Only commits made after the item's last revert are live; everything before was already undone.
+    let real: string[] = [];
     for (const sha of shas) {
       const msg = (await this.must(["log", "-1", "--format=%s", sha], "log")).trim();
-      if (!msg.startsWith(`karigor(${itemId}): reverted`)) real.push(sha);
+      if (msg.startsWith(`karigor(${itemId}): reverted`)) real = [];
+      else real.push(sha);
     }
     if (real.length === 0) return undefined;
     const r = await this.git(["revert", "--no-edit", "--no-commit", ...real.reverse()]);
