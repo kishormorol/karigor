@@ -1,4 +1,4 @@
-import type { Artifact, ModelTier } from "@karigor/store";
+import type { Artifact, ModelTier, Role } from "@karigor/store";
 import { ArtifactSchema } from "@karigor/store";
 import type { ModelAdapter, ModelResponse, Usage } from "./adapters/types.js";
 import { ROLE_DEFINITIONS, readPrompt, type ProducingRole, type RoleContext, type RoleDefinition } from "./roles/index.js";
@@ -13,7 +13,7 @@ export interface WorkerBudget {
   /** May this attempt run at this tier? */
   allow(tier: Exclude<ModelTier, "mock">): Allowance;
   /** Book a finished call. `key` is unique per attempt so a replay cannot double-charge. */
-  record(entry: { key: string; role: ProducingRole; tier: ModelTier; model: string; usage: Usage }): void;
+  record(entry: { key: string; role: Role; tier: ModelTier; model: string; usage: Usage }): void;
 }
 
 export interface WorkerContract {
@@ -41,6 +41,8 @@ export interface WorkerResult {
   /** Set when over budget: what the budget ladder asks for. */
   budgetAction?: "park" | "stop";
   downgraded: boolean;
+  /** The validated model output, when ok. */
+  output?: unknown;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -104,7 +106,7 @@ export async function runWorker(c: WorkerContract): Promise<WorkerResult> {
         }
         continue;
       }
-      return { outcome: "ok", attempt, artifacts, downgraded };
+      return { outcome: "ok", attempt, artifacts, downgraded, output: res.output };
     }
 
     lastError = res.message;

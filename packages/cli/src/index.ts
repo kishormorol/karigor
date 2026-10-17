@@ -1,1 +1,1 @@
-export const PACKAGE = "@karigor/cli";
+export * from "./run.js";

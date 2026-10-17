@@ -53,6 +53,8 @@ export interface ProjectState {
   gates: Record<string, GateState>;
   /** Total failed gate evaluations and non-ok worker outcomes. */
   failures: number;
+  /** Phases whose budget ladder already downgraded the model tier. */
+  downgradedPhases: string[];
   artifacts: Partial<Record<ArtifactKind, string[]>>;
   lastSeq: number;
   stopReason?: string;
@@ -69,6 +71,7 @@ export function emptyState(projectId: string): ProjectState {
     workers: {},
     gates: {},
     failures: 0,
+    downgradedPhases: [],
     artifacts: {},
     lastSeq: -1,
   };
@@ -148,6 +151,7 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       break;
     }
     case "budget-downgraded":
+      if (!s.downgradedPhases.includes(e.phase)) s.downgradedPhases.push(e.phase);
       break;
     case "project-stopped":
       s.status = "stopped";
