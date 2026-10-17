@@ -102,6 +102,18 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
 
+  packages/sandbox:
+    dependencies:
+      '@karigor/gates':
+        specifier: workspace:*
+        version: link:../gates
+      '@karigor/profiles':
+        specifier: workspace:*
+        version: link:../profiles
+      '@karigor/store':
+        specifier: workspace:*
+        version: link:../store
+
   packages/store:
     dependencies:
       zod:
