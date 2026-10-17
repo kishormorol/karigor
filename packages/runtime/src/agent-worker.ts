@@ -11,6 +11,7 @@ export interface AgentWorkspace {
   commitAll(message: string): Promise<string | undefined>;
   changedFiles(from: string): Promise<{ path: string; action: "write" | "delete" }[]>;
   diff(from: string): Promise<string>;
+  commitForKey(key: string): Promise<{ sha: string; parent: string } | undefined>;
 }
 
 export interface AgentContract {
@@ -81,6 +82,14 @@ export async function runAgentWorker(c: AgentContract): Promise<AgentResult> {
   let lastError = "";
   let extra = "";
 
+  // A crash between the commit and its event leaves a commit carrying this key: reuse it, do not pay twice.
+  const existing = await c.workspace.commitForKey(c.key);
+  if (existing) {
+    await c.workspace.reset();
+    const artifact = await changeArtifact(c, itemId, existing.parent, existing.sha, "(recovered from a previous attempt)");
+    return { outcome: "ok", attempt: 1, artifacts: [artifact], summary: artifact.meta.kind === "change" ? artifact.meta.summary : "", commit: existing.sha, downgraded };
+  }
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const allowance = c.budget.allow(tier);
     if (!allowance.ok) {
@@ -109,7 +118,7 @@ export async function runAgentWorker(c: AgentContract): Promise<AgentResult> {
     }
 
     const summary = firstLine(res.summary) || `work on ${itemId}`;
-    const commit = await c.workspace.commitAll(`karigor(${itemId}): ${summary}`);
+    const commit = await c.workspace.commitAll(`karigor(${itemId}): ${summary}\n\nKarigor-Key: ${c.key}`);
     if (!commit) {
       lastError = "the developer finished without changing any files";
       extra = section("Your previous attempt was rejected", "You reported being done, but no files changed. Implement the item by editing files in this workspace, add tests, and run them.");
@@ -118,17 +127,22 @@ export async function runAgentWorker(c: AgentContract): Promise<AgentResult> {
       }
       continue;
     }
-    const files = (await c.workspace.changedFiles(before)).map((f) => ({ ...f, bytes: 0 }));
-    const diff = await c.workspace.diff(before);
-    const max = c.maxDiffChars ?? 200_000;
-    const body = [`# ${summary}`, "", res.summary.trim(), "", "## Diff", "", "```diff", diff.length > max ? `${diff.slice(0, max)}\n... (${diff.length - max} more characters)` : diff, "```", ""].join("\n");
-    const artifact: Artifact = {
-      meta: { id: c.ctx.makeId("change"), kind: "change", createdAt: c.ctx.clock().toISOString(), createdBy: "developer", phase: c.ctx.phase, itemId, summary, files, commit },
-      body,
-    };
+    const artifact = await changeArtifact(c, itemId, before, commit, res.summary);
     return { outcome: "ok", attempt, artifacts: [artifact], summary: res.summary, commit, downgraded };
   }
   return { outcome: lastError.includes("without changing") ? "invalid" : "failed", attempt: maxAttempts, artifacts: [], error: lastError || "gave up", downgraded };
+}
+
+async function changeArtifact(c: AgentContract, itemId: string, from: string, commit: string, report: string): Promise<Artifact> {
+  const summary = firstLine(report) || `work on ${itemId}`;
+  const files = (await c.workspace.changedFiles(from)).map((f) => ({ ...f, bytes: 0 }));
+  const diff = await c.workspace.diff(from);
+  const max = c.maxDiffChars ?? 200_000;
+  const body = [`# ${summary}`, "", report.trim(), "", "## Diff", "", "```diff", diff.length > max ? `${diff.slice(0, max)}\n... (${diff.length - max} more characters)` : diff, "```", ""].join("\n");
+  return {
+    meta: { id: c.ctx.makeId("change"), kind: "change", createdAt: c.ctx.clock().toISOString(), createdBy: "developer", phase: c.ctx.phase, itemId, summary, files: files.length ? files : [{ path: "(none)", action: "write", bytes: 0 }], commit },
+    body,
+  };
 }
 
 function firstLine(text: string): string {

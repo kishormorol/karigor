@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore } from "@karigor/store";
 import { FakeSandbox } from "@karigor/gates";
-import { ClaudeAdapter, ClaudeCodeAdapter, type ModelAdapter } from "@karigor/runtime";
+import { ClaudeAdapter, ClaudeCodeAdapter, ClaudeCodeAgent, type AgentAdapter, type ModelAdapter } from "@karigor/runtime";
+import { profileFor } from "@karigor/profiles";
 import { demoAdapter } from "./demo.js";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject } from "./run.js";
@@ -42,18 +43,30 @@ program
   .option("--run", "start building immediately", false)
   .option("--adapter <name>", "claude-code (your Claude Code login, no key), claude (API key) or demo (offline)", "claude-code")
   .option("--tier <tier>", "free, cheap or best (asked once; default best for claude-code, free for demo, cheap for claude)")
+  .option("--profile <name>", "target profile for real builds", "web-app")
   .description("record an idea as a new project")
-  .action(async (idea: string, o: { run: boolean; adapter: string; tier?: string }) => {
+  .action(async (idea: string, o: { run: boolean; adapter: string; tier?: string; profile: string }) => {
     const root = program.opts<{ root: string }>().root;
     const projectId = await createProject(root, idea);
     console.log(`Created project ${projectId}`);
-    if (o.run) await run(root, projectId, o.adapter, tierFrom(o.tier));
+    if (o.run) await run(root, projectId, o.adapter, tierFrom(o.tier), o.profile);
     else console.log(`Next: karigor run ${projectId}`);
   });
 
-async function run(root: string, projectId: string, adapterName: string, tier: Tier | undefined) {
+async function run(root: string, projectId: string, adapterName: string, tier: Tier | undefined, profileName: string) {
   const adapter = adapterFor(adapterName);
-  const state = await runProject({ root, projectId, adapter, sandbox: new FakeSandbox(), ...(tier ? { tier } : {}), log: (l) => console.log(l) });
+  // The demo adapter has no real developer, so it keeps the fake sandbox. Real adapters build for real.
+  const real = adapterName !== "demo";
+  const agent: AgentAdapter | undefined = adapterName === "claude-code" ? new ClaudeCodeAgent() : undefined;
+  if (real && !agent) throw new Error(`the ${adapterName} adapter has no developer agent yet; use claude-code for real builds`);
+  const state = await runProject({
+    root,
+    projectId,
+    adapter,
+    ...(real && agent ? { profile: profileFor(profileName), agent } : { sandbox: new FakeSandbox() }),
+    ...(tier ? { tier } : {}),
+    log: (l) => console.log(l),
+  });
   const store = await FsStore.open(root, projectId);
   console.log("");
   console.log(await renderStatus(store, state));
@@ -66,9 +79,10 @@ for (const name of ["run", "resume"]) {
     .argument("<projectId>")
     .option("--adapter <name>", "claude-code, claude or demo", "claude-code")
     .option("--tier <tier>", "free, cheap or best")
+    .option("--profile <name>", "target profile for real builds", "web-app")
     .description(name === "run" ? "build the project until it is finished or stopped" : "continue a project after an interruption")
-    .action(async (projectId: string, o: { adapter: string; tier?: string }) => {
-      await run(program.opts<{ root: string }>().root, projectId, o.adapter, tierFrom(o.tier));
+    .action(async (projectId: string, o: { adapter: string; tier?: string; profile: string }) => {
+      await run(program.opts<{ root: string }>().root, projectId, o.adapter, tierFrom(o.tier), o.profile);
     });
 }
 

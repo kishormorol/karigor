@@ -25,6 +25,8 @@ export interface RoleContext {
   purpose?: "shrink";
   /** Set on a retry: why the previous attempt was rejected, and what it produced. */
   feedback?: { reasons: string[]; previous: Artifact[] };
+  /** The build crew's conventions for the target profile, when a real workspace exists. */
+  stackGuide?: string;
   backlog: BacklogItem[];
   templates: Template[];
   clock: () => Date;
@@ -137,7 +139,13 @@ export const architect: RoleDefinition<ArchitectOutput> = {
     const spec = await latest(ctx, "spec");
     const ledger = await latest(ctx, "ledger");
     const profile = ctx.state.targetProfile ?? "web-app";
-    return [section("Target profile", `${profile}: ${TARGET_PROFILES[profile as keyof typeof TARGET_PROFILES] ?? ""}`), spec ? renderArtifact(spec) : "", ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
+    return [
+      section("Target profile", `${profile}: ${TARGET_PROFILES[profile as keyof typeof TARGET_PROFILES] ?? ""}`),
+      ctx.stackGuide ? section("The build crew's stack (design within it)", ctx.stackGuide) : "",
+      spec ? renderArtifact(spec) : "",
+      ledger ? renderArtifact(ledger) : "",
+      renderFeedback(ctx),
+    ].join("\n");
   },
   async write(out, ctx) {
     const { assumptions, body, ...fields } = out;
@@ -154,7 +162,7 @@ export const planner: RoleDefinition<PlannerOutput> = {
   async inputs(ctx) {
     const spec = await latest(ctx, "spec");
     const arch = await latest(ctx, "architecture");
-    const parts = [spec ? renderArtifact(spec) : "", arch ? renderArtifact(arch) : ""];
+    const parts = [spec ? renderArtifact(spec) : "", arch ? renderArtifact(arch) : "", ctx.stackGuide ? section("The build crew's stack (items must fit it)", ctx.stackGuide) : ""];
     if (ctx.purpose === "shrink" && ctx.itemId) {
       const item = ctx.backlog.find((b) => b.id === ctx.itemId);
       parts.push(section("SHRINK this item", "```json\n" + JSON.stringify(item, null, 2) + "\n```\nIt failed repeatedly. Replace it with smaller items. Use ids prefixed with its id."));

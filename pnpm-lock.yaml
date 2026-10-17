@@ -41,9 +41,15 @@ importers:
       '@karigor/process':
         specifier: workspace:*
         version: link:../process
+      '@karigor/profiles':
+        specifier: workspace:*
+        version: link:../profiles
       '@karigor/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@karigor/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
       '@karigor/store':
         specifier: workspace:*
         version: link:../store

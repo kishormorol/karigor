@@ -18,15 +18,25 @@ import {
 } from "@karigor/store";
 import { eventsFor, listTemplates, loadTemplate, next, scopeOf, workerStartEvent, type Action, type Outcome, type Template } from "@karigor/process";
 import { evaluate, type GateContext, type Sandbox } from "@karigor/gates";
+import type { Profile } from "@karigor/profiles";
+import { LocalSandbox, Workspace } from "@karigor/sandbox";
+import { join } from "node:path";
+import { stat } from "node:fs/promises";
 import { ROLE_PRIORS, check, costOf, estimate, isFlatRate, record, type CostLedgerMeta } from "@karigor/budget";
 import type { CostEntry } from "@karigor/store";
-import { isProducingRole, makeJudge, runWorker, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
+import { isProducingRole, makeJudge, runAgentWorker, runWorker, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
 
 export interface RunOptions {
   root: string;
   projectId: string;
   adapter: ModelAdapter;
-  sandbox: Sandbox;
+  /** Used when no profile is given (the demo path). */
+  sandbox?: Sandbox;
+  /** With `agent`, a real workspace is created from this profile and the developer works in it. */
+  profile?: Profile;
+  agent?: AgentAdapter;
+  /** Skip the profile's install step (tests). */
+  skipInstall?: boolean;
   /** Chosen once, when the kernel asks. Defaults to `free` for mock/local adapters, else `cheap`. */
   tier?: BudgetTier;
   clock?: () => Date;
@@ -135,7 +145,39 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
       else pending.push(entry);
     },
   });
-  const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({ state, store, phase, backlog, templates, clock, makeId: newId, ...extra });
+  const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({ state, store, phase, backlog, templates, clock, makeId: newId, ...(opts.profile ? { stackGuide: opts.profile.stackGuide } : {}), ...extra });
+
+  // ---- workspace (real build crew) -----------------------------------------
+  let workspace: Workspace | undefined;
+  let sandbox: Sandbox | undefined = opts.sandbox;
+  const agentic = Boolean(opts.profile && opts.agent);
+  const getWorkspace = async (): Promise<Workspace> => {
+    if (workspace) return workspace;
+    const dir = join(store.dir, "workspace");
+    const exists = await stat(join(dir, ".git")).then(() => true, () => false);
+    if (exists) workspace = await Workspace.open(dir);
+    else {
+      log(`creating the workspace from the ${opts.profile!.name} profile`);
+      workspace = await Workspace.create(dir, opts.profile!, { log, ...(opts.skipInstall ? { skipInstall: true } : {}) });
+    }
+    return workspace;
+  };
+  const getSandbox = async (): Promise<Sandbox> => {
+    if (sandbox) return sandbox;
+    if (!opts.profile) throw new RunError("no sandbox and no profile: pass one of them");
+    sandbox = new LocalSandbox(await getWorkspace(), opts.profile);
+    return sandbox;
+  };
+  /** Parked or dropped work must not leak into the release. */
+  const revertItem = async (itemId: string, reason: string) => {
+    if (!agentic) return;
+    const ws = await getWorkspace();
+    const sha = await ws.revertItem(itemId, reason).catch((e: Error) => {
+      log(`  could not revert ${itemId}: ${e.message}`);
+      return undefined;
+    });
+    if (sha) log(`  reverted ${itemId}'s commits (${reason})`);
+  };
 
   /**
    * On a retry, what the role must know: every gate that failed since its last run, and what it
@@ -184,18 +226,15 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
   const invoke = async (role: ProducingRole, key: string, phase: string, extra: Partial<RoleContext> & { itemId?: string } = {}) => {
     const feedback = extra.purpose === "shrink" ? undefined : await feedbackFor(role, phase, extra.itemId);
     const ctx = roleContext(phase, { ...extra, ...(feedback ? { feedback } : {}) });
-    const result = await runWorker({
-      role,
-      key,
-      ctx,
-      adapter: opts.adapter,
-      budget: budgetFor(phase, role, extra.itemId),
-      onAttempt: async (attempt, tier) => {
-        const e: NewEvent = { type: "worker-started", by: "system", role, key, attempt, tier };
-        if (extra.itemId !== undefined) e.itemId = extra.itemId;
-        await append(e);
-      },
-    });
+    const onAttempt = async (attempt: number, tier: ModelTier) => {
+      const e: NewEvent = { type: "worker-started", by: "system", role, key, attempt, tier };
+      if (extra.itemId !== undefined) e.itemId = extra.itemId;
+      await append(e);
+    };
+    const result =
+      role === "developer" && agentic
+        ? await runAgentWorker({ key, ctx, agent: opts.agent!, budget: budgetFor(phase, role, extra.itemId), workspace: await getWorkspace(), stackGuide: opts.profile!.stackGuide, onAttempt })
+        : await runWorker({ role, key, ctx, adapter: opts.adapter, budget: budgetFor(phase, role, extra.itemId), onAttempt });
     await saveLedger();
     if (result.downgraded && !state.downgradedPhases.includes(phase)) await append({ type: "budget-downgraded", by: "system", phase, from: "judgment", to: "routine" });
     const artifacts = result.outcome === "ok" ? await writeArtifacts(result.artifacts) : [];
@@ -219,7 +258,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
       const { result } = await invoke("selector", key, "select");
       let chosen = "iterative";
       let profile = "web-app";
-      if (result.outcome === "ok") {
+      if (result.outcome === "ok" && "output" in result) {
         const out = SelectorOutput.safeParse(result.output);
         if (out.success && templates.some((t) => t.name === out.data.template && t.name !== "maintenance")) {
           chosen = out.data.template;
@@ -262,8 +301,10 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         const { result, outcome } = await invoke(action.role, action.key, action.phase, action.itemId !== undefined ? { itemId: action.itemId } : {});
         const batch = eventsFor(action, outcome);
         if (result.outcome === "over-budget") {
-          if (result.budgetAction === "park" && action.itemId) batch.push({ type: "item-status", by: "system", itemId: action.itemId, status: "parked", reason: `over budget: ${result.error ?? ""}` });
-          else batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
+          if (result.budgetAction === "park" && action.itemId) {
+            await revertItem(action.itemId, "over budget");
+            batch.push({ type: "item-status", by: "system", itemId: action.itemId, status: "parked", reason: `over budget: ${result.error ?? ""}` });
+          } else batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
         }
         await appendAll(batch);
         await refreshBacklog();
@@ -271,10 +312,16 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
       }
       case "shrinkItem": {
         const { result, outcome } = await invoke("planner", action.key, action.phase, { itemId: action.itemId, purpose: "shrink" });
+        if (result.outcome === "ok") await revertItem(action.itemId, "replaced by smaller items");
         const batch = eventsFor(action, outcome);
         if (result.outcome === "over-budget") batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
         await appendAll(batch);
         await refreshBacklog();
+        break;
+      }
+      case "parkItem": {
+        await revertItem(action.itemId, "parked");
+        await appendAll(eventsFor(action, { type: "none" }));
         break;
       }
       case "evaluateGate": {
@@ -316,7 +363,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
           phase: action.phase,
           state,
           store,
-          sandbox: opts.sandbox,
+          sandbox: await getSandbox(),
           judge: makeJudge(opts.adapter, judgeBudget),
           produced,
           clock,

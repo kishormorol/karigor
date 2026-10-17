@@ -19,7 +19,9 @@
     "@karigor/budget": "workspace:*",
     "@karigor/gates": "workspace:*",
     "@karigor/process": "workspace:*",
+    "@karigor/profiles": "workspace:*",
     "@karigor/runtime": "workspace:*",
+    "@karigor/sandbox": "workspace:*",
     "@karigor/store": "workspace:*",
     "commander": "^13.1.0",
     "zod": "^3.25.76"

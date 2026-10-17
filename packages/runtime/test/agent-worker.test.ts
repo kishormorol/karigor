@@ -87,6 +87,19 @@ describe("runAgentWorker", () => {
     expect(r).toMatchObject({ outcome: "over-budget", budgetAction: "park" });
   });
 
+  it("reuses a commit that already carries this key instead of running the agent again", async () => {
+    const { ctx, workspace } = await setup();
+    const agent = new MockAgent(() => ({ files: { "src/first.js": "1\n" }, summary: "First attempt." }));
+    const r1 = await runAgentWorker({ key: "build#1:developer:b1@0", ctx, agent, budget: openBudget(), workspace, stackGuide: "" });
+    expect(r1.outcome).toBe("ok");
+    const r2 = await runAgentWorker({ key: "build#1:developer:b1@0", ctx, agent, budget: openBudget(), workspace, stackGuide: "" });
+    expect(r2.outcome).toBe("ok");
+    expect(r2.commit).toBe(r1.commit);
+    expect(agent.calls.length).toBe(1);
+    expect(r2.artifacts[0]!.meta.kind === "change" && r2.artifacts[0]!.meta.files.map((f) => f.path)).toEqual(["src/first.js"]);
+    expect(await workspace.commitForKey("nope")).toBeUndefined();
+  });
+
   it("a refusal is a failure without retry", async () => {
     const { ctx, workspace } = await setup();
     const agent = new MockAgent(() => ({ fail: { error: "refusal", message: "declined" } }));

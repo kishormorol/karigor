@@ -78,6 +78,15 @@ export class Workspace {
     await this.must(["clean", "-fdq"], "clean");
   }
 
+  /** The commit whose message carries `Karigor-Key: <key>`, if a previous attempt already committed. */
+  async commitForKey(key: string): Promise<{ sha: string; parent: string } | undefined> {
+    const out = await this.must(["log", "--format=%H %P", "--fixed-strings", `--grep=Karigor-Key: ${key}`], "git log");
+    const line = out.split("\n").find(Boolean);
+    if (!line) return undefined;
+    const [sha, parent] = line.trim().split(" ");
+    return { sha: sha!, parent: parent ?? `${sha}^` };
+  }
+
   /** Commits for an item, oldest first, found by the `karigor(<itemId>):` message prefix. */
   async itemCommits(itemId: string): Promise<string[]> {
     const out = await this.must(["log", "--reverse", "--format=%H", "--fixed-strings", `--grep=karigor(${itemId}):`], "git log");
