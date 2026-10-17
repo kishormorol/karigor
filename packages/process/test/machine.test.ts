@@ -94,6 +94,31 @@ describe("machine: item failures", () => {
   });
 });
 
+describe("machine: blocked items", () => {
+  it("parks items whose dependency was dropped or parked, with the reason, instead of leaving them behind", async () => {
+    const t = await loadTemplate("iterative");
+    const r = simulate(t, {
+      backlog: [item("b1"), item("b2", { dependsOn: ["b1"] }), item("b3", { dependsOn: ["b2"] }), item("b4")],
+      gate: (a) => (a.itemId === "b1" && a.gate === "tests-pass" ? "fail" : "pass"),
+    });
+    expect(r.state.status).toBe("finished");
+    expect(r.state.items["b1"]?.status).toBe("dropped");
+    expect(r.state.items["b2"]).toMatchObject({ status: "parked", reason: 'blocked: depends on "b1", which was dropped' });
+    expect(r.state.items["b3"]).toMatchObject({ status: "parked", reason: 'blocked: depends on "b2", which was parked' });
+    expect(r.state.items["b4"]?.status).toBe("done");
+    // nothing is left unsettled when the build phase exits
+    const unsettled = Object.values(r.state.items).filter((i) => !["done", "parked", "dropped"].includes(i.status));
+    expect(unsettled).toEqual([]);
+  });
+
+  it("parks items that depend on ids that are not in the backlog", async () => {
+    const t = await loadTemplate("linear");
+    const r = simulate(t, { backlog: [item("b1"), item("b2", { dependsOn: ["ghost"] })] });
+    expect(r.state.items["b2"]).toMatchObject({ status: "parked", reason: 'blocked: depends on "ghost", which is not in the backlog' });
+    expect(r.state.status).toBe("finished");
+  });
+});
+
 describe("machine: phase failures", () => {
   it("retries a phase, then sends back, then stops", async () => {
     const t = await loadTemplate("iterative");

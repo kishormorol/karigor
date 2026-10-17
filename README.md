@@ -11,7 +11,9 @@ It is designed to cost nothing to try. Every step has a zero-dollar path (local 
 
 ## Status
 
-Early, and already building real code. Sub-projects 1 (kernel), 2 (intake) and 3 (build crew) of 6 are done and tested:
+Early, and already building real code. Sub-projects 1 (kernel), 2 (intake) and 3 (build crew) of 6 are done and tested. On 17 October 2026 a real run on a Claude Code login took "a website where neighbours on one street lend each other tools" through spec, design and plan under real reviewers, then built nine backlog items in a Next.js workspace: 77 passing tests, clean lint, a compiling build, and every item reviewed by the reviewer and the skeptic. It stopped at the release gate because deployment is the next sub-project.
+
+The packages:
 
 | Package | What it does |
 |---|---|

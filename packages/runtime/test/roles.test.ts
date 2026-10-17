@@ -54,7 +54,7 @@ describe("role definitions", () => {
     await seed(store, state, [idea]);
     const backlog = [
       { id: "b1", title: "big", description: "d", acceptance: ["a"], priority: "must" as const, estimate: "L" as const, status: "todo" as const, dependsOn: [] },
-      { id: "b2", title: "other", description: "d", acceptance: ["a"], priority: "should" as const, estimate: "S" as const, status: "todo" as const, dependsOn: [] },
+      { id: "b2", title: "other", description: "d", acceptance: ["a"], priority: "should" as const, estimate: "S" as const, status: "todo" as const, dependsOn: ["b1"] },
     ];
     const ctx = await roleContext(store, state, { phase: "build", itemId: "b1", purpose: "shrink", backlog });
     const sub = (id: string) => ({ id, title: id, description: "d", acceptance: ["a"], priority: "must", estimate: "S", dependsOn: [] });
@@ -63,6 +63,8 @@ describe("role definitions", () => {
     expect(r.outcome).toBe("ok");
     const bl = r.artifacts[0]!;
     expect(bl.meta.kind === "backlog" && bl.meta.items.map((i) => `${i.id}:${i.status}`)).toEqual(["b1:dropped", "b2:todo", "b1-a:todo", "b1-b:todo"]);
+    // b2 depended on b1; it now depends on b1's replacements
+    expect(bl.meta.kind === "backlog" && bl.meta.items.find((i) => i.id === "b2")?.dependsOn).toEqual(["b1-a", "b1-b"]);
 
     const reuse = new MockAdapter(() => ({ items: [sub("b1"), sub("b2")], notes: "" }));
     const r2 = await runWorker({ role: "planner", key: "k2", ctx, adapter: reuse, budget: openBudget() });

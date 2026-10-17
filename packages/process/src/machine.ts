@@ -56,6 +56,23 @@ export function readyItems(state: ProjectState, backlog: BacklogItem[]): Backlog
   });
 }
 
+/**
+ * An unsettled item that can never become ready: a dependency is parked, dropped or missing.
+ * Returned with the reason so the kernel can park it instead of forgetting it.
+ */
+export function blockedItem(state: ProjectState, backlog: BacklogItem[]): { item: BacklogItem; reason: string } | undefined {
+  for (const it of backlog) {
+    if (settled(effectiveStatus(state, it))) continue;
+    for (const d of it.dependsOn) {
+      const dep = backlog.find((b) => b.id === d);
+      if (!dep) return { item: it, reason: `depends on "${d}", which is not in the backlog` };
+      const st = effectiveStatus(state, dep);
+      if (st === "parked" || st === "dropped") return { item: it, reason: `depends on "${d}", which was ${st}` };
+    }
+  }
+  return undefined;
+}
+
 /** Pure: given template, replayed state and backlog, decide the next action. */
 export function next(input: MachineInput): Action {
   const { template, state, backlog } = input;
@@ -79,12 +96,14 @@ export function next(input: MachineInput): Action {
 
   // Phase roles (once per entry; for loop phases that is once per sprint).
   if (phase.loop && entry.sprint === undefined) {
-    // Fresh entry into a loop phase: start a sprint if anything is ready, else evaluate the exit gates.
+    // Fresh entry into a loop phase: start a sprint if anything is ready, park what is blocked, else evaluate the exit gates.
     const ready = readyItems(state, backlog);
     if (ready.length > 0) {
       const n = phase.loop.itemsPerSprint === 0 ? ready.length : phase.loop.itemsPerSprint;
       return { type: "startSprint", phase: entry.phase, sprint: (state.sprint ?? 0) + 1, itemIds: ready.slice(0, n).map((i) => i.id) };
     }
+    const blocked = blockedItem(state, backlog);
+    if (blocked) return { type: "parkItem", itemId: blocked.item.id, reason: `blocked: ${blocked.reason}` };
     return transitionStep(phase, entry.phase, scope, state);
   }
 
@@ -127,12 +146,16 @@ export function next(input: MachineInput): Action {
       }
       return { type: "itemDone", itemId };
     }
-    // Sprint settled. More work? Next sprint. Otherwise the exit gates.
+    // Sprint settled. More work? Next sprint. Blocked work gets parked, not forgotten. Otherwise the exit gates.
     const ready = readyItems(state, backlog);
     if (ready.length > 0) {
       const n = loop.itemsPerSprint === 0 ? ready.length : loop.itemsPerSprint;
       return { type: "startSprint", phase: entry.phase, sprint: (state.sprint ?? 0) + 1, itemIds: ready.slice(0, n).map((i) => i.id) };
     }
+    const blocked = blockedItem(state, backlog);
+    if (blocked) return { type: "parkItem", itemId: blocked.item.id, reason: `blocked: ${blocked.reason}` };
+    const stuck = backlog.find((b) => !settled(effectiveStatus(state, b)));
+    if (stuck) return { type: "parkItem", itemId: stuck.id, reason: "blocked: its dependencies form a cycle" };
   }
 
   return transitionStep(phase, entry.phase, scope, state);

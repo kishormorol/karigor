@@ -185,7 +185,18 @@ export const planner: RoleDefinition<PlannerOutput> = {
       const ids = new Set(ctx.backlog.map((b) => b.id));
       const fresh = items.filter((i) => !ids.has(i.id));
       if (fresh.length === 0) throw new Error("shrink produced no new items");
-      all = [...ctx.backlog.map((b) => (b.id === ctx.itemId ? { ...b, status: "dropped" as const } : b)), ...fresh];
+      const replacementIds = fresh.map((i) => i.id);
+      // Whatever depended on the shrunk item now depends on its replacements, so nothing deadlocks.
+      all = [
+        ...ctx.backlog.map((b) =>
+          b.id === ctx.itemId
+            ? { ...b, status: "dropped" as const }
+            : b.dependsOn.includes(ctx.itemId!)
+              ? { ...b, dependsOn: [...new Set([...b.dependsOn.filter((d) => d !== ctx.itemId), ...replacementIds])] }
+              : b,
+        ),
+        ...fresh,
+      ];
     } else {
       all = items;
     }
