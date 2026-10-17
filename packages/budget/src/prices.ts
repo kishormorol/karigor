@@ -17,11 +17,18 @@ export interface Usage {
 const PRICES: Record<string, ModelPrice> = pricesJson.models;
 export const CURRENCY = pricesJson.currency;
 
-/** Price for a model id. Unknown models and anything local (ollama/*) cost zero; the caller may override. */
+const FREE: ModelPrice = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+
+/** Flat-rate or local providers whose calls cost the user nothing extra. */
+export function isFlatRate(model: string): boolean {
+  return model === "mock" || model.startsWith("ollama/") || model.startsWith("claude-code/");
+}
+
+/** Price for a model id. Flat-rate and local models cost zero; the caller may override. */
 export function priceFor(model: string, overrides: Record<string, ModelPrice> = {}): ModelPrice {
   const p = overrides[model] ?? PRICES[model];
   if (p) return p;
-  if (model.startsWith("ollama/") || model === "mock") return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  if (isFlatRate(model)) return FREE;
   // Unknown paid model: assume the most expensive known rate so the budget errs on the safe side.
   return PRICES["claude-fable-5-1"]!;
 }

@@ -26,7 +26,7 @@ export interface ModelRequest<T> {
 }
 
 export type ModelResponse<T> =
-  | { ok: true; output: T; usage: Usage; model: string }
+  | { ok: true; output: T; usage: Usage; model: string; costUsd?: number }
   | {
       ok: false;
       /** `invalid`: the model answered but not to schema. `refusal`: declined. `api`: transport or auth. */
@@ -36,6 +36,7 @@ export type ModelResponse<T> =
       usage: Usage;
       model: string;
       raw?: string;
+      costUsd?: number;
     };
 
 export interface ModelAdapter {

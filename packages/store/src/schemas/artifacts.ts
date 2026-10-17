@@ -138,8 +138,10 @@ export const CostEntrySchema = z.object({
   outputTokens: z.number().int().nonnegative(),
   cacheReadTokens: z.number().int().nonnegative().default(0),
   cacheWriteTokens: z.number().int().nonnegative().default(0),
-  /** In `currency` units. */
+  /** In `currency` units. What the user actually pays. */
   cost: z.number().nonnegative(),
+  /** What the same call would cost on the pay-per-token API, when the provider is flat-rate (a subscription). */
+  apiEquivalentCost: z.number().nonnegative().optional(),
   idempotencyKey: z.string().min(1),
   phase: z.string().min(1),
 });

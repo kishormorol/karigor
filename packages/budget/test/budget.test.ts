@@ -14,6 +14,7 @@ describe("prices", () => {
     expect(costOf({ inputTokens: 1e6, outputTokens: 1e6, cacheReadTokens: 0, cacheWriteTokens: 0 }, "ollama/llama3")).toBe(0);
     expect(costOf({ inputTokens: 1e6, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, "mock")).toBe(0);
     expect(priceFor("claude-mystery-9")).toEqual(priceFor("claude-fable-5-1"));
+    expect(costOf({ inputTokens: 1e6, outputTokens: 1e6, cacheReadTokens: 0, cacheWriteTokens: 0 }, "claude-code/claude-opus-5-5")).toBe(0);
   });
 });
 
@@ -83,7 +84,10 @@ describe("ledger", () => {
     const m = meter(l);
     expect(m.total).toBeCloseTo(0.3, 6);
     expect(m.calls).toBe(2);
-    expect(renderMeter(m)).toMatch(/Spent USD 0.3000 of USD 2.00 \(best tier, 2 model calls\)/);
+    expect(renderMeter(m)).toMatch(/Spent USD 0.3000 of USD 2.00 \(best tier, 2 model calls, 2 tokens in \/ 2 out\)/);
+    expect(renderMeter(m)).not.toMatch(/subscription/);
+    const sub = record(ledger(), { ...entry("build", 0, "s1"), model: "claude-code/claude-opus-5-5", apiEquivalentCost: 0.42 });
+    expect(renderMeter(meter(sub))).toMatch(/Covered by your subscription; the same calls would cost about USD 0.42/);
     expect(renderMeter(m)).toMatch(/build\s+USD 0.2000 \/ 1.50\s+13%/);
   });
 });

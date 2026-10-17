@@ -72,16 +72,22 @@ export interface Meter {
   budgetTotal: number;
   phases: { phase: string; spent: number; budget: number }[];
   calls: number;
+  /** Sum of API-equivalent costs, when calls ran on a flat-rate provider. */
+  apiEquivalent: number;
+  tokens: { input: number; output: number };
 }
 
 export function meter(ledger: CostLedgerMeta): Meter {
   const phases = Object.keys(ledger.phaseBudgets).map((phase) => ({ phase, spent: spentInPhase(ledger, phase), budget: ledger.phaseBudgets[phase]! }));
-  return { currency: ledger.currency, tier: ledger.tier, total: spentTotal(ledger), budgetTotal: ledger.budgetTotal, phases, calls: ledger.entries.length };
+  const apiEquivalent = round(ledger.entries.reduce((s, e) => s + (e.apiEquivalentCost ?? 0), 0));
+  const tokens = ledger.entries.reduce((t, e) => ({ input: t.input + e.inputTokens + e.cacheReadTokens + e.cacheWriteTokens, output: t.output + e.outputTokens }), { input: 0, output: 0 });
+  return { currency: ledger.currency, tier: ledger.tier, total: spentTotal(ledger), budgetTotal: ledger.budgetTotal, phases, calls: ledger.entries.length, apiEquivalent, tokens };
 }
 
 /** Plain-language rendering, like a taxi meter. */
 export function renderMeter(m: Meter): string {
-  const lines = [`Spent ${m.currency} ${m.total.toFixed(4)} of ${m.currency} ${m.budgetTotal.toFixed(2)} (${m.tier} tier, ${m.calls} model calls)`];
+  const lines = [`Spent ${m.currency} ${m.total.toFixed(4)} of ${m.currency} ${m.budgetTotal.toFixed(2)} (${m.tier} tier, ${m.calls} model calls, ${m.tokens.input.toLocaleString()} tokens in / ${m.tokens.output.toLocaleString()} out)`];
+  if (m.apiEquivalent > 0) lines.push(`  Covered by your subscription; the same calls would cost about ${m.currency} ${m.apiEquivalent.toFixed(2)} on the pay-per-token API.`);
   for (const p of m.phases) {
     const pct = p.budget > 0 ? Math.round((p.spent / p.budget) * 100) : 0;
     lines.push(`  ${p.phase.padEnd(10)} ${m.currency} ${p.spent.toFixed(4)} / ${p.budget.toFixed(2)}  ${pct}%`);

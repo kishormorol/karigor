@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore } from "@karigor/store";
 import { FakeSandbox } from "@karigor/gates";
-import { ClaudeAdapter, type ModelAdapter } from "@karigor/runtime";
+import { ClaudeAdapter, ClaudeCodeAdapter, type ModelAdapter } from "@karigor/runtime";
 import { demoAdapter } from "./demo.js";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject } from "./run.js";
@@ -17,12 +17,14 @@ program.option("--root <dir>", "where projects live", defaultRoot);
 
 function adapterFor(name: string): ModelAdapter {
   switch (name) {
+    case "claude-code":
+      return new ClaudeCodeAdapter();
     case "claude":
       return new ClaudeAdapter();
     case "demo":
       return demoAdapter();
     default:
-      throw new Error(`unknown adapter "${name}" (use claude or demo)`);
+      throw new Error(`unknown adapter "${name}" (use claude-code, claude or demo)`);
   }
 }
 
@@ -38,8 +40,8 @@ program
   .command("new")
   .argument("<idea>", "the idea, in plain language")
   .option("--run", "start building immediately", false)
-  .option("--adapter <name>", "claude or demo", "claude")
-  .option("--tier <tier>", "free, cheap or best (asked once; default free for demo, cheap for claude)")
+  .option("--adapter <name>", "claude-code (your Claude Code login, no key), claude (API key) or demo (offline)", "claude-code")
+  .option("--tier <tier>", "free, cheap or best (asked once; default best for claude-code, free for demo, cheap for claude)")
   .description("record an idea as a new project")
   .action(async (idea: string, o: { run: boolean; adapter: string; tier?: string }) => {
     const root = program.opts<{ root: string }>().root;
@@ -62,7 +64,7 @@ for (const name of ["run", "resume"]) {
   program
     .command(name)
     .argument("<projectId>")
-    .option("--adapter <name>", "claude or demo", "claude")
+    .option("--adapter <name>", "claude-code, claude or demo", "claude-code")
     .option("--tier <tier>", "free, cheap or best")
     .description(name === "run" ? "build the project until it is finished or stopped" : "continue a project after an interruption")
     .action(async (projectId: string, o: { adapter: string; tier?: string }) => {

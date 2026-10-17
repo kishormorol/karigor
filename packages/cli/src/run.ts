@@ -18,7 +18,7 @@ import {
 } from "@karigor/store";
 import { eventsFor, listTemplates, loadTemplate, next, scopeOf, workerStartEvent, type Action, type Outcome, type Template } from "@karigor/process";
 import { evaluate, type GateContext, type Sandbox } from "@karigor/gates";
-import { ROLE_PRIORS, check, costOf, estimate, record, type CostLedgerMeta } from "@karigor/budget";
+import { ROLE_PRIORS, check, costOf, estimate, isFlatRate, record, type CostLedgerMeta } from "@karigor/budget";
 import type { CostEntry } from "@karigor/store";
 import { isProducingRole, makeJudge, runWorker, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
 
@@ -129,6 +129,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         cost: costOf(e.usage, e.model),
         idempotencyKey: e.key,
         phase,
+        ...(e.costUsd !== undefined && isFlatRate(e.model) ? { apiEquivalentCost: e.costUsd } : {}),
       };
       if (ledger) ledger = record(ledger, entry);
       else pending.push(entry);
@@ -210,8 +211,9 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         throw new RunError("machine asked for a template after one was selected");
       case "chooseBudget": {
         const tiers = estimate(template, { judgmentModel: opts.adapter.modelFor("judgment"), routineModel: opts.adapter.modelFor("routine"), freeModel: opts.adapter.name === "mock" ? "mock" : "ollama/local" });
-        const free = opts.adapter.name === "mock" || opts.adapter.modelFor("judgment").startsWith("ollama/");
-        const tier = opts.tier ?? (free ? "free" : "cheap");
+        const flat = isFlatRate(opts.adapter.modelFor("judgment"));
+        // Flat-rate providers (a subscription, a local model) cost nothing per call, so the strongest models are the sensible default.
+        const tier = opts.tier ?? (opts.adapter.name === "mock" ? "free" : flat ? "best" : "cheap");
         const t = tiers.find((x) => x.tier === tier)!;
         const id = newId("cost-ledger");
         ledger = { id, kind: "cost-ledger", createdAt: clock().toISOString(), createdBy: "system", currency: t.currency, tier, budgetTotal: t.total, phaseBudgets: t.phaseBudgets, entries: pending.splice(0) };

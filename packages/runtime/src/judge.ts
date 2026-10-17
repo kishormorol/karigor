@@ -6,7 +6,7 @@ import { readPrompt, renderArtifact } from "./roles/index.js";
 
 export interface JudgeBudget {
   allow(tier: Exclude<ModelTier, "mock">): { ok: boolean; action?: "downgrade" | "park" | "stop"; reason: string };
-  record(entry: { key: string; role: "reviewer" | "skeptic"; tier: ModelTier; model: string; usage: Usage }): void;
+  record(entry: { key: string; role: "reviewer" | "skeptic"; tier: ModelTier; model: string; usage: Usage; costUsd?: number }): void;
 }
 
 /**
@@ -35,7 +35,7 @@ export function makeJudge(adapter: ModelAdapter, budget: JudgeBudget): Judge {
         key: `${req.key}:judge`,
         role: req.role,
       });
-      budget.record({ key: `${req.key}:judge#${attempt}`, role: req.role as "reviewer" | "skeptic", tier: adapter.name === "mock" ? "mock" : tier, model: res.model, usage: res.usage });
+      budget.record({ key: `${req.key}:judge#${attempt}`, role: req.role as "reviewer" | "skeptic", tier: adapter.name === "mock" ? "mock" : tier, model: res.model, usage: res.usage, ...(res.costUsd !== undefined ? { costUsd: res.costUsd } : {}) });
       if (res.ok) return res.output;
       if (res.error === "api" && res.retryable && attempt === 1) continue;
       if (res.error === "invalid" && attempt === 1) {

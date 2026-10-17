@@ -13,7 +13,7 @@ export interface WorkerBudget {
   /** May this attempt run at this tier? */
   allow(tier: Exclude<ModelTier, "mock">): Allowance;
   /** Book a finished call. `key` is unique per attempt so a replay cannot double-charge. */
-  record(entry: { key: string; role: Role; tier: ModelTier; model: string; usage: Usage }): void;
+  record(entry: { key: string; role: Role; tier: ModelTier; model: string; usage: Usage; costUsd?: number }): void;
 }
 
 export interface WorkerContract {
@@ -90,7 +90,7 @@ export async function runWorker(c: WorkerContract): Promise<WorkerResult> {
       key: c.key,
       role: def.role,
     });
-    c.budget.record({ key: `${c.key}#${attempt}`, role: c.role, tier: c.adapter.name === "mock" ? "mock" : tier, model: res.model, usage: res.usage });
+    c.budget.record({ key: `${c.key}#${attempt}`, role: c.role, tier: c.adapter.name === "mock" ? "mock" : tier, model: res.model, usage: res.usage, ...(res.costUsd !== undefined ? { costUsd: res.costUsd } : {}) });
 
     if (res.ok) {
       let artifacts: Artifact[];
