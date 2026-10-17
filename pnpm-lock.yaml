@@ -75,6 +75,12 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
 
+  packages/profiles:
+    dependencies:
+      '@karigor/store':
+        specifier: workspace:*
+        version: link:../store
+
   packages/runtime:
     dependencies:
       '@anthropic-ai/sdk':
