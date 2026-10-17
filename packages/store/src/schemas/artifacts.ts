@@ -169,6 +169,18 @@ export const WorkItemMeta = meta("work-item", {
   status: ItemStatusSchema.default("todo"),
 });
 
+// ---- change (what a developer produced for an item) --------------------
+export const ChangeFileSchema = z.object({
+  path: z.string().min(1),
+  action: z.enum(["write", "delete"]).default("write"),
+  bytes: z.number().int().nonnegative().default(0),
+});
+export const ChangeMeta = meta("change", {
+  itemId: z.string().min(1),
+  summary: z.string().min(1),
+  files: z.array(ChangeFileSchema).min(1),
+});
+
 // ---- union --------------------------------------------------------------
 export const ArtifactMetaSchema = z.discriminatedUnion("kind", [
   IdeaMeta,
@@ -183,6 +195,7 @@ export const ArtifactMetaSchema = z.discriminatedUnion("kind", [
   CostLedgerMeta,
   SummaryMeta,
   WorkItemMeta,
+  ChangeMeta,
 ]);
 export type ArtifactMeta = z.infer<typeof ArtifactMetaSchema>;
 export type MetaOf<K extends ArtifactMeta["kind"]> = Extract<ArtifactMeta, { kind: K }>;
@@ -208,4 +221,5 @@ export const META_BY_KIND = {
   "cost-ledger": CostLedgerMeta,
   summary: SummaryMeta,
   "work-item": WorkItemMeta,
+  change: ChangeMeta,
 } as const;

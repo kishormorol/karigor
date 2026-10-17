@@ -58,9 +58,15 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.135.0
         version: 0.135.0(zod@3.25.76)
+      '@karigor/budget':
+        specifier: workspace:*
+        version: link:../budget
       '@karigor/gates':
         specifier: workspace:*
         version: link:../gates
+      '@karigor/process':
+        specifier: workspace:*
+        version: link:../process
       '@karigor/store':
         specifier: workspace:*
         version: link:../store

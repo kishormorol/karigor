@@ -13,6 +13,7 @@ export const ARTIFACT_KINDS = [
   "cost-ledger",
   "summary",
   "work-item",
+  "change",
 ] as const;
 export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
 export const ArtifactKindSchema = z.enum(ARTIFACT_KINDS);
@@ -51,6 +52,18 @@ export const GATE_NAMES = [
 ] as const;
 export type GateName = (typeof GATE_NAMES)[number];
 export const GateNameSchema = z.enum(GATE_NAMES);
+
+/** Kinds of software Karigor can produce. Only `web-app` has a build crew so far. */
+export const TARGET_PROFILES = {
+  "web-app": "A website or web application with a backend and a database, used in a browser on phone or desktop.",
+  "static-site": "A site with no backend: landing page, portfolio, documentation, simple forms via a hosted service.",
+  api: "A backend service other programs call; no user interface.",
+  cli: "A command-line tool run in a terminal.",
+  "mobile-app": "An installable phone app (iOS or Android).",
+  "ml-model": "A trained model or data pipeline, with a small interface to use it.",
+} as const;
+export type TargetProfile = keyof typeof TARGET_PROFILES;
+export const TargetProfileSchema = z.enum(Object.keys(TARGET_PROFILES) as [TargetProfile, ...TargetProfile[]]);
 
 export const BUDGET_TIERS = ["free", "cheap", "best"] as const;
 export const BudgetTierSchema = z.enum(BUDGET_TIERS);

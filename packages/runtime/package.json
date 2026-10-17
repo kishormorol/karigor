@@ -17,7 +17,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
+    "@karigor/budget": "workspace:*",
     "@karigor/gates": "workspace:*",
+    "@karigor/process": "workspace:*",
     "@karigor/store": "workspace:*",
     "zod": "^3.25.76"
   }
