@@ -9,7 +9,7 @@ limits:
 phases:
   triage:
     description: Turn open work items into a small backlog, most severe first.
-    roles: [planner, skeptic]
+    roles: [planner]
     budgetWeight: 1
     transitions:
       - to: build
@@ -19,7 +19,7 @@ phases:
           - { action: stop }
   build:
     loop:
-      itemRoles: [developer, reviewer, skeptic]
+      itemRoles: [developer]
       itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
       onItemFail:
         - { action: retry, times: 2 }

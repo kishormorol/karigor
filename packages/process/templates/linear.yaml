@@ -8,7 +8,7 @@ limits:
   projectFailures: 15
 phases:
   specify:
-    roles: [product-owner, skeptic]
+    roles: [product-owner]
     budgetWeight: 1
     transitions:
       - to: design
@@ -17,7 +17,7 @@ phases:
           - { action: retry, times: 2 }
           - { action: stop }
   design:
-    roles: [architect, skeptic]
+    roles: [architect]
     budgetWeight: 1
     transitions:
       - to: plan
@@ -26,7 +26,7 @@ phases:
           - { action: retry, times: 1 }
           - { action: stop }
   plan:
-    roles: [planner, skeptic]
+    roles: [planner]
     budgetWeight: 1
     transitions:
       - to: build
@@ -51,8 +51,8 @@ phases:
           - { action: retry, times: 1 }
           - { action: stop }
   verify:
-    description: Review the whole build against the spec once.
-    roles: [reviewer, skeptic]
+    description: Judged gates review the whole build against the spec once.
+    roles: []
     budgetWeight: 1
     transitions:
       - to: release

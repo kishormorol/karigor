@@ -9,7 +9,7 @@ limits:
 phases:
   specify:
     description: Turn the idea into a product spec and an assumption ledger.
-    roles: [product-owner, skeptic]
+    roles: [product-owner]
     budgetWeight: 1
     transitions:
       - to: design
@@ -19,7 +19,7 @@ phases:
           - { action: stop }
   design:
     description: Choose the target and architecture.
-    roles: [architect, skeptic]
+    roles: [architect]
     budgetWeight: 1
     transitions:
       - to: plan
@@ -30,7 +30,7 @@ phases:
           - { action: stop }
   plan:
     description: Break the spec into small backlog items.
-    roles: [planner, skeptic]
+    roles: [planner]
     budgetWeight: 1
     transitions:
       - to: build
@@ -39,10 +39,10 @@ phases:
           - { action: retry, times: 2 }
           - { action: stop }
   build:
-    description: Sprints. Each item is built, tested, reviewed and challenged.
+    description: Sprints. Each item is built, then tested, reviewed and challenged by gates.
     roles: []
     loop:
-      itemRoles: [developer, reviewer, skeptic]
+      itemRoles: [developer]
       itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
       onItemFail:
         - { action: retry, times: 2 }

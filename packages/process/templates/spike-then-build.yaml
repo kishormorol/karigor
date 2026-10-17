@@ -9,7 +9,7 @@ limits:
   projectFailures: 30
 phases:
   specify:
-    roles: [product-owner, skeptic]
+    roles: [product-owner]
     budgetWeight: 1
     transitions:
       - to: spike
@@ -18,8 +18,8 @@ phases:
           - { action: retry, times: 2 }
           - { action: stop }
   spike:
-    description: Architect names the risk; developer proves or disproves it; skeptic challenges.
-    roles: [architect, developer, skeptic]
+    description: Architect names the risk; developer proves or disproves it; the skeptic gate challenges.
+    roles: [architect, developer]
     budgetWeight: 2
     transitions:
       - to: design
@@ -29,7 +29,7 @@ phases:
           - { action: sendBack, phase: specify, times: 1 }
           - { action: stop }
   design:
-    roles: [architect, skeptic]
+    roles: [architect]
     budgetWeight: 1
     transitions:
       - to: plan
@@ -38,7 +38,7 @@ phases:
           - { action: retry, times: 1 }
           - { action: stop }
   plan:
-    roles: [planner, skeptic]
+    roles: [planner]
     budgetWeight: 1
     transitions:
       - to: build
@@ -48,7 +48,7 @@ phases:
           - { action: stop }
   build:
     loop:
-      itemRoles: [developer, reviewer, skeptic]
+      itemRoles: [developer]
       itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
       onItemFail:
         - { action: retry, times: 2 }

@@ -19,11 +19,12 @@ describe("machine: golden path", () => {
       const unique = [...new Set(entered)];
       expect(unique[0]).toBe(t.initialPhase);
       expect(unique[unique.length - 1]).toBe("done");
-      // the skeptic ran in every phase that lists it
+      // the skeptic gate was evaluated in every phase that lists it
       const skepticPhases = Object.entries(t.phases)
-        .filter(([, p]) => p.roles.includes("skeptic") || p.loop?.itemRoles.includes("skeptic"))
+        .filter(([, p]) => p.transitions.some((tr) => tr.gates.includes("skeptic-review")) || p.loop?.itemGates.includes("skeptic-review"))
         .map(([n]) => n);
-      for (const p of skepticPhases) expect(r.events.some((e) => e.type === "worker-finished" && e.role === "skeptic" && e.key.startsWith(`${p}#`))).toBe(true);
+      expect(skepticPhases.length).toBeGreaterThan(0);
+      for (const p of skepticPhases) expect(r.events.some((e) => e.type === "gate-evaluated" && e.gate === "skeptic-review" && e.key.startsWith(`${p}#`))).toBe(true);
     });
   }
 
