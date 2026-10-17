@@ -1,0 +1,45 @@
+name: maintenance
+description: Entered from a production signal. Triage, fix, verify, release.
+fitsWhen: |
+  The project is already released and a signal arrived: an error, downtime, a vulnerable
+  dependency, or user feedback. Never chosen for a new idea.
+initialPhase: triage
+limits:
+  projectFailures: 15
+phases:
+  triage:
+    description: Turn open work items into a small backlog, most severe first.
+    roles: [planner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: build
+        gates: [skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  build:
+    loop:
+      itemRoles: [developer, reviewer, skeptic]
+      itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
+      onItemFail:
+        - { action: retry, times: 2 }
+        - { action: park }
+      itemsPerSprint: 2
+    budgetWeight: 4
+    transitions:
+      - to: release
+        gates: [build-succeeds, security-scan-clean]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  release:
+    roles: [releaser]
+    budgetWeight: 1
+    transitions:
+      - to: done
+        gates: [preview-healthy, rollback-verified]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  done:
+    terminal: true

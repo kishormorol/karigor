@@ -1,0 +1,72 @@
+name: iterative
+description: Short sprints with phase gates. The default for most products.
+fitsWhen: |
+  The idea is a product with several features whose details will become clearer as it is built,
+  or the user's priorities are not fully known. Most apps, sites and tools fit here.
+initialPhase: specify
+limits:
+  projectFailures: 25
+phases:
+  specify:
+    description: Turn the idea into a product spec and an assumption ledger.
+    roles: [product-owner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: design
+        gates: [spec-complete, skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  design:
+    description: Choose the target and architecture.
+    roles: [architect, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: plan
+        gates: [architecture-sound, skeptic-review]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: sendBack, phase: specify, times: 1 }
+          - { action: stop }
+  plan:
+    description: Break the spec into small backlog items.
+    roles: [planner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: build
+        gates: [skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  build:
+    description: Sprints. Each item is built, tested, reviewed and challenged.
+    roles: []
+    loop:
+      itemRoles: [developer, reviewer, skeptic]
+      itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
+      onItemFail:
+        - { action: retry, times: 2 }
+        - { action: shrink, times: 1 }
+        - { action: park }
+      itemsPerSprint: 3
+    budgetWeight: 5
+    transitions:
+      - to: release
+        gates: [build-succeeds, security-scan-clean]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: sendBack, phase: plan, times: 1 }
+          - { action: stop }
+  release:
+    description: Deploy to preview, smoke test, verify rollback, promote, summarise.
+    roles: [releaser]
+    budgetWeight: 1
+    transitions:
+      - to: done
+        gates: [preview-healthy, rollback-verified]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  done:
+    description: Released. The maintenance template owns the project from here.
+    terminal: true

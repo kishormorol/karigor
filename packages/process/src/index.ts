@@ -1,1 +1,2 @@
-export const PACKAGE = "@karigor/process";
+export * from "./template-schema.js";
+export * from "./loader.js";

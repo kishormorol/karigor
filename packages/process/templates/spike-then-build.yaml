@@ -1,0 +1,76 @@
+name: spike-then-build
+description: Resolve one risky unknown with a throwaway spike, then build iteratively.
+fitsWhen: |
+  The idea depends on something uncertain: an external service, a hard algorithm, an unusual
+  device, a data source that may not exist. The spike answers "can this work at all" cheaply
+  before the full build is planned.
+initialPhase: specify
+limits:
+  projectFailures: 30
+phases:
+  specify:
+    roles: [product-owner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: spike
+        gates: [spec-complete, skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  spike:
+    description: Architect names the risk; developer proves or disproves it; skeptic challenges.
+    roles: [architect, developer, skeptic]
+    budgetWeight: 2
+    transitions:
+      - to: design
+        gates: [build-succeeds, architecture-sound, skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: sendBack, phase: specify, times: 1 }
+          - { action: stop }
+  design:
+    roles: [architect, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: plan
+        gates: [architecture-sound, skeptic-review]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  plan:
+    roles: [planner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: build
+        gates: [skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  build:
+    loop:
+      itemRoles: [developer, reviewer, skeptic]
+      itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
+      onItemFail:
+        - { action: retry, times: 2 }
+        - { action: shrink, times: 1 }
+        - { action: park }
+      itemsPerSprint: 3
+    budgetWeight: 5
+    transitions:
+      - to: release
+        gates: [build-succeeds, security-scan-clean]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: sendBack, phase: plan, times: 1 }
+          - { action: stop }
+  release:
+    roles: [releaser]
+    budgetWeight: 1
+    transitions:
+      - to: done
+        gates: [preview-healthy, rollback-verified]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  done:
+    terminal: true

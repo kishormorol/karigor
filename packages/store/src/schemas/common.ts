@@ -35,6 +35,23 @@ export const RoleSchema = z.enum(ROLES);
 export const AuthorSchema = z.union([RoleSchema, z.literal("system"), z.literal("user")]);
 export type Author = z.infer<typeof AuthorSchema>;
 
+export const GATE_NAMES = [
+  "schema-valid",
+  "budget-ok",
+  "tests-pass",
+  "lint-clean",
+  "security-scan-clean",
+  "build-succeeds",
+  "preview-healthy",
+  "rollback-verified",
+  "spec-complete",
+  "architecture-sound",
+  "diff-matches-spec",
+  "skeptic-review",
+] as const;
+export type GateName = (typeof GATE_NAMES)[number];
+export const GateNameSchema = z.enum(GATE_NAMES);
+
 export const BUDGET_TIERS = ["free", "cheap", "best"] as const;
 export const BudgetTierSchema = z.enum(BUDGET_TIERS);
 export type BudgetTier = z.infer<typeof BudgetTierSchema>;

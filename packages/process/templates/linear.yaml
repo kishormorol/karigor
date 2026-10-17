@@ -1,0 +1,73 @@
+name: linear
+description: Waterfall. One pass through specify, design, plan, build, verify, release.
+fitsWhen: |
+  The idea is small and fully specified: a single page, a form, a calculator, a script, one clear
+  feature. Nothing about it is expected to change while it is built.
+initialPhase: specify
+limits:
+  projectFailures: 15
+phases:
+  specify:
+    roles: [product-owner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: design
+        gates: [spec-complete, skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  design:
+    roles: [architect, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: plan
+        gates: [architecture-sound, skeptic-review]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  plan:
+    roles: [planner, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: build
+        gates: [skeptic-review]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  build:
+    description: All items in one pass, no sprints.
+    loop:
+      itemRoles: [developer]
+      itemGates: [tests-pass, lint-clean]
+      onItemFail:
+        - { action: retry, times: 2 }
+        - { action: park }
+      itemsPerSprint: 0
+    budgetWeight: 3
+    transitions:
+      - to: verify
+        gates: [build-succeeds]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  verify:
+    description: Review the whole build against the spec once.
+    roles: [reviewer, skeptic]
+    budgetWeight: 1
+    transitions:
+      - to: release
+        gates: [diff-matches-spec, security-scan-clean, skeptic-review]
+        onFail:
+          - { action: sendBack, phase: build, times: 1 }
+          - { action: stop }
+  release:
+    roles: [releaser]
+    budgetWeight: 1
+    transitions:
+      - to: done
+        gates: [preview-healthy, rollback-verified]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  done:
+    terminal: true
