@@ -184,6 +184,8 @@ export const ChangeMeta = meta("change", {
   itemId: z.string().min(1),
   summary: z.string().min(1),
   files: z.array(ChangeFileSchema).min(1),
+  /** Workspace commit that holds the change, when a real workspace exists. */
+  commit: z.string().optional(),
 });
 
 // ---- union --------------------------------------------------------------

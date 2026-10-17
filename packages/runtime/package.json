@@ -22,5 +22,9 @@
     "@karigor/process": "workspace:*",
     "@karigor/store": "workspace:*",
     "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@karigor/profiles": "workspace:*",
+    "@karigor/sandbox": "workspace:*"
   }
 }

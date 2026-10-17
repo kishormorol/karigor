@@ -2,11 +2,11 @@ import { execFile } from "node:child_process";
 import type { ModelAdapter, ModelRequest, ModelResponse, Usage } from "./types.js";
 
 /** Runs a command and resolves with stdout even on a non-zero exit (the CLI reports errors in its JSON). */
-export type Exec = (file: string, args: string[], input: string, opts: { timeoutMs: number; env: NodeJS.ProcessEnv }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
+export type Exec = (file: string, args: string[], input: string, opts: { timeoutMs: number; env: NodeJS.ProcessEnv; cwd?: string }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
 
-const defaultExec: Exec = (file, args, input, { timeoutMs, env }) =>
+const defaultExec: Exec = (file, args, input, { timeoutMs, env, cwd }) =>
   new Promise((resolve) => {
-    const child = execFile(file, args, { env, timeout: timeoutMs, killSignal: "SIGTERM", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
+    const child = execFile(file, args, { env, cwd, timeout: timeoutMs, killSignal: "SIGTERM", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       const e = err as (Error & { code?: unknown; killed?: boolean; signal?: string }) | null;
       if (e?.killed || e?.signal) {
         // Killed by our timeout: no result was produced, so the call is safe to retry.

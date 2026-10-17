@@ -10,7 +10,7 @@ import { ArchitectOutput, DeveloperOutput, PlannerOutput, ProductOwnerOutput, Re
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROLES_DIR = join(here, "..", "..", "src", "roles");
 
-export async function readPrompt(name: Role | "preamble"): Promise<string> {
+export async function readPrompt(name: Role | "preamble" | "developer-agent"): Promise<string> {
   return readFile(join(ROLES_DIR, `${name}.md`), "utf8");
 }
 
