@@ -1,1 +1,1 @@
-export const PACKAGE = "@karigor/store";
+export * from "./schemas/index.js";
