@@ -136,5 +136,6 @@ import { z } from "zod/v4";
 
 /** JSON Schema the CLI accepts: every property required, no extras. */
 export function toJsonSchema(schema: z.ZodType<unknown>): Record<string, unknown> {
-  return z.toJSONSchema(schema, { unrepresentable: "any" }) as Record<string, unknown>;
+  const { $schema: _dropped, ...rest } = z.toJSONSchema(schema, { unrepresentable: "any" }) as Record<string, unknown> & { $schema?: string };
+  return rest;
 }

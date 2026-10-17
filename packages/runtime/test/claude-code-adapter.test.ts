@@ -34,6 +34,7 @@ describe("ClaudeCodeAdapter (offline, scripted CLI)", () => {
     const schema = JSON.parse(seen!.args[seen!.args.indexOf("--json-schema") + 1]!);
     expect(schema.required).toEqual(["title", "goals"]);
     expect(schema.additionalProperties).toBe(false);
+    expect(schema.$schema).toBeUndefined(); // the CLI rejects the draft marker
   });
 
   it("maps tiers to claude-code/ model ids, which the budget treats as flat-rate", () => {
