@@ -24,7 +24,12 @@ export const EventSchema = z.discriminatedUnion("type", [
   ev("project-created", { projectId: Id, ideaId: Id }),
   ev("template-selected", { template: z.string().min(1), targetProfile: z.string().min(1) }),
   ev("budget-chosen", { tier: BudgetTierSchema, ledgerId: Id }),
-  ev("phase-entered", { phase: z.string().min(1), sprint: z.number().int().positive().optional() }),
+  ev("phase-entered", {
+    phase: z.string().min(1),
+    sprint: z.number().int().positive().optional(),
+    /** Items chosen for this sprint, in order. Loop phases only. */
+    itemIds: z.array(z.string()).optional(),
+  }),
   ev("worker-started", {
     role: RoleSchema,
     key: z.string().min(1),
@@ -44,6 +49,8 @@ export const EventSchema = z.discriminatedUnion("type", [
   ev("artifact-written", { kind: ArtifactKindSchema, id: Id }),
   ev("gate-evaluated", {
     gate: z.string().min(1),
+    /** Scope key from the machine; unique per phase entry, item and round. */
+    key: z.string().min(1),
     verdict: z.enum(["pass", "fail"]),
     resultId: Id,
     itemId: z.string().optional(),
