@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { GateNameSchema, RoleSchema } from "@karigor/store";
 
 /** One rung of a failure ladder. The machine walks rungs by the item's or phase's fail count. */
@@ -62,6 +62,6 @@ export const TemplateSchema = z.object({
       /** Total non-ok outcomes (worker or gate) before the project stops. */
       projectFailures: z.number().int().positive().default(25),
     })
-    .default({}),
+    .prefault({}),
 });
 export type Template = z.infer<typeof TemplateSchema>;

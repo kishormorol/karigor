@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { CitationSchema, type Artifact, type GateName, type Role } from "@karigor/store";
 
 /** What a judged gate's worker must return. The engine turns "no citations" into a fail. */

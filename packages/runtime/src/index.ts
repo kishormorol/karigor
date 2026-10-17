@@ -1,1 +1,1 @@
-export const PACKAGE = "@karigor/runtime";
+export * from "./adapters/index.js";
