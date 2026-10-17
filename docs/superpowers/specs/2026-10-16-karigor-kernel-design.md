@@ -56,7 +56,7 @@ TypeScript monorepo (pnpm workspaces). Six packages, each with one job and a pub
 
 ### 3.2 `@karigor/process` — state machine and templates
 
-- A **process template** is a YAML file: `name`, `description`, `fitsWhen` (plain-language criteria the selector uses), `phases[]`, each with `roles[]` (ordered worker invocations), `loop` (none | sprint with exit condition), `transitions[]` with `to`, `gates[]`, `onFail` (retry | sendBack:<phase> | shrink | park), and `budgetWeight`.
+- A **process template** is a YAML file: `name`, `description`, `fitsWhen` (plain-language criteria the selector uses), `phases[]`, each with `roles[]` (ordered worker invocations), `loop` (none | sprint with exit condition), `transitions[]` with `to`, `gates[]`, `onFail` (retry | sendBack:<phase> | shrink | park), and `budgetWeight`. `shrink` means the *planner* is re-invoked to split the failing item into smaller items or drop its optional parts, recorded in the ledger; `park` removes the item from the active backlog with a plain-language reason.
 - Shipped templates: `iterative` (Scrum-like, default for most products), `linear` (waterfall for small, fully-specified ideas), `spike-then-build` (ideas with a risky unknown resolved first), `maintenance` (entered from a production signal).
 - The **state machine** loads a template, replays the event log, and exposes `currentPhase`, `openGates`, `next()` which returns the next action (invoke role X, evaluate gate Y, loop, finish).
 - Templates are validated at load time: every phase reachable, every gate name resolvable, every `onFail` target exists.
