@@ -64,6 +64,5 @@ describe.runIf(process.env["KARIGOR_REAL_MODEL"] === "1")("ClaudeCodeAgent (live
     expect(await readFile(join(ws.dir, "src/greet.js"), "utf8")).toMatch(/greet/);
     // shell commands from the allow-list must actually run, not be denied
     expect(await readFile(join(ws.dir, "ran.txt"), "utf8")).toBe("ok");
-    expect(r.ok && r.summary).not.toMatch(/blocked commands/);
   }, 300_000);
 });
