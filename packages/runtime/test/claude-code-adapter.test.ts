@@ -62,6 +62,14 @@ describe("ClaudeCodeAdapter (offline, scripted CLI)", () => {
     expect(r2.ok === false && r2.raw).toBe("plain prose");
   });
 
+  it("treats a timeout (no output, killed) as retryable", async () => {
+    const exec: Exec = async () => ({ stdout: "", stderr: "timed out after 40 minutes", code: null });
+    const r = await new ClaudeCodeAdapter({ exec }).complete(req);
+    expect(r.ok === false && r.error).toBe("api");
+    expect(r.ok === false && r.retryable).toBe(true);
+    expect(r.ok === false && r.message).toMatch(/timed out after 40 minutes/);
+  });
+
   it("reports a non-JSON crash as an api error", async () => {
     const exec: Exec = async () => ({ stdout: "", stderr: "command not found", code: 127 });
     const r = await new ClaudeCodeAdapter({ exec }).complete(req);

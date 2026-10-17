@@ -6,8 +6,14 @@ export type Exec = (file: string, args: string[], input: string, opts: { timeout
 
 const defaultExec: Exec = (file, args, input, { timeoutMs, env }) =>
   new Promise((resolve) => {
-    const child = execFile(file, args, { env, timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
-      const code = err && typeof (err as { code?: unknown }).code === "number" ? ((err as { code: number }).code) : err ? null : 0;
+    const child = execFile(file, args, { env, timeout: timeoutMs, killSignal: "SIGTERM", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
+      const e = err as (Error & { code?: unknown; killed?: boolean; signal?: string }) | null;
+      if (e?.killed || e?.signal) {
+        // Killed by our timeout: no result was produced, so the call is safe to retry.
+        resolve({ stdout: "", stderr: `timed out after ${Math.round(timeoutMs / 60000)} minutes`, code: null });
+        return;
+      }
+      const code = e && typeof e.code === "number" ? e.code : e ? null : 0;
       resolve({ stdout: String(stdout), stderr: String(stderr), code });
     });
     child.stdin?.end(input);
@@ -30,7 +36,8 @@ export const CLAUDE_CODE_DEFAULTS = {
   routineModel: "haiku",
   effort: { judgment: "high", routine: "low" },
   binary: "claude",
-  timeoutMs: 15 * 60 * 1000,
+  /** Judgment calls at high effort can run a long time; the kernel's retries cover the rest. */
+  timeoutMs: 40 * 60 * 1000,
 } as const;
 
 /** Shape of `claude -p --output-format json` that we rely on. */
