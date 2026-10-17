@@ -1,5 +1,10 @@
 import type { ArtifactKind, BudgetTier, Event, ItemStatus, Role } from "./schemas/index.js";
 
+function register(s: ProjectState, kind: ArtifactKind, id: string): void {
+  const ids = (s.artifacts[kind] ??= []);
+  if (!ids.includes(id)) ids.push(id);
+}
+
 export type ProjectStatus = "created" | "running" | "stopped" | "finished";
 
 export interface ItemState {
@@ -92,6 +97,7 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       s.projectId = e.projectId;
       s.ideaId = e.ideaId;
       s.status = "created";
+      register(s, "idea", e.ideaId);
       break;
     case "template-selected":
       s.template = e.template;
@@ -100,6 +106,7 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
     case "budget-chosen":
       s.budgetTier = e.tier;
       s.ledgerId = e.ledgerId;
+      register(s, "cost-ledger", e.ledgerId);
       break;
     case "phase-entered": {
       s.status = "running";
@@ -122,7 +129,10 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
     case "worker-finished": {
       const w = (s.workers[e.key] ??= { role: e.role, attempts: e.attempt, artifactIds: [] });
       w.lastOutcome = e.outcome;
-      w.artifactIds.push(...e.artifactIds);
+      for (const a of e.artifacts) {
+        w.artifactIds.push(a.id);
+        register(s, a.kind, a.id);
+      }
       if (e.outcome !== "ok") {
         s.failures += 1;
         if (e.itemId) item(s, e.itemId).failCount += 1;
@@ -131,10 +141,12 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       break;
     }
     case "artifact-written":
-      (s.artifacts[e.kind] ??= []).push(e.id);
+      register(s, e.kind, e.id);
       break;
     case "gate-evaluated":
       s.gates[e.key] = { verdict: e.verdict, resultId: e.resultId, seq: e.seq };
+      register(s, "gate-result", e.resultId);
+      for (const a of e.artifacts) register(s, a.kind, a.id);
       if (e.verdict === "fail") {
         s.failures += 1;
         if (e.itemId) item(s, e.itemId).failCount += 1;

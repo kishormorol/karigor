@@ -1,6 +1,7 @@
 /**
- * A mock-adapter script that plays every role plausibly, keyed by role, with hooks
- * for failures. Shared by the orchestrator and replay tests.
+ * The demo adapter: a mock that plays every role plausibly, offline and at zero cost.
+ * `karigor new "..." --adapter demo --run` exercises the whole kernel without a model.
+ * Tests reuse it with `override` hooks to script failures.
  */
 import type { ModelRequest } from "@karigor/runtime";
 import { MockAdapter } from "@karigor/runtime";
@@ -85,3 +86,5 @@ export function answerFor(req: ModelRequest<unknown>, attempt: number, o: Script
 export function scriptedAdapter(o: ScriptOptions = {}): MockAdapter {
   return new MockAdapter((req, attempt) => answerFor(req, attempt, o));
 }
+
+export const demoAdapter = (): MockAdapter => scriptedAdapter();

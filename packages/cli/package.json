@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && chmod +x dist/bin.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -23,5 +23,8 @@
     "@karigor/store": "workspace:*",
     "commander": "^13.1.0",
     "zod": "^3.25.76"
+  },
+  "bin": {
+    "karigor": "./dist/bin.js"
   }
 }

@@ -55,13 +55,13 @@ export function simulate(template: Template, script: Script = {}): SimResult {
       case "invokeRole":
       case "shrinkItem": {
         append(workerStartEvent(action, 1, "mock"));
-        outcome = script.worker?.(action, state) ?? { type: "worker", outcome: "ok", attempt: 1, artifactIds: [] };
+        outcome = script.worker?.(action, state) ?? { type: "worker", outcome: "ok", attempt: 1, artifacts: [] };
         if (outcome.outcome === "ok" && action.type === "invokeRole" && action.role === "planner" && script.backlog) backlog = script.backlog;
         if (outcome.outcome === "ok" && action.type === "shrinkItem") backlog = script.onShrink?.(action.itemId, backlog) ?? backlog;
         break;
       }
       case "evaluateGate":
-        outcome = { type: "gate", verdict: script.gate?.(action, state) ?? "pass", resultId: `gr-${events.length}` };
+        outcome = { type: "gate", verdict: script.gate?.(action, state) ?? "pass", resultId: `gr-${events.length}`, artifacts: [] };
         break;
     }
     for (const e of eventsFor(action, outcome)) append(e);

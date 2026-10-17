@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, appendFile, writeFile, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, appendFile, writeFile, stat, truncate } from "node:fs/promises";
 import { join } from "node:path";
 import { parseArtifact, serializeArtifact } from "./format.js";
 import { gitCommitter, noopCommitter, type Committer } from "./git.js";
@@ -14,6 +14,14 @@ import {
 
 export class StoreError extends Error {
   override name = "StoreError";
+}
+
+/** The last line of events.jsonl is incomplete: a write was interrupted. `open` repairs it. */
+export class TornTailError extends StoreError {
+  override name = "TornTailError";
+  constructor(message: string, readonly goodBytes: number) {
+    super(message);
+  }
 }
 
 export interface StoreOptions {
@@ -53,7 +61,15 @@ export class FsStore {
       throw new StoreError(`no project ${projectId} at ${dir}`);
     });
     const store = new FsStore(dir, projectId, opts.committer ?? gitCommitter, opts.clock ?? (() => new Date()), 0);
-    const events = await store.readEvents();
+    let events: Event[];
+    try {
+      events = await store.readEvents();
+    } catch (e) {
+      if (!(e instanceof TornTailError)) throw e;
+      // A crash mid-write left a partial last line. Drop it; the event was never acknowledged.
+      await truncate(join(dir, "events.jsonl"), e.goodBytes);
+      events = await store.readEvents();
+    }
     store.nextSeq = events.length === 0 ? 0 : events[events.length - 1]!.seq + 1;
     return store;
   }
@@ -93,9 +109,20 @@ export class FsStore {
 
   /** Append one event, assigning `seq` and `at`. Returns the stored event. */
   async appendEvent(e: NewEvent): Promise<Event> {
-    const full = EventSchema.parse({ ...e, seq: this.nextSeq, at: e.at ?? this.clock().toISOString() });
-    await appendFile(join(this.dir, "events.jsonl"), JSON.stringify(full) + "\n", "utf8");
-    this.nextSeq += 1;
+    const [full] = await this.appendEvents([e]);
+    return full!;
+  }
+
+  /**
+   * Append several events in one write. Either all of them land or (on a torn write) none are
+   * acknowledged, so callers can treat a batch as one atomic fact.
+   */
+  async appendEvents(batch: NewEvent[]): Promise<Event[]> {
+    if (batch.length === 0) return [];
+    const at = this.clock().toISOString();
+    const full = batch.map((e, i) => EventSchema.parse({ ...e, seq: this.nextSeq + i, at: e.at ?? at }));
+    await appendFile(join(this.dir, "events.jsonl"), full.map((f) => JSON.stringify(f)).join("\n") + "\n", "utf8");
+    this.nextSeq += full.length;
     return full;
   }
 
@@ -110,7 +137,11 @@ export class FsStore {
       try {
         raw = JSON.parse(line);
       } catch {
-        throw new StoreError(`events.jsonl line ${i + 1} is not valid JSON (truncated write?)`);
+        if (i === lines.length - 1) {
+          const goodBytes = Buffer.byteLength(lines.slice(0, i).join("\n") + (i > 0 ? "\n" : ""), "utf8");
+          throw new TornTailError(`events.jsonl line ${i + 1} is an interrupted write`, goodBytes);
+        }
+        throw new StoreError(`events.jsonl line ${i + 1} is not valid JSON`);
       }
       const r = EventSchema.safeParse(raw);
       if (!r.success) throw new StoreError(`events.jsonl line ${i + 1} is not a valid event: ${r.error.message}`);

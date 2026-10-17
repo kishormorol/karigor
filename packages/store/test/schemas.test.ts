@@ -45,7 +45,7 @@ describe("event schema", () => {
       { seq: 2, at, type: "budget-chosen", tier: "cheap", ledgerId: "cost-1" },
       { seq: 3, at, type: "phase-entered", phase: "specify" },
       { seq: 4, at, type: "worker-started", role: "product-owner", key: "spec:specify:1", attempt: 1, tier: "judgment" },
-      { seq: 5, at, type: "worker-finished", role: "product-owner", key: "spec:specify:1", attempt: 1, outcome: "ok", artifactIds: ["spec-1"] },
+      { seq: 5, at, type: "worker-finished", role: "product-owner", key: "spec:specify:1", attempt: 1, outcome: "ok", artifacts: [{ kind: "spec", id: "spec-1" }] },
       { seq: 6, at, type: "artifact-written", kind: "spec", id: "spec-1" },
       { seq: 7, at, type: "gate-evaluated", gate: "schema-valid", key: "specify#1:schema-valid", verdict: "pass", resultId: "gate-1" },
       { seq: 8, at, type: "transition", from: "specify", to: "design" },

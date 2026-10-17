@@ -35,6 +35,8 @@ export interface RunOptions {
   maxSteps?: number;
   /** Observe every action before it runs. */
   onAction?: (action: Action, state: ProjectState) => void;
+  /** Observe every event after it is persisted. Tests throw here to simulate a crash. */
+  onEvent?: (event: Event) => void;
   log?: (line: string) => void;
 }
 
@@ -53,7 +55,6 @@ export async function createProject(root: string, ideaText: string, opts: { cloc
   };
   await store.writeArtifact(idea);
   await store.appendEvent({ type: "project-created", by: "user", projectId, ideaId: idea.meta.id });
-  await store.appendEvent({ type: "artifact-written", by: "user", kind: "idea", id: idea.meta.id });
   await store.commit("karigor: idea recorded");
   return projectId;
 }
@@ -64,11 +65,14 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
   const log = opts.log ?? (() => {});
   const store = await FsStore.open(opts.root, opts.projectId, { clock, ...(opts.committer ? { committer: opts.committer } : {}) });
   let state = await store.replay();
-  const append = async (e: NewEvent): Promise<Event> => {
-    const full = await store.appendEvent(e);
-    state = applyEvent(state, full);
+  /** Persist a batch as one atomic write, fold it into state, then notify. */
+  const appendAll = async (batch: NewEvent[]): Promise<Event[]> => {
+    const full = await store.appendEvents(batch);
+    for (const e of full) state = applyEvent(state, e);
+    for (const e of full) opts.onEvent?.(e);
     return full;
   };
+  const append = async (e: NewEvent): Promise<Event> => (await appendAll([e]))[0]!;
   const templates = await Promise.all((await listTemplates(opts.templatesDir)).map((n) => loadTemplate(n, opts.templatesDir)));
   const newId = (kind: ArtifactKind) => makeId(kind, clock());
 
@@ -131,15 +135,14 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     },
   });
   const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({ state, store, phase, backlog, templates, clock, makeId: newId, ...extra });
-  const writeArtifacts = async (artifacts: Artifact[], by: Role | "system"): Promise<string[]> => {
-    const ids: string[] = [];
+  /** Write files only. Registration happens atomically through the finishing event. */
+  const writeArtifacts = async (artifacts: Artifact[]): Promise<ArtifactRef[]> => {
+    const refs: ArtifactRef[] = [];
     for (const a of artifacts) {
       await store.writeArtifact(a);
-      await append({ type: "artifact-written", by, kind: a.meta.kind, id: a.meta.id });
-      ids.push(a.meta.id);
+      refs.push({ kind: a.meta.kind, id: a.meta.id });
     }
-    await refreshBacklog();
-    return ids;
+    return refs;
   };
 
   // ---- one worker invocation ---------------------------------------------
@@ -159,8 +162,8 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     });
     await saveLedger();
     if (result.downgraded && !state.downgradedPhases.includes(phase)) await append({ type: "budget-downgraded", by: "system", phase, from: "judgment", to: "routine" });
-    const artifactIds = result.outcome === "ok" ? await writeArtifacts(result.artifacts, role) : [];
-    const outcome: Outcome = { type: "worker", outcome: result.outcome, attempt: Math.max(1, result.attempt), artifactIds, ...(result.error !== undefined ? { error: result.error } : {}) };
+    const artifacts = result.outcome === "ok" ? await writeArtifacts(result.artifacts) : [];
+    const outcome: Outcome = { type: "worker", outcome: result.outcome, attempt: Math.max(1, result.attempt), artifacts, ...(result.error !== undefined ? { error: result.error } : {}) };
     return { result, outcome };
   };
 
@@ -187,8 +190,10 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
           profile = out.data.targetProfile;
         }
       }
-      await append({ type: "worker-finished", by: "system", role: "selector", key, attempt: Math.max(1, result.attempt), outcome: result.outcome, artifactIds: result.artifacts.map((a) => a.meta.id), ...(result.error ? { error: result.error } : {}) });
-      await append({ type: "template-selected", by: "selector", template: chosen, targetProfile: profile });
+      await appendAll([
+        { type: "worker-finished", by: "system", role: "selector", key, attempt: Math.max(1, result.attempt), outcome: result.outcome, artifacts: result.outcome === "ok" ? result.artifacts.map((a) => ({ kind: a.meta.kind, id: a.meta.id })) : [], ...(result.error ? { error: result.error } : {}) },
+        { type: "template-selected", by: "selector", template: chosen, targetProfile: profile },
+      ]);
       template = templates.find((t) => t.name === chosen)!;
       await store.commit(`karigor: process ${chosen}, target ${profile}`);
       continue;
@@ -211,25 +216,28 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         const id = newId("cost-ledger");
         ledger = { id, kind: "cost-ledger", createdAt: clock().toISOString(), createdBy: "system", currency: t.currency, tier, budgetTotal: t.total, phaseBudgets: t.phaseBudgets, entries: pending.splice(0) };
         await saveLedger();
-        await append({ type: "artifact-written", by: "system", kind: "cost-ledger", id });
-        for (const e of eventsFor(action, { type: "chooseBudget", tier, ledgerId: id })) await append(e);
+        await appendAll(eventsFor(action, { type: "chooseBudget", tier, ledgerId: id }));
         log(`budget: ${tier} tier, ${t.currency} ${t.total.toFixed(2)}`);
         break;
       }
       case "invokeRole": {
         if (!isProducingRole(action.role)) throw new RunError(`template invokes "${action.role}", which is not a producing role`);
         const { result, outcome } = await invoke(action.role, action.key, action.phase, action.itemId !== undefined ? { itemId: action.itemId } : {});
-        for (const e of eventsFor(action, outcome)) await append(e);
+        const batch = eventsFor(action, outcome);
         if (result.outcome === "over-budget") {
-          if (result.budgetAction === "park" && action.itemId) await append({ type: "item-status", by: "system", itemId: action.itemId, status: "parked", reason: `over budget: ${result.error ?? ""}` });
-          else await append({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
+          if (result.budgetAction === "park" && action.itemId) batch.push({ type: "item-status", by: "system", itemId: action.itemId, status: "parked", reason: `over budget: ${result.error ?? ""}` });
+          else batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
         }
+        await appendAll(batch);
+        await refreshBacklog();
         break;
       }
       case "shrinkItem": {
         const { result, outcome } = await invoke("planner", action.key, action.phase, { itemId: action.itemId, purpose: "shrink" });
-        for (const e of eventsFor(action, outcome)) await append(e);
-        if (result.outcome === "over-budget") await append({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
+        const batch = eventsFor(action, outcome);
+        if (result.outcome === "over-budget") batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
+        await appendAll(batch);
+        await refreshBacklog();
         break;
       }
       case "evaluateGate": {
@@ -268,16 +276,13 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         };
         const r = await evaluate(ctx);
         await saveLedger();
-        for (const id of r.artifactIds) {
-          const kind = id === r.resultId ? "gate-result" : "test-report";
-          await append({ type: "artifact-written", by: "system", kind, id });
-        }
-        for (const e of eventsFor(action, { type: "gate", verdict: r.verdict, resultId: r.resultId })) await append(e);
+        const extras: ArtifactRef[] = r.artifactIds.filter((id) => id !== r.resultId).map((id) => ({ kind: "test-report" as const, id }));
+        await appendAll(eventsFor(action, { type: "gate", verdict: r.verdict, resultId: r.resultId, artifacts: extras }));
         if (r.verdict === "fail") log(`  gate ${action.gate} failed: ${r.reasons.join("; ")}`);
         break;
       }
       default:
-        for (const e of eventsFor(action, { type: "none" })) await append(e);
+        await appendAll(eventsFor(action, { type: "none" }));
     }
     await store.commit(`karigor: ${describeAction(action)}`);
     if (action.type === "idle") break;

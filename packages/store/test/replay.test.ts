@@ -15,10 +15,10 @@ describe("replay", () => {
       ev({ type: "phase-entered", by: "system", phase: "build", sprint: 1 }),
       ev({ type: "worker-started", by: "system", role: "developer", key: "dev:b1:1", attempt: 1, tier: "routine", itemId: "b1" }),
       ev({ type: "worker-started", by: "system", role: "developer", key: "dev:b1:1", attempt: 2, tier: "judgment", itemId: "b1" }),
-      ev({ type: "worker-finished", by: "system", role: "developer", key: "dev:b1:1", attempt: 2, outcome: "ok", artifactIds: ["test-report-1"], itemId: "b1" }),
-      ev({ type: "gate-evaluated", by: "system", gate: "tests-pass", key: "g:b1@0", verdict: "fail", resultId: "gate-1", itemId: "b1" }),
-      ev({ type: "gate-evaluated", by: "system", gate: "tests-pass", key: "g:b1@1", verdict: "pass", resultId: "gate-2", itemId: "b1" }),
-      ev({ type: "worker-finished", by: "system", role: "product-owner", key: "spec", attempt: 1, outcome: "failed", artifactIds: [] }),
+      ev({ type: "worker-finished", by: "system", role: "developer", key: "dev:b1:1", attempt: 2, outcome: "ok", artifacts: [{ kind: "change", id: "change-1" }], itemId: "b1" }),
+      ev({ type: "gate-evaluated", by: "system", gate: "tests-pass", key: "g:b1@0", verdict: "fail", resultId: "gate-1", artifacts: [{ kind: "test-report", id: "tr-1" }], itemId: "b1" }),
+      ev({ type: "gate-evaluated", by: "system", gate: "tests-pass", key: "g:b1@1", verdict: "pass", resultId: "gate-2", artifacts: [], itemId: "b1" }),
+      ev({ type: "worker-finished", by: "system", role: "product-owner", key: "spec", attempt: 1, outcome: "failed", artifacts: [] }),
       ev({ type: "item-status", by: "system", itemId: "b1", status: "done" }),
       ev({ type: "item-status", by: "system", itemId: "b2", status: "parked", reason: "retry budget exhausted" }),
       ev({ type: "project-finished", by: "system" }),
@@ -33,7 +33,8 @@ describe("replay", () => {
     expect(s.phaseFails).toEqual({ build: 1 });
     expect(s.entry).toEqual({ phase: "build", n: 1, sprint: 1, seq: 3 });
     expect(s.items["b2"]).toEqual({ status: "parked", failCount: 0, reason: "retry budget exhausted" });
-    expect(s.workers["dev:b1:1"]).toEqual({ role: "developer", attempts: 2, lastOutcome: "ok", artifactIds: ["test-report-1"] });
+    expect(s.workers["dev:b1:1"]).toEqual({ role: "developer", attempts: 2, lastOutcome: "ok", artifactIds: ["change-1"] });
+    expect(s.artifacts).toEqual({ idea: ["idea-1"], "cost-ledger": ["cost-1"], change: ["change-1"], "gate-result": ["gate-1", "gate-2"], "test-report": ["tr-1"] });
     expect(s.gates["g:b1@1"]).toEqual({ verdict: "pass", resultId: "gate-2", seq: 8 });
     expect(s.failures).toBe(2);
     expect(s.lastSeq).toBe(12);

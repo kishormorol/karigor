@@ -57,7 +57,7 @@ describe("machine: item failures", () => {
     const r = simulate(t, {
       backlog: [item("b1"), item("b2")],
       gate: (a) => ((a.itemId === "b1" || a.itemId === "b1-a") && a.gate === "tests-pass" ? "fail" : "pass"),
-      worker: (a) => ({ type: "worker", outcome: a.type === "shrinkItem" && a.itemId === "b1-a" ? "failed" : "ok", attempt: 1, artifactIds: [] }),
+      worker: (a) => ({ type: "worker", outcome: a.type === "shrinkItem" && a.itemId === "b1-a" ? "failed" : "ok", attempt: 1, artifacts: [] }),
       onShrink: (id, backlog) => [...backlog, item(`${id}-a`), item(`${id}-b`)],
     });
     // b1: fail, fail (retries), fail -> shrink ok -> dropped, replaced by b1-a and b1-b
@@ -74,7 +74,7 @@ describe("machine: item failures", () => {
     const t = await loadTemplate("maintenance");
     const r = simulate(t, {
       backlog: [item("b1"), item("b2")],
-      worker: (a) => ({ type: "worker", outcome: a.itemId === "b2" && a.role === "developer" ? "invalid" : "ok", attempt: 3, artifactIds: [] }),
+      worker: (a) => ({ type: "worker", outcome: a.itemId === "b2" && a.role === "developer" ? "invalid" : "ok", attempt: 3, artifacts: [] }),
     });
     expect(r.state.items["b2"]).toMatchObject({ status: "parked", failCount: 3 });
     expect(r.state.items["b1"]?.status).toBe("done");
@@ -113,7 +113,7 @@ describe("machine: phase failures", () => {
     const t = await loadTemplate("linear");
     const r = simulate(t, {
       backlog: [item("b1")],
-      worker: (a) => ({ type: "worker", outcome: a.role === "product-owner" ? "failed" : "ok", attempt: 2, artifactIds: [] }),
+      worker: (a) => ({ type: "worker", outcome: a.role === "product-owner" ? "failed" : "ok", attempt: 2, artifacts: [] }),
     });
     expect(r.state.status).toBe("stopped");
     expect(r.state.phaseFails["specify"]).toBe(3);

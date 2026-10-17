@@ -1,12 +1,12 @@
-import type { NewEvent } from "@karigor/store";
+import type { ArtifactRef, NewEvent } from "@karigor/store";
 import type { Action } from "./machine.js";
 
 /** Outcome of performing an action. Pure data; the orchestrator fills it in. */
 export type Outcome =
   | { type: "selectTemplate"; template: string; targetProfile: string }
   | { type: "chooseBudget"; tier: "free" | "cheap" | "best"; ledgerId: string }
-  | { type: "worker"; outcome: "ok" | "invalid" | "failed" | "over-budget"; attempt: number; artifactIds: string[]; error?: string }
-  | { type: "gate"; verdict: "pass" | "fail"; resultId: string }
+  | { type: "worker"; outcome: "ok" | "invalid" | "failed" | "over-budget"; attempt: number; artifacts: ArtifactRef[]; error?: string }
+  | { type: "gate"; verdict: "pass" | "fail"; resultId: string; artifacts: ArtifactRef[] }
   | { type: "none" };
 
 /** Events to append after `action` produced `outcome`. Deterministic, so replay and tests agree. */
@@ -31,7 +31,7 @@ export function eventsFor(action: Action, outcome: Outcome): NewEvent[] {
         key: action.key,
         attempt: outcome.attempt,
         outcome: outcome.outcome,
-        artifactIds: outcome.artifactIds,
+        artifacts: outcome.artifacts,
       };
       if (outcome.error !== undefined) e.error = outcome.error;
       if (action.itemId !== undefined) e.itemId = action.itemId;
@@ -46,7 +46,7 @@ export function eventsFor(action: Action, outcome: Outcome): NewEvent[] {
         key: action.key,
         attempt: outcome.attempt,
         outcome: outcome.outcome,
-        artifactIds: outcome.artifactIds,
+        artifacts: outcome.artifacts,
         itemId: action.itemId,
       };
       if (outcome.error !== undefined) e.error = outcome.error;
@@ -55,7 +55,7 @@ export function eventsFor(action: Action, outcome: Outcome): NewEvent[] {
     }
     case "evaluateGate": {
       if (outcome.type !== "gate") throw mismatch(action, outcome);
-      const e: NewEvent = { type: "gate-evaluated", by: "system", gate: action.gate, key: action.key, verdict: outcome.verdict, resultId: outcome.resultId };
+      const e: NewEvent = { type: "gate-evaluated", by: "system", gate: action.gate, key: action.key, verdict: outcome.verdict, resultId: outcome.resultId, artifacts: outcome.artifacts };
       if (action.itemId !== undefined) e.itemId = action.itemId;
       return [e];
     }

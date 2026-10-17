@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { FsStore, noopCommitter } from "@karigor/store";
 import { FakeSandbox } from "@karigor/gates";
 import { createProject, runProject } from "../src/index.js";
-import { citeFirst, scriptedAdapter } from "./script.js";
+import { citeFirst, scriptedAdapter } from "../src/demo.js";
 
 const NOW = () => new Date("2026-10-16T20:00:00.000Z");
 const root = () => mkdtemp(join(tmpdir(), "karigor-run-"));

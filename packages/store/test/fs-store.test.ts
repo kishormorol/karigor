@@ -2,7 +2,7 @@ import { mkdtemp, appendFile, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FsStore, StoreError, gitCommitter, makeId } from "../src/index.js";
+import { FsStore, StoreError, TornTailError, gitCommitter, makeId } from "../src/index.js";
 import * as fx from "./fixtures/artifacts.js";
 
 const root = () => mkdtemp(join(tmpdir(), "karigor-store-"));
@@ -47,12 +47,38 @@ describe("FsStore", () => {
     await expect(FsStore.open(r, "nope")).rejects.toThrow(/no project/);
   });
 
-  it("reports a truncated trailing event line instead of skipping it", async () => {
+  it("a torn last line is reported by readEvents and repaired by open", async () => {
     const r = await root();
     const s = await FsStore.createEphemeral(r, "p1");
     await s.appendEvent({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" });
     await appendFile(join(r, "p1", "events.jsonl"), '{"seq":1,"at":"2026-10-16T20:00:00.000Z","type":"phase-ent');
+    await expect(s.readEvents()).rejects.toThrow(TornTailError);
+    const reopened = await FsStore.open(r, "p1", { committer: { init: async () => {}, commit: async () => {} } });
+    expect((await reopened.readEvents()).length).toBe(1);
+    const e = await reopened.appendEvent({ type: "project-finished", by: "system" });
+    expect(e.seq).toBe(1);
+    expect((await reopened.readEvents()).length).toBe(2);
+  });
+
+  it("a corrupt line in the middle is an error, not a repair", async () => {
+    const r = await root();
+    const s = await FsStore.createEphemeral(r, "p1");
+    await s.appendEvent({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" });
+    await appendFile(join(r, "p1", "events.jsonl"), 'garbage\n{"seq":2,"at":"2026-10-16T20:00:00.000Z","type":"project-finished","by":"system"}\n');
     await expect(s.readEvents()).rejects.toThrow(/line 2 is not valid JSON/);
+  });
+
+  it("appends a batch atomically with consecutive seqs", async () => {
+    const r = await root();
+    const s = await FsStore.createEphemeral(r, "p1");
+    const batch = await s.appendEvents([
+      { type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" },
+      { type: "phase-entered", by: "system", phase: "specify" },
+      { type: "project-finished", by: "system" },
+    ]);
+    expect(batch.map((e) => e.seq)).toEqual([0, 1, 2]);
+    expect((await s.replay()).status).toBe("finished");
+    expect(await s.appendEvents([])).toEqual([]);
   });
 
   it("rejects a seq gap on replay", async () => {

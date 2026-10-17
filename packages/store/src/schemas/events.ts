@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import {
   ArtifactKindSchema,
+  ArtifactRefSchema,
   AuthorSchema,
   BudgetTierSchema,
   Id,
@@ -42,7 +43,8 @@ export const EventSchema = z.discriminatedUnion("type", [
     key: z.string().min(1),
     attempt: z.number().int().positive(),
     outcome: z.enum(["ok", "invalid", "failed", "over-budget"]),
-    artifactIds: z.array(Id).default([]),
+    /** Everything the worker produced. Registered atomically with this event on replay. */
+    artifacts: z.array(ArtifactRefSchema).default([]),
     error: z.string().optional(),
     itemId: z.string().optional(),
   }),
@@ -53,6 +55,8 @@ export const EventSchema = z.discriminatedUnion("type", [
     key: z.string().min(1),
     verdict: z.enum(["pass", "fail"]),
     resultId: Id,
+    /** Extra artifacts the gate wrote (a test report). The gate-result itself is `resultId`. */
+    artifacts: z.array(ArtifactRefSchema).default([]),
     itemId: z.string().optional(),
   }),
   ev("transition", { from: z.string().min(1), to: z.string().min(1) }),
