@@ -101,7 +101,7 @@ describe("build crew: real workspace with a scripted agent", { timeout: 120_000 
 
   it("a developer that changes nothing walks the ladder and the project still finishes building", async () => {
     const { root, projectId } = await fresh();
-    const agent = devAgent({ noChangeFor: (id) => id.startsWith("b1") });
+    const agent = devAgent({ noChangeFor: (id) => id === "b1" || id === "b1-a" });
     // the replacement item cannot be shrunk any further, so it is parked
     const shrinkFails: ScriptOptions["override"] = (req) =>
       req.role === "planner" && req.user.split("SHRINK this item")[1]?.includes('"id": "b1-a"') ? { items: [], notes: "" } : undefined;
