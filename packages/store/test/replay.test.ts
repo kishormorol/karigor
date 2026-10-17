@@ -33,7 +33,7 @@ describe("replay", () => {
     expect(s.phaseFails).toEqual({ build: 1 });
     expect(s.entry).toEqual({ phase: "build", n: 1, sprint: 1, seq: 3 });
     expect(s.items["b2"]).toEqual({ status: "parked", failCount: 0, reason: "retry budget exhausted" });
-    expect(s.workers["dev:b1:1"]).toEqual({ role: "developer", attempts: 2, lastOutcome: "ok", artifactIds: ["change-1"] });
+    expect(s.workers["dev:b1:1"]).toEqual({ role: "developer", attempts: 2, lastOutcome: "ok", artifactIds: ["change-1"], finishedSeq: 6 });
     expect(s.artifacts).toEqual({ idea: ["idea-1"], "cost-ledger": ["cost-1"], change: ["change-1"], "gate-result": ["gate-1", "gate-2"], "test-report": ["tr-1"] });
     expect(s.gates["g:b1@1"]).toEqual({ verdict: "pass", resultId: "gate-2", seq: 8 });
     expect(s.failures).toBe(2);

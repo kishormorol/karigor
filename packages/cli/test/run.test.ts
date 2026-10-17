@@ -141,3 +141,47 @@ describe("runProject: budget", () => {
     expect(new Set(ledger.meta.entries.map((e) => e.idempotencyKey)).size).toBe(ledger.meta.entries.length);
   });
 });
+
+describe("runProject: retries carry feedback", () => {
+  it("a retried product owner sees the reviewer's reasons and its previous spec, and the ledger does not duplicate", async () => {
+    const { root: r, projectId } = await fresh();
+    let specCalls = 0;
+    let secondPrompt = "";
+    const adapter = scriptedAdapter({
+      override: (req) => {
+        if (req.role === "product-owner" && ++specCalls === 2) secondPrompt = req.user;
+        if (req.role === "reviewer" && req.user.includes("Gate: spec-complete") && specCalls === 1) {
+          return { verdict: "fail", citations: citeFirst(req.user), reasons: ["goal 1 is not observable"] };
+        }
+        return undefined;
+      },
+    });
+    const state = await runProject({ root: r, projectId, adapter, sandbox: new FakeSandbox(), clock: NOW, committer: noopCommitter });
+    expect(state.status).toBe("finished");
+    expect(specCalls).toBe(2);
+    expect(secondPrompt).toMatch(/Your previous attempt was rejected/);
+    expect(secondPrompt).toMatch(/spec-complete: goal 1 is not observable/);
+    expect(secondPrompt).toMatch(/Your previous spec \(revise this\)/);
+    const store = await FsStore.open(r, projectId, { committer: noopCommitter });
+    const ledger = await store.readArtifact("ledger", state.artifacts.ledger!.at(-1)!);
+    expect(ledger.meta.assumptions.map((a) => a.topic)).toEqual(["process", "kind of software", "language", "hosting"]);
+  });
+
+  it("a developer whose tests failed sees the test gate's reason on the next round", async () => {
+    const { root: r, projectId } = await fresh();
+    let round1Prompt = "";
+    let fails = 0;
+    const sandbox = new FakeSandbox({ tests: (itemId) => (itemId === "b2" && fails++ === 0 ? { passed: 0, failed: 1 } : {}) });
+    const adapter = scriptedAdapter({
+      override: (req) => {
+        if (req.role === "developer" && req.user.includes('"id": "b2"') && req.user.includes("previous attempt")) round1Prompt = req.user;
+        return undefined;
+      },
+    });
+    const state = await runProject({ root: r, projectId, adapter, sandbox, clock: NOW, committer: noopCommitter });
+    expect(state.status).toBe("finished");
+    expect(state.items["b2"]).toMatchObject({ status: "done", failCount: 1 });
+    expect(round1Prompt).toMatch(/tests-pass: 1 test\(s\) failed/);
+    expect(round1Prompt).toMatch(/Your previous change \(revise this\)/);
+  });
+});

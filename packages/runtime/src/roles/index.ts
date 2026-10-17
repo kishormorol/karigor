@@ -23,6 +23,8 @@ export interface RoleContext {
   phase: string;
   itemId?: string;
   purpose?: "shrink";
+  /** Set on a retry: why the previous attempt was rejected, and what it produced. */
+  feedback?: { reasons: string[]; previous: Artifact[] };
   backlog: BacklogItem[];
   templates: Template[];
   clock: () => Date;
@@ -55,14 +57,29 @@ export function renderArtifact(a: Artifact): string {
   return section(`${a.meta.kind} ${a.meta.id}`, "```json\n" + JSON.stringify(rest, null, 2) + "\n```\n\n" + (body || "(no body)"));
 }
 
+/** The "your last attempt was rejected" section every producing role sees on a retry. */
+export function renderFeedback(ctx: RoleContext): string {
+  if (!ctx.feedback) return "";
+  const { reasons, previous } = ctx.feedback;
+  const parts = [
+    section(
+      "Your previous attempt was rejected",
+      ["The checks below failed. Revise your previous work: keep what passed, fix exactly what failed, and do not introduce new scope.", "", ...reasons.map((r) => `- ${r}`)].join("\n"),
+    ),
+  ];
+  for (const a of previous) parts.push(section(`Your previous ${a.meta.kind} (revise this)`, "```json\n" + JSON.stringify({ ...a.meta }, null, 2) + "\n```\n\n" + (a.body || "(no body)")));
+  return parts.join("\n");
+}
+
 async function ledgerWith(ctx: RoleContext, role: Role, inputs: z.infer<typeof AssumptionInput>[]): Promise<Artifact | undefined> {
   if (inputs.length === 0) return undefined;
   const prev = await latest(ctx, "ledger");
-  const base = prev?.meta.assumptions.length ?? 0;
+  // A retry replaces this role's earlier entries for the same phase (and item), so the ledger never repeats itself.
+  const kept = (prev?.meta.assumptions ?? []).filter((a) => !(a.madeBy === role && a.phase === ctx.phase && a.itemId === ctx.itemId));
   const assumptions = [
-    ...(prev?.meta.assumptions ?? []),
-    ...inputs.map((a, i) => ({ id: `a${base + i + 1}`, topic: a.topic, decision: a.decision, reason: a.reason, madeBy: role, phase: ctx.phase })),
-  ];
+    ...kept,
+    ...inputs.map((a, i) => ({ id: `a${kept.length + i + 1}`, topic: a.topic, decision: a.decision, reason: a.reason, madeBy: role, phase: ctx.phase, ...(ctx.itemId !== undefined ? { itemId: ctx.itemId } : {}) })),
+  ].map((a, i) => ({ ...a, id: `a${i + 1}` }));
   const meta: MetaOf<"ledger"> = { id: ctx.makeId("ledger"), kind: "ledger", createdAt: ctx.clock().toISOString(), createdBy: role, phase: ctx.phase, assumptions };
   const body = ["# Assumptions", "", ...assumptions.map((a) => `- **${a.topic}**: ${a.decision} _(${a.reason}; decided by ${a.madeBy} during ${a.phase})_`)].join("\n") + "\n";
   return { meta, body };
@@ -102,7 +119,7 @@ export const productOwner: RoleDefinition<ProductOwnerOutput> = {
   async inputs(ctx) {
     const idea = await latest(ctx, "idea");
     const ledger = await latest(ctx, "ledger");
-    return [section("Idea", idea?.meta.text ?? "(missing)"), ledger ? renderArtifact(ledger) : ""].join("\n");
+    return [section("Idea", idea?.meta.text ?? "(missing)"), ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
   },
   async write(out, ctx) {
     const { assumptions, body, ...fields } = out;
@@ -120,7 +137,7 @@ export const architect: RoleDefinition<ArchitectOutput> = {
     const spec = await latest(ctx, "spec");
     const ledger = await latest(ctx, "ledger");
     const profile = ctx.state.targetProfile ?? "web-app";
-    return [section("Target profile", `${profile}: ${TARGET_PROFILES[profile as keyof typeof TARGET_PROFILES] ?? ""}`), spec ? renderArtifact(spec) : "", ledger ? renderArtifact(ledger) : ""].join("\n");
+    return [section("Target profile", `${profile}: ${TARGET_PROFILES[profile as keyof typeof TARGET_PROFILES] ?? ""}`), spec ? renderArtifact(spec) : "", ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
   },
   async write(out, ctx) {
     const { assumptions, body, ...fields } = out;
@@ -150,6 +167,7 @@ export const planner: RoleDefinition<PlannerOutput> = {
       const items = await Promise.all(work.map((id) => ctx.store.readArtifact("work-item", id)));
       parts.push(section("Open work items (maintenance)", items.filter((w) => w.meta.status !== "done").map(renderArtifact).join("\n")));
     }
+    parts.push(renderFeedback(ctx));
     return parts.join("\n");
   },
   async write(out, ctx) {
@@ -186,6 +204,7 @@ export const developer: RoleDefinition<DeveloperOutput> = {
       const prev = await Promise.all(changes.slice(-5).map((id) => ctx.store.readArtifact("change", id)));
       parts.push(section("Recent changes (for context)", prev.map((c) => `- ${c.meta.itemId}: ${c.meta.summary} (${c.meta.files.map((f) => f.path).join(", ")})`).join("\n")));
     }
+    parts.push(renderFeedback(ctx));
     return parts.join("\n");
   },
   async write(out, ctx) {
@@ -215,6 +234,7 @@ export const releaser: RoleDefinition<ReleaserOutput> = {
       section("Done items", done.map((d) => `- ${d.id} ${d.title}`).join("\n") || "(none)"),
       section("Parked or dropped items", parked.map((d) => `- ${d.id} ${d.title}: ${ctx.state.items[d.id]?.reason ?? ""}`).join("\n") || "(none)"),
       section("Deploy adapter result", latestDeploy ? renderArtifact(latestDeploy) : "No deploy adapter has run. Nothing is deployed."),
+      renderFeedback(ctx),
     ].join("\n");
   },
   async write(out, ctx) {

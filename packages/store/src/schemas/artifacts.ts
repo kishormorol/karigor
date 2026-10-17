@@ -44,6 +44,7 @@ export const AssumptionSchema = z.object({
   reason: z.string().min(1),
   madeBy: RoleSchema,
   phase: z.string().min(1),
+  itemId: z.string().optional(),
   /** Set when the user overrides it. */
   correctedTo: z.string().optional(),
 });

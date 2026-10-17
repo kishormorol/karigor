@@ -136,6 +136,39 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     },
   });
   const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({ state, store, phase, backlog, templates, clock, makeId: newId, ...extra });
+
+  /**
+   * On a retry, what the role must know: every gate that failed since its last run, and what it
+   * produced then. Phase roles match `<phase>#<n>:<role>`; item roles match `<scope>:<role>:<item>@<round>`.
+   */
+  const feedbackFor = async (role: Role, phase: string, itemId?: string): Promise<RoleContext["feedback"]> => {
+    let prev: { key: string; seq: number; artifactIds: string[] } | undefined;
+    for (const [key, w] of Object.entries(state.workers)) {
+      if (w.role !== role || w.finishedSeq === undefined) continue;
+      const m = /^([^#]+)#\d+:([^:]+)(?::([^@]+)@\d+)?$/.exec(key);
+      if (!m || m[1] !== phase || m[2] !== role || (m[3] ?? undefined) !== itemId) continue;
+      if (!prev || w.finishedSeq > prev.seq) prev = { key, seq: w.finishedSeq, artifactIds: w.artifactIds };
+    }
+    if (!prev) return undefined;
+    const reasons: string[] = [];
+    for (const [key, g] of Object.entries(state.gates)) {
+      if (g.verdict !== "fail" || g.seq <= prev.seq) continue;
+      if (itemId ? !key.includes(`:${itemId}@`) : key.slice(key.indexOf(":") + 1).includes(":")) continue;
+      try {
+        const r = await store.readArtifact("gate-result", g.resultId);
+        reasons.push(...(r.meta.reasons.length ? r.meta.reasons.map((x) => `${r.meta.gate}: ${x}`) : [`${r.meta.gate} failed`]));
+      } catch {
+        reasons.push(`${key} failed`);
+      }
+    }
+    if (reasons.length === 0) return undefined;
+    const previous: Artifact[] = [];
+    for (const id of prev.artifactIds) {
+      const kind = kindOf(id);
+      if (kind && kind !== "ledger") previous.push(await store.readArtifact(kind, id));
+    }
+    return { reasons, previous };
+  };
   /** Write files only. Registration happens atomically through the finishing event. */
   const writeArtifacts = async (artifacts: Artifact[]): Promise<ArtifactRef[]> => {
     const refs: ArtifactRef[] = [];
@@ -148,7 +181,8 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
 
   // ---- one worker invocation ---------------------------------------------
   const invoke = async (role: ProducingRole, key: string, phase: string, extra: Partial<RoleContext> & { itemId?: string } = {}) => {
-    const ctx = roleContext(phase, extra);
+    const feedback = extra.purpose === "shrink" ? undefined : await feedbackFor(role, phase, extra.itemId);
+    const ctx = roleContext(phase, { ...extra, ...(feedback ? { feedback } : {}) });
     const result = await runWorker({
       role,
       key,

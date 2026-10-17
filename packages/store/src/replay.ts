@@ -18,6 +18,8 @@ export interface WorkerState {
   attempts: number;
   lastOutcome?: "ok" | "invalid" | "failed" | "over-budget";
   artifactIds: string[];
+  /** seq of the last worker-finished event for this key. */
+  finishedSeq?: number;
 }
 
 export interface GateState {
@@ -129,6 +131,7 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
     case "worker-finished": {
       const w = (s.workers[e.key] ??= { role: e.role, attempts: e.attempt, artifactIds: [] });
       w.lastOutcome = e.outcome;
+      w.finishedSeq = e.seq;
       for (const a of e.artifacts) {
         w.artifactIds.push(a.id);
         register(s, a.kind, a.id);
