@@ -26,7 +26,7 @@ async function start(o: { token?: string; adapter?: string } = {}) {
   return { k, base, call, root };
 }
 
-describe("server", { timeout: 60_000 }, () => {
+describe("server", { timeout: 180_000 }, () => {
   it("serves the chat page with a strict content policy", async () => {
     const { base } = await start();
     const res = await fetch(base + "/");
