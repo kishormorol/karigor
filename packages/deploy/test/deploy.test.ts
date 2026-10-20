@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { fixture } from "@karigor/profiles";
 import { Workspace } from "@karigor/sandbox";
-import { LocalDeploy, VercelDeploy, deploymentUrl, productionUrl, projectSlug, releaseVersion, type VercelExec } from "../src/index.js";
+import { LocalDeploy, VercelDeploy, deploymentUrl, productionDeploymentId, productionUrl, projectSlug, releaseVersion, type VercelExec } from "../src/index.js";
 
 const started: LocalDeploy[] = [];
 afterEach(async () => {
@@ -144,51 +144,87 @@ describe("VercelDeploy", () => {
   };
   const okFetch = (async () => new Response("ok", { status: 200 })) as unknown as typeof fetch;
 
-  it("refuses plainly without a token", async () => {
-    const d = new VercelDeploy({ project: "toolshare-abc123", token: "", exec: async () => ({ stdout: "", stderr: "", code: 0 }) });
+  it("without a token it uses the CLI's own login, and says how to sign in when that fails", async () => {
+    const calls: string[][] = [];
+    const d = new VercelDeploy({ project: "toolshare-abc123", token: "", exec: async (_f, args) => (calls.push(args), { stdout: "", stderr: "Error: No existing credentials found. Please run `vercel login`", code: 1 }) });
     const prevToken = process.env["VERCEL_TOKEN"];
     delete process.env["VERCEL_TOKEN"];
     const p = await d.preview({ dir: "/w", version: "r1-abc", commit: "abc", key: "k" });
     if (prevToken !== undefined) process.env["VERCEL_TOKEN"] = prevToken;
+    expect(calls[0]).not.toContain("--token");
     expect(p.ok).toBe(false);
-    expect(p.output).toMatch(/VERCEL_TOKEN is not set/);
+    expect(p.output).toMatch(/run `vercel login` once, or set VERCEL_TOKEN/);
   });
 
-  it("deploys, promotes and rolls back with the token masked and env passed by name", async () => {
+  it("deploys, promotes (waiting for production to answer publicly) and rolls back by deployment id", async () => {
     process.env["DATABASE_URL"] = "libsql://secret-db.turso.io";
     const { calls, exec } = scripted({
       deploy: { stdout: "Vercel CLI\nhttps://toolshare-abc123-k2j3h4g5f-team.vercel.app\n" },
-      promote: { stdout: "Success! https://toolshare-abc123.vercel.app now points to the deployment\n" },
+      promote: { stdout: "> Successfully created new deployment of toolshare-abc123 at https://vercel.com/team/toolshare-abc123/4mFd6c4V66uCWqj8LhnoUxJvPpW5\n" },
       rollback: { stdout: "Success!" },
+      inspect: { stdout: "  status   ● Ready\n" },
     });
-    const d = new VercelDeploy({ project: "toolshare-abc123", token: "tok-SECRET", exec, fetchImpl: okFetch, healthPath: "/api/health" });
+    let prodTries = 0;
+    const f = (async (url: string) => {
+      if (url.startsWith("https://toolshare-abc123.vercel.app")) return new Response("ok", { status: ++prodTries < 3 ? 404 : 200 });
+      return new Response("ok", { status: 200 });
+    }) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "toolshare-abc123", token: "tok-SECRET", exec, fetchImpl: f, healthPath: "/api/health", pollMs: 1 });
     const r = { dir: "/w", version: "r1-abc1234", commit: "abc1234", key: "k" };
     const p = await d.preview(r);
     expect(p).toMatchObject({ ok: true, url: "https://toolshare-abc123-k2j3h4g5f-team.vercel.app" });
     expect(p.output).not.toMatch(/tok-SECRET|secret-db/);
     expect(calls[0]).toEqual(expect.arrayContaining(["deploy", "/w", "--yes", "--project", "toolshare-abc123", "-e", "DATABASE_URL=libsql://secret-db.turso.io", "--token", "tok-SECRET"]));
     const live = await d.promote({ ...r, preview: p });
-    expect(live).toMatchObject({ ok: true, url: "https://toolshare-abc123.vercel.app" });
-    expect((await d.rollback({ dir: "/w", live: { url: "https://x.vercel.app", id: "https://old.vercel.app", version: "r0" } })).ok).toBe(true);
-    expect(calls[2]?.slice(0, 2)).toEqual(["rollback", "https://old.vercel.app"]);
+    expect(live).toMatchObject({ ok: true, url: "https://toolshare-abc123.vercel.app", id: "4mFd6c4V66uCWqj8LhnoUxJvPpW5" });
+    expect(prodTries).toBe(3);
+    const liveRel = { url: live.url!, id: live.id!, version: "r1" };
+    expect((await d.verifyRollback({ dir: "/w", live: liveRel })).ok).toBe(true);
+    expect((await d.rollback({ dir: "/w", live: liveRel })).ok).toBe(true);
+    expect(calls.find((c) => c[0] === "rollback")?.slice(0, 2)).toEqual(["rollback", "4mFd6c4V66uCWqj8LhnoUxJvPpW5"]);
     expect((await d.rollback({ dir: "/w" })).ok).toBe(false);
     delete process.env["DATABASE_URL"];
   });
 
-  it("checks protected previews through vercel curl", async () => {
-    const { calls, exec } = scripted({ curl: { stdout: '{"status":"ok"}' } });
-    const denied = (async () => new Response("login", { status: 401 })) as unknown as typeof fetch;
-    const d = new VercelDeploy({ project: "p", token: "t", exec, fetchImpl: denied });
+  it("production that never answers publicly fails the promotion", async () => {
+    const { exec } = scripted({ promote: { stdout: "ok" } });
+    const login = (async () => new Response(null, { status: 302, headers: { location: "https://vercel.com/sso-api?url=x" } })) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: login, productionWaitMs: 0 });
+    const res = await d.promote({ dir: "/w", version: "r1", commit: "c", key: "k", preview: { ok: true, url: "https://p-x.vercel.app", id: "https://p-x.vercel.app", output: "" } });
+    expect(res.ok).toBe(false);
+    expect(res.output).toMatch(/did not answer publicly/);
+  });
+
+  it("checks protected deployments with the project's bypass secret, read on demand and never shown", async () => {
+    const { calls, exec } = scripted({ project: { stdout: '{"protectionBypass":{"BYPASS-SECRET-1234567890":{"scope":"automation-bypass"}}}' } });
+    const seen: Record<string, string>[] = [];
+    const f = (async (_url: string, init: { headers: Record<string, string> }) => {
+      seen.push(init.headers);
+      return init.headers["x-vercel-protection-bypass"] ? new Response("BYPASS-SECRET-1234567890 ok", { status: 200 }) : new Response(null, { status: 302, headers: { location: "https://vercel.com/sso-api?url=x" } });
+    }) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: f });
     const r = await d.checkUrl("https://p-x.vercel.app/api/health");
     expect(r.ok).toBe(true);
-    expect(calls[0]?.slice(0, 4)).toEqual(["curl", "/api/health", "--deployment", "https://p-x.vercel.app"]);
+    expect(r.output).not.toMatch(/BYPASS-SECRET/);
+    expect(seen.at(-1)).toEqual({ "x-vercel-protection-bypass": "BYPASS-SECRET-1234567890" });
+    await d.checkUrl("https://p-x.vercel.app/");
+    expect(calls.filter((c) => c[0] === "project").length).toBe(1);
+  });
+
+  it("a redirect to Vercel's login is not healthy without a bypass", async () => {
+    const { exec } = scripted({ project: { stdout: "{}" } });
+    const toLogin = (async () => new Response(null, { status: 302, headers: { location: "https://vercel.com/sso-api?url=x" } })) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: toLogin });
+    expect((await d.checkUrl("https://p-x.vercel.app/api/health")).ok).toBe(false);
   });
 
   it("parses URLs and names projects", () => {
     expect(deploymentUrl('{"deployment":{"url":"a-b.vercel.app"}}')).toBe("https://a-b.vercel.app");
     expect(deploymentUrl("Preview: https://x-1.vercel.app [2s]\nhttps://x-2.vercel.app")).toBe("https://x-2.vercel.app");
     expect(productionUrl("aliased https://x-k2j3h4g5f-t.vercel.app and https://x.vercel.app", "x")).toBe("https://x.vercel.app");
+    expect(productionDeploymentId("created new deployment of x at https://vercel.com/team/x/4mFd6c4V66uCWqj8LhnoUxJvPpW5")).toBe("4mFd6c4V66uCWqj8LhnoUxJvPpW5");
     expect(projectSlug("ToolShare: Neighbours' Tools!", "20261020-abcdef")).toBe("toolshare-neighbours-tools-abcdef");
+    expect(projectSlug("A page where my family keeps one shared list", "p-x-01d1")).toBe("a-page-where-my-family-keeps-p-x-01d1".replace("p-x-01d1", "x-01d1"));
   });
 });
 
