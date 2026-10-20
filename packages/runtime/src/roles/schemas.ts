@@ -57,6 +57,7 @@ export const DeveloperOutput = z.object({
 });
 
 export const ReleaserOutput = z.object({
+  /** Omitted when a deploy target really ran; the kernel already recorded what happened. */
   deploy: z.object({
     target: z.string().min(1),
     environment: z.enum(["preview", "production"]),
@@ -65,7 +66,7 @@ export const ReleaserOutput = z.object({
     status: z.enum(["deployed", "failed"]),
     rollbackVerified: z.boolean(),
     notes: z.string(),
-  }),
+  }).optional(),
   summary: z.object({
     headline: z.string().min(1),
     whatItDoes: z.string().min(1),

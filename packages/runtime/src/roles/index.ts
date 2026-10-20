@@ -27,6 +27,10 @@ export interface RoleContext {
   feedback?: { reasons: string[]; previous: Artifact[] };
   /** The build crew's conventions for the target profile, when a real workspace exists. */
   stackGuide?: string;
+  /** The preview a deploy target really made in this phase. The releaser describes it instead of inventing one. */
+  deploy?: ArtifactOf<"deploy-record">;
+  /** Plain words from the deploy target: where the product lives and how to open it. */
+  deployTarget?: string;
   backlog: BacklogItem[];
   templates: Template[];
   clock: () => Date;
@@ -170,10 +174,15 @@ export const planner: RoleDefinition<PlannerOutput> = {
     } else if (ctx.backlog.length) {
       parts.push(section("Existing backlog", "```json\n" + JSON.stringify(ctx.backlog, null, 2) + "\n```"));
     }
-    const work = ctx.state.artifacts["work-item"] ?? [];
-    if (work.length) {
-      const items = await Promise.all(work.map((id) => ctx.store.readArtifact("work-item", id)));
-      parts.push(section("Open work items (maintenance)", items.filter((w) => w.meta.status !== "done").map(renderArtifact).join("\n")));
+    const open = openWorkItems(ctx);
+    if (open.length) {
+      const items = await Promise.all(open.map((id) => ctx.store.readArtifact("work-item", id)));
+      parts.push(
+        section(
+          "Open work items (maintenance)",
+          "The product is live. Each item below is a problem seen in production or a request from the person. Plan the smallest backlog that fixes them, most severe first; do not add unrelated features.\n\n" + items.map(renderArtifact).join("\n"),
+        ),
+      );
     }
     parts.push(renderFeedback(ctx));
     return parts.join("\n");
@@ -198,12 +207,37 @@ export const planner: RoleDefinition<PlannerOutput> = {
         ...fresh,
       ];
     } else {
-      all = items;
+      all = uniqueIds(items, ctx);
     }
     const body = ["# Backlog", "", ...all.map((i) => `- [${i.status}] **${i.id}** ${i.title} (${i.priority}, ${i.estimate})${i.dependsOn.length ? ` after ${i.dependsOn.join(", ")}` : ""}`), "", out.notes].join("\n") + "\n";
     return [{ meta: { ...base(ctx, "planner", "backlog"), kind: "backlog", items: all }, body }];
   },
 };
+
+/** Work items taken on by the current maintenance cycle, or every open one outside a cycle. */
+export function openWorkItems(ctx: Pick<RoleContext, "state">): string[] {
+  return Object.entries(ctx.state.workItems ?? {})
+    .filter(([, w]) => w.status !== "done" && (ctx.state.cycle === 0 || w.cycle === ctx.state.cycle || w.cycle === undefined))
+    .map(([id]) => id);
+}
+
+/**
+ * A new backlog in a later cycle must not reuse ids the kernel has already settled, or a fresh
+ * "b1" would look finished. Colliding ids get the cycle as a prefix; dependencies follow.
+ */
+function uniqueIds(items: BacklogItem[], ctx: RoleContext): BacklogItem[] {
+  const taken = new Set(Object.keys(ctx.state.items));
+  if (!items.some((i) => taken.has(i.id))) return items;
+  const prefix = `m${ctx.state.cycle || 1}-`;
+  const rename = new Map<string, string>();
+  for (const i of items) {
+    if (!taken.has(i.id)) continue;
+    let id = `${prefix}${i.id}`;
+    for (let n = 2; taken.has(id) || items.some((x) => x.id === id); n++) id = `${prefix}${i.id}-${n}`;
+    rename.set(i.id, id);
+  }
+  return items.map((i) => ({ ...i, id: rename.get(i.id) ?? i.id, dependsOn: i.dependsOn.map((d) => rename.get(d) ?? d) }));
+}
 
 export const developer: RoleDefinition<DeveloperOutput> = {
   role: "developer",
@@ -252,24 +286,38 @@ export const releaser: RoleDefinition<ReleaserOutput> = {
       arch ? section("Deploy target", arch.meta.stack.map((s) => `${s.layer}: ${s.choice}`).join("\n")) : "",
       section("Done items", done.map((d) => `- ${d.id} ${d.title}`).join("\n") || "(none)"),
       section("Parked or dropped items", parked.map((d) => `- ${d.id} ${d.title}: ${ctx.state.items[d.id]?.reason ?? ""}`).join("\n") || "(none)"),
-      section("Deploy adapter result", latestDeploy ? renderArtifact(latestDeploy) : "No deploy adapter has run. Nothing is deployed."),
+      ctx.deploy
+        ? section("The deploy target already ran (describe this; do not return a deploy object)", `${renderArtifact(ctx.deploy)}\n\nWhere it will live once it passes its checks: ${ctx.deployTarget ?? "the deploy target"}.`)
+        : section("Deploy adapter result", latestDeploy ? renderArtifact(latestDeploy) : "No deploy adapter has run. Nothing is deployed."),
+      ...(ctx.state.cycle > 0 ? [section("This is a maintenance release", `Cycle ${ctx.state.cycle}: say in the headline what was fixed or changed for the person, not what the product is.`)] : []),
       renderFeedback(ctx),
     ].join("\n");
   },
   async write(out, ctx) {
-    const d = out.deploy;
-    const deploy: Artifact = {
-      meta: { ...base(ctx, "releaser", "deploy-record"), kind: "deploy-record", target: d.target, environment: d.environment, version: d.version, status: d.status, rollbackVerified: d.rollbackVerified, ...(d.url ? { url: d.url } : {}) },
-      body: d.notes,
-    };
-    const s = out.summary;
-    const summary: Artifact = {
-      meta: { ...base(ctx, "releaser", "summary"), kind: "summary", headline: s.headline, whatItDoes: s.whatItDoes, howToUse: s.howToUse, whatWasParked: s.whatWasParked, ...(d.url ? { url: d.url } : {}) },
-      body: [`# ${s.headline}`, "", s.whatItDoes, "", "## How to use it", "", s.howToUse, "", ...(s.whatWasParked.length ? ["## Left out for now", "", ...s.whatWasParked.map((p) => `- ${p}`)] : [])].join("\n") + "\n",
-    };
-    return [deploy, summary];
+    const artifacts: Artifact[] = [];
+    let url: string | undefined;
+    if (ctx.deploy) {
+      url = ctx.deploy.meta.status === "deployed" ? ctx.deploy.meta.url : undefined;
+    } else {
+      const d = out.deploy ?? { target: "none", environment: "preview" as const, version: "0.0.0", status: "failed" as const, rollbackVerified: false, notes: "No deploy target ran, and the releaser described none." };
+      url = d.url;
+      artifacts.push({
+        meta: { ...base(ctx, "releaser", "deploy-record"), kind: "deploy-record", target: d.target, environment: d.environment, version: d.version, status: d.status, rollbackVerified: d.rollbackVerified, ...(d.url ? { url: d.url } : {}) },
+        body: d.notes,
+      });
+    }
+    artifacts.push(summaryArtifact(out.summary, { ...base(ctx, "releaser", "summary") }, url));
+    return artifacts;
   },
 };
+
+/** The person's summary. Also rewritten by the kernel with the production link after promotion. */
+export function summaryArtifact(s: ReleaserOutput["summary"], baseMeta: { id: string; createdAt: string; createdBy: Role | "system"; phase?: string }, url?: string): Artifact {
+  return {
+    meta: { ...baseMeta, kind: "summary", headline: s.headline, whatItDoes: s.whatItDoes, howToUse: s.howToUse, whatWasParked: s.whatWasParked, ...(url ? { url } : {}) },
+    body: [`# ${s.headline}`, "", s.whatItDoes, "", "## How to use it", "", s.howToUse, "", ...(url ? [`Open it: ${url}`, ""] : []), ...(s.whatWasParked.length ? ["## Left out for now", "", ...s.whatWasParked.map((p) => `- ${p}`)] : [])].join("\n") + "\n",
+  };
+}
 
 export const ROLE_DEFINITIONS = {
   selector,

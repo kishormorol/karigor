@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyState, type Artifact } from "@karigor/store";
+import { NOW } from "./helpers.js";
 import { ROLE_DEFINITIONS, readPrompt, ROLES, MockAdapter, runWorker } from "../src/index.js";
 import { ROLES as ALL_ROLES } from "@karigor/store";
 import { fakeSpecOutput, freshStore, idea, openBudget, roleContext, seed } from "./helpers.js";
@@ -98,6 +99,47 @@ describe("role definitions", () => {
     const deploy = r.artifacts[0]!;
     expect(deploy.meta.kind === "deploy-record" && deploy.meta.url).toBeUndefined();
     expect(r.artifacts[1]!.body).toMatch(/# ToolShare is built but not yet online/);
+  });
+
+  it("releaser describes a real deploy instead of writing its own record, and links the real URL", async () => {
+    const store = await freshStore();
+    const state = emptyState("p1");
+    await seed(store, state, [idea]);
+    const deploy = { meta: { id: "deploy-record-1", kind: "deploy-record" as const, createdAt: NOW().toISOString(), createdBy: "system" as const, target: "local", environment: "preview" as const, url: "http://127.0.0.1:4100", version: "r1-abc1234", status: "deployed" as const, rollbackVerified: false }, body: "preview running" };
+    let prompt = "";
+    const ctx = await roleContext(store, state, { phase: "release", deploy, deployTarget: "this computer" });
+    const adapter = new MockAdapter((req) => {
+      prompt = req.user;
+      return { summary: { headline: "ToolShare is ready", whatItDoes: "Lends tools.", howToUse: "Open it.", whatWasParked: [] } };
+    });
+    const r = await runWorker({ role: "releaser", key: "k", ctx, adapter, budget: openBudget() });
+    expect(prompt).toMatch(/already ran/);
+    expect(r.artifacts.map((a) => a.meta.kind)).toEqual(["summary"]);
+    expect(r.artifacts[0]!.meta.kind === "summary" && r.artifacts[0]!.meta.url).toBe("http://127.0.0.1:4100");
+  });
+
+  it("planner in maintenance sees open work items from state and never reuses a settled id", async () => {
+    const store = await freshStore();
+    const state = emptyState("p1");
+    await seed(store, state, [idea]);
+    const work: Artifact = { meta: { id: "work-item-1", kind: "work-item", createdAt: NOW().toISOString(), createdBy: "user", source: "feedback", severity: "medium", title: "Add Bangla", description: "Please add Bangla.", status: "todo", fingerprint: "feedback:bangla" }, body: "Please add Bangla." };
+    const fixed: Artifact = { meta: { ...work.meta, id: "work-item-0", description: "old", fingerprint: "feedback:old" } as Artifact["meta"], body: "old" };
+    await seed(store, state, [work, fixed]);
+    state.workItems = { "work-item-1": { status: "in-progress", severity: "medium", fingerprint: "feedback:bangla", cycle: 1 }, "work-item-0": { status: "done", severity: "medium", fingerprint: "feedback:old", cycle: 1 } };
+    state.cycle = 1;
+    state.items = { b1: { status: "done", failCount: 0 }, b2: { status: "done", failCount: 0 } };
+    let prompt = "";
+    const ctx = await roleContext(store, state, { phase: "triage" });
+    const sub = (id: string, dependsOn: string[] = []) => ({ id, title: id, description: "d", acceptance: ["a"], priority: "must", estimate: "S", dependsOn });
+    const adapter = new MockAdapter((req) => {
+      prompt = req.user;
+      return { items: [sub("b1"), sub("b3", ["b1"]), sub("b2", ["b1"])], notes: "" };
+    });
+    const r = await runWorker({ role: "planner", key: "k", ctx, adapter, budget: openBudget() });
+    expect(prompt).toMatch(/Please add Bangla/);
+    expect(prompt).not.toMatch(/feedback:old/);
+    const bl = r.artifacts[0]!;
+    expect(bl.meta.kind === "backlog" && bl.meta.items.map((i) => `${i.id}<${i.dependsOn.join(",")}`)).toEqual(["m1-b1<", "b3<m1-b1", "m1-b2<m1-b1"]);
   });
 });
 
