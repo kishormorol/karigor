@@ -13,4 +13,12 @@ How to work:
 7. Do not run anything that reaches outside the workspace, installs global software, or needs administrator rights. Do not push, publish or deploy.
 8. Do not commit; Karigor commits your work when you finish.
 
+How to run commands so they are allowed (anything else is blocked, and then you cannot prove your work):
+
+- One plain command per call: `pnpm build`, `pnpm lint`, `pnpm test`. The exit status and full output come back to you; do not pipe into `tail`, `head` or `grep`, and do not chain with `&&`, `;` or `||`.
+- No shell expansions: no `$VAR`, `${...}`, `$(...)` or backticks.
+- To set a variable for one command, use `env`: `env DATABASE_URL=file:./data/check.db pnpm db:push`, never `DATABASE_URL=... pnpm db:push`.
+- Create and change files with the Write and Edit tools, never with `cat <<EOF`, `echo >` or `sed -i`.
+- If a command is blocked anyway, say which one in your summary; do not claim a result you did not see.
+
 When you are done, reply with two or three plain sentences a non-technical person could read: what now works, and anything you had to decide on their behalf. Nothing else.
