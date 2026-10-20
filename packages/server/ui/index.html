@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Karigor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b4532a'/%3E%3Cpath d='M9 23V9h3v6l6-6h4l-7 7 7 7h-4l-6-6v6z' fill='white'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f7f4ef;
+  --surface: #ffffff;
+  --surface-2: #f0ebe3;
+  --text: #1f1b16;
+  --muted: #6b6258;
+  --line: #e2dbd0;
+  --accent: #b4532a;
+  --accent-text: #ffffff;
+  --accent-soft: #f6e4da;
+  --ok: #2f7a4b;
+  --ok-soft: #e1f1e6;
+  --warn: #9a5b00;
+  --warn-soft: #fbefd9;
+  --bad: #b3261e;
+  --bad-soft: #fbe3e1;
+  --mine: #1f1b16;
+  --mine-text: #ffffff;
+  --shadow: 0 1px 2px rgba(31, 27, 22, .06), 0 4px 16px rgba(31, 27, 22, .06);
+  --radius: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15120f;
+    --surface: #1f1b17;
+    --surface-2: #29241f;
+    --text: #f1ece5;
+    --muted: #a59a8d;
+    --line: #3a332c;
+    --accent: #e0794a;
+    --accent-text: #1a0f08;
+    --accent-soft: #3b2418;
+    --ok: #6cc28c;
+    --ok-soft: #1c3326;
+    --warn: #e8b056;
+    --warn-soft: #3a2c14;
+    --bad: #f28b82;
+    --bad-soft: #3d1d1b;
+    --mine: #f1ece5;
+    --mine-text: #15120f;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15120f; --surface: #1f1b17; --surface-2: #29241f; --text: #f1ece5; --muted: #a59a8d; --line: #3a332c;
+  --accent: #e0794a; --accent-text: #1a0f08; --accent-soft: #3b2418; --ok: #6cc28c; --ok-soft: #1c3326;
+  --warn: #e8b056; --warn-soft: #3a2c14; --bad: #f28b82; --bad-soft: #3d1d1b; --mine: #f1ece5; --mine-text: #15120f; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Bengali", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+header {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; font-size: 15px; font-weight: 800; }
+.title { flex: 1; min-width: 0; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; border: 0; }
+.iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; height: 36px; padding: 0 12px; font-size: 14px; }
+
+main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 16px 16px 24px; display: flex; flex-direction: column; gap: 12px; }
+.banner { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-size: 14px; }
+
+.msg { display: flex; flex-direction: column; max-width: 88%; gap: 6px; }
+.msg.me { align-self: flex-end; align-items: flex-end; }
+.bubble { padding: 10px 14px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--line); overflow-wrap: anywhere; white-space: pre-wrap; }
+.me .bubble { background: var(--mine); color: var(--mine-text); border-color: transparent; border-bottom-right-radius: 6px; }
+.them .bubble { border-bottom-left-radius: 6px; }
+.meta { font-size: 12px; color: var(--muted); padding: 0 6px; }
+details.more { font-size: 13px; color: var(--muted); padding: 0 6px; }
+details.more summary { cursor: pointer; list-style: none; }
+details.more summary::-webkit-details-marker { display: none; }
+details.more summary::before { content: "▸ "; }
+details.more[open] summary::before { content: "▾ "; }
+details.more ul { margin: 6px 0 0; padding-left: 18px; }
+details.more li { margin: 2px 0; overflow-wrap: anywhere; }
+li.fail { color: var(--bad); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.card h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+.card p { margin: 0; }
+.card.result { border-color: var(--ok); background: linear-gradient(var(--ok-soft), var(--surface) 70%); }
+.card.problem { border-color: var(--bad); background: var(--bad-soft); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { border: 0; border-radius: 12px; padding: 10px 16px; background: var(--accent); color: var(--accent-text); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.btn.quiet { background: var(--surface-2); color: var(--text); font-weight: 500; }
+.progress { height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.progress > div { height: 100%; background: var(--accent); border-radius: 999px; transition: width .4s ease; }
+.status { display: flex; align-items: center; gap: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.running { background: var(--accent); animation: pulse 1.4s ease-in-out infinite; }
+.dot.finished { background: var(--ok); }
+.dot.stopped { background: var(--bad); }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .dot.running { animation: none; } .progress > div { transition: none; } }
+
+.decisions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.decisions li { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.decisions .topic { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.decisions .was { text-decoration: line-through; color: var(--muted); font-size: 14px; }
+.linkbtn { border: 0; background: none; color: var(--accent); padding: 0; font-size: 14px; align-self: flex-start; }
+.inline-form { display: flex; gap: 6px; }
+.inline-form input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+
+.welcome { text-align: center; padding: 40px 8px 16px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.welcome h1 { margin: 0; font-size: clamp(26px, 6vw, 34px); letter-spacing: -.02em; line-height: 1.15; }
+.welcome p { margin: 0; color: var(--muted); max-width: 30em; }
+.examples { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 480px; margin-top: 8px; }
+.examples button { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; }
+
+footer { position: sticky; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+.composer { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+.composer textarea { flex: 1; min-width: 0; resize: none; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; padding: 11px 14px; max-height: 40vh; min-height: 46px; outline: none; }
+.composer textarea:focus { border-color: var(--accent); }
+.composer .btn { border-radius: 16px; min-width: 64px; justify-content: center; }
+.composer .btn:disabled { opacity: .5; cursor: default; }
+.hint { max-width: 720px; margin: 6px auto 0; font-size: 12px; color: var(--muted); min-height: 1em; }
+
+dialog { border: 0; border-radius: 20px; padding: 0; width: min(520px, calc(100% - 32px)); background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.sheet { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.sheet h2 { margin: 0; font-size: 18px; }
+.plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow: auto; }
+.plist button { width: 100%; text-align: left; display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+.plist .idea { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.field input { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="mark" aria-hidden="true">K</div><span>Karigor</span></div>
+  <div class="title" id="title"></div>
+  <button class="chip" id="cost" hidden></button>
+  <button class="iconbtn" id="projectsBtn" aria-haspopup="dialog">Projects</button>
+</header>
+
+<main id="main" aria-live="polite"></main>
+
+<footer>
+  <form class="composer" id="composer">
+    <label for="input" class="sr">Message</label>
+    <textarea id="input" rows="1" placeholder="Describe your idea in a sentence or two…"></textarea>
+    <button class="btn" id="send" type="submit">Send</button>
+  </form>
+  <div class="hint" id="hint"></div>
+</footer>
+
+<dialog id="projects">
+  <div class="sheet">
+    <h2>Your projects</h2>
+    <ul class="plist" id="plist"></ul>
+    <div class="row">
+      <button class="btn" id="newBtn">New idea</button>
+      <button class="btn quiet" id="keyBtn" hidden>Your key</button>
+      <button class="btn quiet" id="closeBtn">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="keyDialog">
+  <form class="sheet" method="dialog" id="keyForm">
+    <h2>Your Anthropic key</h2>
+    <p style="margin:0;color:var(--muted);font-size:14px">This Karigor uses your own key. It stays in this browser tab and is sent only with the requests that need it; it is never saved on the server.</p>
+    <label class="field">Key <input id="keyInput" type="password" autocomplete="off" placeholder="sk-ant-…"></label>
+    <div class="row"><button class="btn" value="save">Save</button><button class="btn quiet" value="cancel">Cancel</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const main = $("main"), input = $("input"), send = $("send"), hint = $("hint");
+  let config = { demo: false, needsKey: false };
+  let current = null; // project id
+  let view = null;
+  let stream = null;
+
+  const store = {
+    get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch {} },
+  };
+  const el = (tag, attrs = {}, ...kids) => {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") e.className = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k !== null && k !== undefined && k !== false) e.append(k instanceof Node ? k : String(k));
+    return e;
+  };
+  const api = async (path, opts = {}) => {
+    const res = await fetch(path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Something went wrong (${res.status})`);
+    return data;
+  };
+  const withKey = (b) => { const k = store.get("karigor_key"); return k ? { ...b, apiKey: k } : b; };
+  const safeUrl = (u) => { try { const x = new URL(u); return x.protocol === "http:" || x.protocol === "https:" ? x.href : null; } catch { return null; } };
+
+  // ---- story: top-level lines become messages; indented ones are the details under them ----
+  function storyMessages(lines) {
+    const out = [];
+    for (const raw of lines) {
+      const m = /^(\d\d:\d\d:\d\d) (\s*)(.*)$/.exec(raw);
+      if (!m) continue;
+      const [, time, indent, textLine] = m;
+      if (/^Moved from \S+ to \S+\.$/.test(textLine)) continue;
+      if (indent.length === 0 || !out.length) out.push({ time, text: textLine, details: [] });
+      else out[out.length - 1].details.push(textLine);
+    }
+    return out;
+  }
+  const friendly = (t) => t
+    .replace(/^Project created\.$/, "Got it. I'll take it from here.")
+    .replace(/^Chose the "([^"]+)" process; building a (.+)\.$/, "Plan: the $1 process, building a $2.")
+    .replace(/^Budget tier: (\w+)\.$/, "Budget: the $1 tier.");
+
+  function render() {
+    main.replaceChildren();
+    if (!current || !view) return renderWelcome();
+    $("title").textContent = view.idea;
+    const c = view.cost;
+    $("cost").hidden = !c;
+    if (c) $("cost").textContent = c.spent === 0 && c.apiEquivalent > 0 ? "No extra cost" : c.budget === 0 ? "Free" : `${c.currency} ${c.spent.toFixed(2)} of ${c.budget.toFixed(2)}`;
+
+    if (config.demo) main.append(el("div", { class: "banner" }, "Demo mode: the steps are real, the work is pretend. Nothing is actually built or put online."));
+    main.append(el("div", { class: "msg me" }, el("div", { class: "bubble" }, view.idea)));
+
+    for (const s of storyMessages(view.story)) {
+      const fb = /^Feedback received: (.*)\.$/.exec(s.text);
+      if (fb) { main.append(el("div", { class: "msg me" }, el("div", { class: "bubble" }, fb[1]), el("div", { class: "meta" }, s.time))); continue; }
+      const details = s.details.length
+        ? el("details", { class: "more" }, el("summary", {}, `${s.details.length} step${s.details.length === 1 ? "" : "s"}`), el("ul", {}, s.details.map((d) => el("li", { class: /FAILED|did not succeed/.test(d) ? "fail" : "" }, d))))
+        : null;
+      main.append(el("div", { class: "msg them" }, el("div", { class: "bubble" }, friendly(s.text)), details, el("div", { class: "meta" }, s.time)));
+    }
+
+    if (view.decisions.length) main.append(decisionsCard());
+    if (view.problem) main.append(el("div", { class: "card problem" }, el("h2", {}, "Something got in the way"), el("p", {}, view.problem), el("div", { class: "row" }, el("button", { class: "btn", onclick: resume }, "Try again"))));
+    if (view.status === "finished" && view.summary) main.append(resultCard());
+    main.append(statusCard());
+    requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight }));
+  }
+
+  function statusCard() {
+    const total = view.work.done + view.work.open;
+    const pct = total ? Math.round((view.work.done / total) * 100) : view.status === "finished" ? 100 : 4;
+    const open = view.workItems.filter((w) => w.status !== "done");
+    return el("div", { class: "card" },
+      el("div", { class: "status" }, el("span", { class: `dot ${view.running ? "running" : view.status}` }), el("strong", {}, view.headline)),
+      total ? el("div", { class: "progress", role: "progressbar", "aria-valuenow": pct, "aria-valuemin": 0, "aria-valuemax": 100 }, el("div", { style: `width:${pct}%` })) : null,
+      total ? el("p", { class: "meta" }, `${view.work.done} of ${total} pieces done${view.work.parked.length ? `, ${view.work.parked.length} set aside` : ""}`) : null,
+      view.work.parked.length ? el("details", { class: "more" }, el("summary", {}, "Set aside for now"), el("ul", {}, view.work.parked.map((p) => el("li", {}, `${p.title}${p.reason ? `: ${p.reason}` : ""}`)))) : null,
+      open.length ? el("details", { class: "more", open: true }, el("summary", {}, `Waiting to be handled (${open.length})`), el("ul", {}, open.map((w) => el("li", {}, w.title)))) : null,
+      view.status === "stopped" && !view.running && !view.problem ? el("div", { class: "row" }, el("button", { class: "btn quiet", onclick: resume }, "Try again")) : null,
+    );
+  }
+
+  function resultCard() {
+    const s = view.summary;
+    const url = safeUrl(s.url || (view.live && view.live.url) || "");
+    return el("div", { class: "card result" },
+      el("h2", {}, s.headline),
+      el("p", {}, s.whatItDoes),
+      el("p", {}, el("strong", {}, "How to use it: "), s.howToUse),
+      url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, "Open it"), el("span", { class: "meta" }, url)) : null,
+      el("p", { class: "meta" }, "Something not right, or something to add? Write it below and a fix round starts on its own."),
+    );
+  }
+
+  function decisionsCard() {
+    const list = el("ul", { class: "decisions" });
+    for (const d of view.decisions) {
+      const li = el("li", {},
+        el("span", { class: "topic" }, d.topic),
+        d.correctedTo ? el("span", {}, d.correctedTo) : el("span", {}, d.decision),
+        d.correctedTo ? el("span", { class: "was" }, d.decision) : null,
+      );
+      if (!d.correctedTo) {
+        const btn = el("button", { class: "linkbtn", type: "button" }, "Not right?");
+        btn.addEventListener("click", () => {
+          const field = el("input", { placeholder: "What should it be?", "aria-label": `Correct: ${d.topic}` });
+          const form = el("form", { class: "inline-form" }, field, el("button", { class: "btn" }, "Fix"));
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!field.value.trim()) return;
+            try {
+              const r = await api(`/api/projects/${current}/corrections`, { method: "POST", body: JSON.stringify(withKey({ decisionId: d.id, text: field.value })) });
+              hint.textContent = r.fixing ? "Thanks. A fix round has started to apply it." : "Thanks. Every step from now on will follow it.";
+            } catch (err) { hint.textContent = err.message; }
+          });
+          btn.replaceWith(form);
+          field.focus();
+        });
+        li.append(btn);
+      }
+      list.append(li);
+    }
+    return el("details", { class: "card" }, el("summary", { style: "cursor:pointer;font-weight:600" }, `Decisions made for you (${view.decisions.length})`), el("p", { class: "meta" }, "You were not asked anything technical. If one of these is wrong for you, say so."), list);
+  }
+
+  function renderWelcome() {
+    $("title").textContent = "";
+    $("cost").hidden = true;
+    const ideas = ["A site where neighbours on my street lend each other tools", "A booking page for my tailoring shop, with reminders", "A simple tracker for my tuition students and their fees"];
+    main.append(
+      config.demo ? el("div", { class: "banner" }, "Demo mode: the steps are real, the work is pretend.") : null,
+      el("div", { class: "welcome" },
+        el("h1", {}, "Tell me your idea. I'll build it, put it online, and keep it working."),
+        el("p", {}, "No technical questions. Describe what you want in your own words; I decide the rest and show you every decision so you can change it."),
+        el("div", { class: "examples" }, ideas.map((t) => el("button", { type: "button", onclick: () => { input.value = t; input.focus(); grow(); } }, t))),
+      ),
+    );
+  }
+
+  // ---- actions ----
+  async function submit(e) {
+    e.preventDefault();
+    const t = input.value.trim();
+    if (!t) return;
+    if (config.needsKey && !store.get("karigor_key")) { $("keyDialog").showModal(); return; }
+    send.disabled = true;
+    try {
+      if (!current) {
+        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey({ idea: t })) });
+        input.value = "";
+        location.hash = `#/p/${r.projectId}`;
+      } else {
+        const r = await api(`/api/projects/${current}/feedback`, { method: "POST", body: JSON.stringify(withKey({ text: t })) });
+        input.value = "";
+        hint.textContent = r.fixing ? "Thanks. A fix round has started." : r.workItemId ? "Thanks. It's on the list for the next fix round." : "That's already on the list.";
+      }
+      grow();
+    } catch (err) {
+      hint.textContent = err.message;
+    } finally {
+      send.disabled = false;
+    }
+  }
+  async function resume() {
+    try { await api(`/api/projects/${current}/resume`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = "Trying again."; }
+    catch (err) { hint.textContent = err.message; }
+  }
+
+  function open(id) {
+    if (stream) { stream.close(); stream = null; }
+    current = id;
+    view = null;
+    hint.textContent = "";
+    input.placeholder = id ? "Something wrong, or something to add? Tell me…" : "Describe your idea in a sentence or two…";
+    send.textContent = id ? "Send" : "Build";
+    render();
+    if (!id) return;
+    stream = new EventSource(`/api/projects/${id}/stream`);
+    stream.onmessage = (ev) => { view = JSON.parse(ev.data); render(); };
+    stream.onerror = () => { hint.textContent = view ? "" : "Could not load that project."; };
+  }
+  const route = () => { const m = /^#\/p\/([a-z0-9-]+)$/.exec(location.hash); open(m ? m[1] : null); };
+
+  async function showProjects() {
+    const list = $("plist");
+    list.replaceChildren(el("li", { class: "meta" }, "Loading…"));
+    $("projects").showModal();
+    try {
+      const { projects } = await api("/api/projects");
+      list.replaceChildren(...(projects.length ? projects.map((p) => el("li", {}, el("button", { type: "button", onclick: () => { $("projects").close(); location.hash = `#/p/${p.id}`; } }, el("span", { class: `dot ${p.running ? "running" : p.status}` }), el("span", { class: "idea" }, p.idea || p.id)))) : [el("li", { class: "meta" }, "No projects yet.")]));
+    } catch (err) { list.replaceChildren(el("li", { class: "meta" }, err.message)); }
+  }
+
+  function grow() { input.style.height = "auto"; input.style.height = `${Math.min(input.scrollHeight, window.innerHeight * 0.4)}px`; }
+  input.addEventListener("input", grow);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer: fine)").matches) { e.preventDefault(); $("composer").requestSubmit(); } });
+  $("composer").addEventListener("submit", submit);
+  $("projectsBtn").addEventListener("click", showProjects);
+  $("closeBtn").addEventListener("click", () => $("projects").close());
+  $("newBtn").addEventListener("click", () => { $("projects").close(); location.hash = ""; input.focus(); });
+  $("keyBtn").addEventListener("click", () => { $("projects").close(); $("keyDialog").showModal(); });
+  $("keyForm").addEventListener("submit", (e) => { if (e.submitter && e.submitter.value === "save") store.set("karigor_key", $("keyInput").value.trim()); });
+  $("cost").addEventListener("click", () => { if (view && view.cost) hint.textContent = `${view.cost.tier} tier: spent ${view.cost.currency} ${view.cost.spent.toFixed(4)} of ${view.cost.budget.toFixed(2)}${view.cost.apiEquivalent ? ` (covered by a subscription; about ${view.cost.currency} ${view.cost.apiEquivalent.toFixed(2)} at API prices)` : ""}.`; });
+  window.addEventListener("hashchange", route);
+
+  api("/api/config").then((c) => { config = c; $("keyBtn").hidden = !c.needsKey; route(); }).catch((err) => { main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, "Can't reach Karigor"), el("p", {}, err.message))); });
+})();
+</script>
+</body>
+</html>

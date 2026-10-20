@@ -3,85 +3,18 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore } from "@karigor/store";
-import { FakeSandbox } from "@karigor/gates";
-import { ClaudeAdapter, ClaudeCodeAdapter, ClaudeCodeAgent, ModelAgent, OllamaAdapter, type AgentAdapter, type ModelAdapter } from "@karigor/runtime";
-import { profileFor, type Profile } from "@karigor/profiles";
-import { LocalDeploy, VercelDeploy, projectSlug, type DeployAdapter } from "@karigor/deploy";
-import { demoAdapter } from "./demo.js";
 import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, operateOnce, recordSignals, serveProject } from "./operate.js";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
-import { createProject, runProject, type RunOptions } from "./run.js";
+import { createProject, runProject } from "./run.js";
+import { runOptions as setupRun, type RunFlags } from "./setup.js";
+
+const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: (l) => console.log(l) });
 
 const program = new Command();
 const defaultRoot = process.env["KARIGOR_ROOT"] ?? join(homedir(), ".karigor", "projects");
 
 program.name("karigor").description("Software agents that take an idea to deployed, maintained software.").version("0.0.1");
 program.option("--root <dir>", "where projects live", defaultRoot);
-
-function adapterFor(name: string): ModelAdapter {
-  switch (name) {
-    case "claude-code":
-      return new ClaudeCodeAdapter();
-    case "claude":
-      return new ClaudeAdapter();
-    case "ollama":
-      return new OllamaAdapter();
-    case "demo":
-      return demoAdapter();
-    default:
-      throw new Error(`unknown adapter "${name}" (use claude-code, claude, ollama or demo)`);
-  }
-}
-
-/** Claude Code works in the workspace with its own tools; any other model writes whole files through ModelAgent. */
-function agentFor(name: string, adapter: ModelAdapter): AgentAdapter | undefined {
-  if (name === "demo") return undefined;
-  return name === "claude-code" ? new ClaudeCodeAgent() : new ModelAgent(adapter);
-}
-
-/** Where releases go. Without a flag, the target the project last used, else this computer. */
-async function deployFor(target: string | undefined, store: FsStore, profile: Profile, port: number): Promise<DeployAdapter | undefined> {
-  let t = target;
-  if (!t) {
-    const state = await store.replay();
-    const last = state.artifacts["deploy-record"]?.at(-1);
-    t = last ? (await store.readArtifact("deploy-record", last)).meta.target : "local";
-  }
-  switch (t) {
-    case "none":
-      return undefined;
-    case "local":
-      return new LocalDeploy({ projectDir: store.dir, profile, productionPort: port, log: (l) => console.log(l) });
-    case "vercel": {
-      const state = await store.replay();
-      const idea = state.ideaId ? (await store.readArtifact("idea", state.ideaId)).meta.text : store.projectId;
-      return new VercelDeploy({ project: projectSlug(idea, store.projectId), ...(profile.healthPath ? { healthPath: profile.healthPath } : {}), ...(process.env["KARIGOR_DEPLOY_ENV"] ? { envNames: process.env["KARIGOR_DEPLOY_ENV"].split(",").map((x) => x.trim()).filter(Boolean) } : {}) });
-    }
-    default:
-      throw new Error(`unknown deploy target "${t}" (use local, vercel or none)`);
-  }
-}
-
-interface RunFlags {
-  adapter: string;
-  tier?: string;
-  profile: string;
-  deploy?: string;
-  port: string;
-}
-
-async function runOptions(root: string, projectId: string, o: RunFlags): Promise<RunOptions> {
-  const adapter = adapterFor(o.adapter);
-  const agent = agentFor(o.adapter, adapter);
-  const tier = tierFrom(o.tier);
-  const base = { root, projectId, adapter, ...(tier ? { tier } : {}), log: (l: string) => console.log(l) };
-  // The demo adapter has no real developer, so it keeps the fake sandbox. Real adapters build for real.
-  if (!agent) return { ...base, sandbox: new FakeSandbox() };
-  const profile = profileFor(o.profile);
-  const store = await FsStore.open(root, projectId);
-  const deploy = await deployFor(o.deploy, store, profile, Number(o.port));
-  return { ...base, profile, agent, ...(deploy ? { deploy } : {}) };
-}
 
 const runFlags = (c: Command) =>
   c
@@ -90,14 +23,6 @@ const runFlags = (c: Command) =>
     .option("--profile <name>", "target profile for real builds", "web-app")
     .option("--deploy <target>", "where releases go: local (this computer, free), vercel (VERCEL_TOKEN) or none; default: the project's last target, else local")
     .option("--port <n>", "port for the live app on the local target", "3000");
-
-const tierOpt = ["free", "cheap", "best"] as const;
-type Tier = (typeof tierOpt)[number];
-function tierFrom(v: string | undefined): Tier | undefined {
-  if (v === undefined) return undefined;
-  if ((tierOpt as readonly string[]).includes(v)) return v as Tier;
-  throw new Error(`tier must be one of ${tierOpt.join(", ")}`);
-}
 
 runFlags(
   program

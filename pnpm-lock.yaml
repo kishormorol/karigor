@@ -142,6 +142,18 @@ importers:
         specifier: workspace:*
         version: link:../store
 
+  packages/server:
+    dependencies:
+      '@karigor/budget':
+        specifier: workspace:*
+        version: link:../budget
+      '@karigor/cli':
+        specifier: workspace:*
+        version: link:../cli
+      '@karigor/store':
+        specifier: workspace:*
+        version: link:../store
+
   packages/store:
     dependencies:
       zod:

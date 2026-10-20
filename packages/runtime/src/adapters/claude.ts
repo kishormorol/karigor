@@ -9,6 +9,8 @@ export interface ClaudeAdapterOptions {
   routineModel?: string;
   effort?: { judgment: "low" | "medium" | "high" | "xhigh" | "max"; routine: "low" | "medium" | "high" | "xhigh" | "max" };
   client?: Anthropic;
+  /** A key for this adapter only (bring your own key). Otherwise the SDK reads ANTHROPIC_API_KEY. */
+  apiKey?: string;
 }
 
 export const CLAUDE_DEFAULTS = {
@@ -32,7 +34,7 @@ export class ClaudeAdapter implements ModelAdapter {
   private readonly effort: NonNullable<ClaudeAdapterOptions["effort"]>;
 
   constructor(opts: ClaudeAdapterOptions = {}) {
-    this.client = opts.client ?? new Anthropic();
+    this.client = opts.client ?? new Anthropic(opts.apiKey ? { apiKey: opts.apiKey } : {});
     this.judgmentModel = opts.judgmentModel ?? CLAUDE_DEFAULTS.judgmentModel;
     this.routineModel = opts.routineModel ?? CLAUDE_DEFAULTS.routineModel;
     this.effort = opts.effort ?? CLAUDE_DEFAULTS.effort;

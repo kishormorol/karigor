@@ -95,6 +95,7 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
         lines.push(`${t} Budget tier: ${e.tier}.`);
         break;
       case "phase-entered":
+        if (e.phase === "done") break; // "Finished." follows
         lines.push(`${t} ${e.sprint ? `Sprint ${e.sprint} started with ${e.itemIds?.join(", ") ?? ""}` : `Started ${phaseWords(e.phase)}`}.`);
         break;
       case "worker-started":
