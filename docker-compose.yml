@@ -1,0 +1,28 @@
+# docker compose up, then open http://localhost:4321/?token=<KARIGOR_TOKEN>
+# First run: docker compose exec ollama ollama pull qwen2.5:7b
+services:
+  karigor:
+    build: .
+    ports:
+      - "4321:4321"   # the chat UI
+      - "3000:3000"   # the live app, when served from here
+    environment:
+      KARIGOR_TOKEN: ${KARIGOR_TOKEN:?set KARIGOR_TOKEN to a long random string; it is the access link's secret}
+      KARIGOR_ADAPTER: ${KARIGOR_ADAPTER:-ollama}
+      KARIGOR_OLLAMA_MODEL: ${KARIGOR_OLLAMA_MODEL:-qwen2.5:7b}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      VERCEL_TOKEN: ${VERCEL_TOKEN:-}
+      KARIGOR_DEPLOY: ${KARIGOR_DEPLOY:-local}
+    volumes:
+      - karigor-data:/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+  ollama:
+    image: ollama/ollama:latest   # pin to a version you have tested
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+volumes:
+  karigor-data:
+  ollama-models:

@@ -11,22 +11,22 @@ It is designed to cost nothing to try. Every step has a zero-dollar path (local 
 
 ## Status
 
-Early, and already building real code. Sub-projects 1 (kernel), 2 (intake) and 3 (build crew) of 6 are done and tested. On 17 October 2026 a real run on a Claude Code login took "a website where neighbours on one street lend each other tools" through spec, design and plan under real reviewers, then built nine backlog items in a Next.js workspace: 77 passing tests, clean lint, a compiling build, and every item reviewed by the reviewer and the skeptic. It stopped at the release gate because deployment is the next sub-project.
+All six sub-projects of the first roadmap are in: the kernel, intake, the build crew, deploy and operate, the maintenance loop, and the chat UI with a Docker self-host. Everything below runs on mocks in the test suite at zero cost. The deploy path has been exercised on the real Next.js scaffold (install, build, start, health check, promote, verified rollback, about 36 seconds on a laptop), and Ollama structured output has been checked against a local model. A full idea-to-production run on a real model with the new release path has not been recorded yet; the build crew's last real run (17 October 2026) stopped at the release gate because deployment did not exist then.
 
 The packages:
 
 | Package | What it does |
 |---|---|
-| `@karigor/store` | Typed artifacts (spec, backlog, test reports, gate results, cost ledger...) and an append-only event log that is the single source of truth. Crash anywhere; `resume` replays to the exact state. |
+| `@karigor/store` | Typed artifacts (spec, backlog, test reports, gate results, deploy records, work items, cost ledger...) and an append-only event log that is the single source of truth. Crash anywhere; `resume` replays to the exact state. |
 | `@karigor/process` | Declarative process templates (`iterative`, `linear`, `spike-then-build`, `maintenance`) and a pure state machine with failure ladders: retry, send back, shrink, park, stop. |
 | `@karigor/gates` | Mechanical gates (tests, lint, build, security scan, preview health, rollback) and judged gates (reviewer and skeptic with rubrics). A judged verdict with no citations is a fail. |
-| `@karigor/runtime` | Role prompts and output schemas, a worker runner (schema rejection, retry with the error quoted, tier escalation), and two kinds of adapter. Model adapters answer with structured output: Claude Code headless (no key), the Anthropic API, and a free mock. Agent adapters act inside a workspace: Claude Code headless with tools, and a scripted mock. |
-| `@karigor/profiles` | Target profiles: what kind of software gets built. `web-app` is Next.js + TypeScript + Tailwind + Drizzle (SQLite locally, Postgres-ready) + Vitest, scaffolded so tests, lint and build pass before the first item. Each profile carries a stack guide the architect, planner and developer read. |
-| `@karigor/sandbox` | The project's real workspace: a git repository where every backlog item lands as a commit, and a sandbox that runs the profile's real tests, lint, build, dependency audit and a secrets scan for the gates. Dropped or parked work is reverted so it never ships. |
-| `@karigor/budget` | Prices, a three-tier estimate (free, cheap, best), a running meter, and the overspend ladder: downgrade the model, then park optional work, then stop. Never silent. |
-| `@karigor/cli` | `karigor new`, `run`, `resume`, `status`, `cost`, `explain`, `park`, `unpark`. Plain language throughout. |
-
-What it does **not** do yet: deploy anywhere, or watch production. Those are sub-projects 4 and 5. The `releaser` is honest about it: with no deploy adapter, the release gate fails and the project stops with the reason, and the finished code sits in the project's `workspace/` directory ready to run with `pnpm dev`.
+| `@karigor/runtime` | Role prompts and output schemas, a worker runner (schema rejection, retry with the error quoted, tier escalation), and two kinds of adapter. Model adapters: Claude Code headless (no key), the Anthropic API, Ollama (local, free) and a mock. Agent adapters act inside a workspace: Claude Code with tools, `ModelAgent` (any model writing whole files), and a scripted mock. |
+| `@karigor/profiles` | Target profiles: what kind of software gets built and how it is served. `web-app` is Next.js + TypeScript + Tailwind + Drizzle (SQLite locally, libsql/Turso-ready) + Vitest, scaffolded so tests, lint and build pass before the first item. |
+| `@karigor/sandbox` | The project's real workspace: a git repository where every backlog item lands as a commit, and a sandbox that runs the profile's real tests, lint, build, dependency audit and secrets scan. Dropped or parked work is reverted so it never ships. |
+| `@karigor/deploy` | Where releases go. `local` (this computer, no account): each release is built into its own directory, previewed on a spare port, health-checked, then promoted; rollback is a pointer move, and verifying it starts the live release on a spare port. `vercel` (free hobby tier, `VERCEL_TOKEN`): deploy, promote and rollback through the Vercel CLI. |
+| `@karigor/budget` | Prices, a three-tier estimate (free, cheap, best), a running meter, and the overspend ladder: downgrade the model, then park optional work, then stop. Fix rounds get their own budget slice. |
+| `@karigor/cli` | `karigor new`, `run`, `resume`, `status`, `cost`, `explain`, `park`, `unpark`, plus `feedback`, `correct`, `fix`, `watch` and `serve` for life after release. Plain language throughout. |
+| `@karigor/server` | The chat UI: a phone-first page where an idea is the first message, progress arrives as plain sentences, every decision can be corrected, and messages after release become fixes. No framework, no build step. |
 
 ## Try it in two minutes, free
 
@@ -43,17 +43,67 @@ The `demo` adapter is a scripted mock: no model, no cost, the whole process runs
 ```sh
 node packages/cli/dist/bin.js status <projectId>
 node packages/cli/dist/bin.js explain <projectId>
-node packages/cli/dist/bin.js cost <projectId>
+node packages/cli/dist/bin.js feedback <projectId> "Please show who has my drill"
+node packages/cli/dist/bin.js fix <projectId> --adapter demo
 ```
 
-To build for real you do **not** need an API key. If you have [Claude Code](https://claude.com/claude-code) installed and signed in, just drop `--adapter demo`: the default `claude-code` adapter drives Claude Code in headless mode under your own login, both for the thinking roles (structured answers) and for the developer, which works inside the project's workspace with file and shell tools. Edits are confined to the workspace and a deny-list blocks network, privilege and publishing commands. Calls cost nothing extra on a subscription, so the default tier is `best`; the cost meter still shows what the same calls would have cost on the pay-per-token API.
+Or the chat UI, on the same demo: `pnpm ui --adapter demo`, then open http://127.0.0.1:4321.
+
+## Build for real
+
+You do **not** need an API key. With [Claude Code](https://claude.com/claude-code) installed and signed in, drop `--adapter demo`: Claude Code runs headless under your own login, both for the thinking roles and as the developer inside the project's workspace (edits confined to the workspace; network, privilege and publishing commands denied). On a subscription the calls cost nothing extra; the meter still shows the pay-per-token equivalent.
 
 ```sh
 node packages/cli/dist/bin.js new "..." --run                       # Claude Code login, no key
+node packages/cli/dist/bin.js new "..." --adapter ollama --run      # a local model through Ollama, free and offline
 node packages/cli/dist/bin.js new "..." --adapter claude --run      # Anthropic API key in ANTHROPIC_API_KEY
 ```
 
+With Ollama, set `KARIGOR_OLLAMA_MODEL` (default `qwen2.5:7b`; small models are fast but weaker, and the gates will park more of their work). Any adapter other than Claude Code builds through `ModelAgent`, which writes whole files and leaves running the tests to the gates.
+
+### Where it goes live
+
+By default releases go to **this computer** (`--deploy local`). A finished project is previewed, checked, and promoted; run it with
+
+```sh
+node packages/cli/dist/bin.js serve <projectId>       # http://localhost:3000
+```
+
+`serve` also watches it: errors in the app's output, a failing health check, or a vulnerable library become work items, a fix round runs, and the new release replaces the old one without you doing anything.
+
+For a public link, use Vercel's free tier: create a token at vercel.com/account/tokens, then
+
+```sh
+VERCEL_TOKEN=... node packages/cli/dist/bin.js new "..." --deploy vercel --run
+node packages/cli/dist/bin.js watch <projectId> --every 15     # health and audit, fix rounds when needed
+```
+
+The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project.
+
+### After release
+
+- `karigor feedback <id> "..."`: say what is wrong or what you want, in your own words.
+- `karigor correct <id> a3 "..."`: change a decision made on your behalf (ids are in `karigor status`).
+- `karigor fix <id>`: start a fix round now. `serve` and `watch` start them on their own.
+
 Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
+
+## The chat UI and self-hosting
+
+```sh
+pnpm ui                                   # http://127.0.0.1:4321, Claude Code adapter, local deploy
+pnpm ui --adapter ollama                  # or claude, or demo
+```
+
+To reach it from your phone or run it on a server, use Docker:
+
+```sh
+KARIGOR_TOKEN=$(openssl rand -hex 24) docker compose up -d
+docker compose exec ollama ollama pull qwen2.5:7b
+# open http://<host>:4321/?token=<KARIGOR_TOKEN> once; the browser remembers it
+```
+
+The image defaults to Ollama (free); set `KARIGOR_ADAPTER=claude` and `ANTHROPIC_API_KEY` to use the API instead, or leave the key unset and each person enters their own in the page (it stays in their tab and in the memory of their run, never on disk). The server refuses to listen beyond `127.0.0.1` without `KARIGOR_TOKEN`.
 
 ## How it works
 
@@ -66,23 +116,28 @@ idea ──▶ selector picks a process template and a target profile
             every transition needs gates    (real tests, lint, build, security scan;
                                              or a reviewer / skeptic verdict that must cite evidence)
             failures walk a ladder          (retry with feedback → send back / shrink → park / stop)
-     ──▶ released; the maintenance template takes over on production signals
+     ──▶ release: preview the workspace, check it over HTTP, verify a rollback, promote
+            (a promotion that fails goes back to what was live and files a work item)
+     ──▶ operate: app errors, downtime, vulnerable libraries and your feedback become work items;
+            the maintenance template triages, fixes, verifies and releases again
 ```
 
 Reviews are not rubber stamps. A judged verdict fails only on blocking objections (minor suggestions are recorded, not enforced), a re-review sees its previous verdict so it cannot move the goalposts, and a retried role is shown exactly why it failed and what it produced last time. On the first real runs, the reviewer caught a loan that could never end and the skeptic caught a removed neighbour who could rejoin, and both were fixed on the next attempt.
 
 Everything is an event in `events.jsonl` and a Markdown artifact with JSON frontmatter, committed to git inside the project directory. `karigor explain` turns the log into a story.
 
-Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (kernel, build crew) with their plans in [`docs/superpowers/plans/`](docs/superpowers/plans/). Writing a process template is explained in [`docs/templates.md`](docs/templates.md).
+Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (kernel, build crew, deploy/operate/UI) with their plans in [`docs/superpowers/plans/`](docs/superpowers/plans/). Writing a process template is explained in [`docs/templates.md`](docs/templates.md).
 
 ## Roadmap
 
 1. ~~Kernel~~
 2. ~~Intake: idea to spec with an assumption ledger, no questions asked~~ (covered by the kernel's product owner and gates)
 3. ~~Build and verify crews in a real workspace; first target profile: full-stack web app~~
-4. Deploy and operate: free-tier targets, previews, rollback
-5. Maintenance loop: production signals become work items
-6. Hosted, phone-friendly chat UI, plus Docker self-host; local models through Ollama
+4. ~~Deploy and operate: a free local target and Vercel's free tier, previews, verified rollback~~
+5. ~~Maintenance loop: production signals and feedback become work items and fix rounds~~
+6. ~~Phone-friendly chat UI, Docker self-host, local models through Ollama~~
+
+Next: a full recorded idea-to-production run on a real model, more target profiles (static site, API, mobile), Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
 
 ## Development
 
@@ -90,7 +145,8 @@ Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (k
 pnpm install
 pnpm test        # unit, golden-path, failure and crash-replay suites, including real git workspaces; all on mocks, zero cost
 pnpm typecheck   # builds every package in dependency order
-KARIGOR_REAL_MODEL=1 pnpm test packages/runtime   # three small live calls through your Claude Code login (and the API if a key is set)
+KARIGOR_REAL_MODEL=1 pnpm test packages/runtime   # small live calls: Claude Code login, the API if a key is set, Ollama if running
+KARIGOR_REAL_DEPLOY=1 pnpm test packages/deploy    # install, build and serve the real web-app scaffold through the local target
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

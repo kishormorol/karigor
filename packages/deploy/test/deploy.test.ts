@@ -191,3 +191,21 @@ describe("VercelDeploy", () => {
     expect(projectSlug("ToolShare: Neighbours' Tools!", "20261020-abcdef")).toBe("toolshare-neighbours-tools-abcdef");
   });
 });
+
+/** Real install, real Next.js build and start. Run with KARIGOR_REAL_DEPLOY=1; needs the network once. */
+describe.runIf(process.env["KARIGOR_REAL_DEPLOY"] === "1")("LocalDeploy (live, web-app profile)", () => {
+  it("previews, promotes and verifies the real scaffold", async () => {
+    const { webApp } = await import("@karigor/profiles");
+    const projectDir = await mkdtemp(join(tmpdir(), "karigor-live-deploy-"));
+    const ws = await Workspace.create(join(projectDir, "workspace"), webApp);
+    const deploy = new LocalDeploy({ projectDir, profile: webApp, healthTimeoutMs: 120_000 });
+    started.push(deploy);
+    const sha = await ws.head();
+    const r = { dir: ws.dir, version: releaseVersion(1, sha), commit: sha, key: "live" };
+    const p = await deploy.preview(r);
+    expect(p.ok, p.output.slice(-3000)).toBe(true);
+    expect(await (await fetch(`${p.url}/api/health`)).json()).toHaveProperty("status");
+    expect((await deploy.promote({ ...r, preview: p })).ok).toBe(true);
+    expect((await deploy.verifyRollback({ dir: ws.dir })).ok).toBe(true);
+  }, 900_000);
+});

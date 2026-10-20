@@ -77,7 +77,9 @@ Starting a cycle estimates the `maintenance` template at the project's tier and 
 
 The planner in `triage` sees the open work items from state. Backlog ids that collide with items from earlier cycles are renamed deterministically (`m<cycle>-<id>`, dependencies re-pointed), so a new `b1` is never mistaken for a finished one.
 
-### 4.4 `@karigor/operate`
+### 4.4 Operate (`@karigor/cli`, `operate.ts`)
+
+It lives in the CLI package because it drives `runProject`; a separate package would depend on the CLI and the CLI on it.
 
 - **Signals**: `checkHealth(url)` (two failures in a row is downtime, critical), `auditDependencies(sandbox)` (high and critical advisories, one signal per package), `errorSignals(lines)` (error lines from the served app's output, normalised so the same error with different numbers is one signal), and feedback from the person (medium).
 - `recordSignals(store, signals)` writes a work item per new fingerprint; a fingerprint that is already open is ignored.

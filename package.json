@@ -13,7 +13,8 @@
     "typecheck": "pnpm -r --filter './packages/*' build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "pnpm -r --filter './packages/*' typecheck"
+    "lint": "pnpm -r --filter './packages/*' typecheck",
+    "ui": "node packages/server/dist/bin.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

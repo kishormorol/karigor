@@ -9,7 +9,7 @@ Spec: `docs/superpowers/specs/2026-10-20-karigor-deploy-operate-ui-design.md`
 3. `@karigor/deploy`: `DeployAdapter`, `FakeDeploy`, `LocalDeploy` (release export, install, build, start, health poll, pointer, rollback, verify, prune, ensure, stop), `VercelDeploy` (scripted exec). `@karigor/sandbox`: `LocalSandbox` delegates rollback and URL checks to a deploy adapter; `Workspace.tag`. Tests on the fixture with real servers.
 4. `@karigor/runtime`: releaser uses the real deploy record; planner sees open work items from state and gets collision-free ids; `OllamaAdapter`; `ModelAgent`. Tests.
 5. `@karigor/cli`: deploy in the release phase, promotion on `release -> done`, rollback and work item on failure, cycle-scoped budgets, stop the adapter on exit; `--deploy local|vercel`. Golden path, failures, crash replay through release.
-6. `@karigor/operate`: signals, dedupe, `startMaintenance`, `operateOnce`; CLI `feedback`, `fix`, `watch`, `serve`. Full loop test: released, feedback, cycle, `r2`.
+6. Operate (`operate.ts` in `@karigor/cli`, which it drives): signals, dedupe, `startMaintenance`, `operateOnce`; CLI `feedback`, `fix`, `watch`, `serve`. Full loop test: released, feedback, cycle, `r2`.
 7. `@karigor/server`: API, SSE, token, BYOK, the chat page; `Dockerfile`, `docker-compose.yml`. API tests on the demo adapter.
 8. Live checks (Ollama structured output, local deploy of the real web-app scaffold), README, templates doc, CI.
 
