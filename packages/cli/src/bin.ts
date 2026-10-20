@@ -84,6 +84,8 @@ function askHidden(question: string): Promise<string> {
   return new Promise((resolve) => {
     const stdin = process.stdin;
     process.stdout.write(question);
+    // Ask the terminal to mark pastes, so a pasted value arrives whole and can be cleaned.
+    process.stdout.write("\u001b[?2004h");
     let value = "";
     stdin.setRawMode?.(true);
     stdin.resume();
@@ -94,7 +96,10 @@ function askHidden(question: string): Promise<string> {
           stdin.setRawMode?.(false);
           stdin.pause();
           stdin.off("data", onData);
-          process.stdout.write("\n");
+          process.stdout.write("\u001b[?2004l");
+          // Terminals wrap pastes in markers (ESC[200~ ... ESC[201~); keep only what was pasted.
+          value = value.replace(/\u001b\[20[01]~/g, "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
+          process.stdout.write(value ? `  (${value.length} characters received)\n` : "  (nothing entered)\n");
           resolve(value);
           return;
         }
