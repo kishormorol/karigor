@@ -42,7 +42,7 @@ export const DEFAULT_ENV_NAMES = ["DATABASE_URL", "DATABASE_AUTH_TOKEN"];
 export class VercelDeploy implements DeployAdapter {
   readonly name = "vercel";
   private readonly exec: VercelExec;
-  /** "" once read and absent. Never written anywhere. */
+  /** Kept in memory once found. Never written anywhere. */
   private bypassSecret: string | undefined;
   constructor(private readonly o: VercelDeployOptions) {
     this.exec = o.exec ?? defaultExec;
@@ -203,7 +203,7 @@ export class VercelDeploy implements DeployAdapter {
 
   /** The project's automation bypass secret, read from Vercel when needed and kept in memory only. */
   private async bypass(): Promise<string | undefined> {
-    if (this.bypassSecret !== undefined) return this.bypassSecret || undefined;
+    if (this.bypassSecret) return this.bypassSecret;
     const read = async () => {
       const res = await this.cli(["project", "protection", this.o.project, "--json"], process.cwd());
       try {
@@ -216,9 +216,13 @@ export class VercelDeploy implements DeployAdapter {
     let secret = await read();
     if (!secret) {
       await this.cli(["project", "protection", "enable", this.o.project, "--protection-bypass"], process.cwd());
-      secret = await read();
+      // A new secret takes a moment to show up; a miss is not remembered, so the next check asks again.
+      for (let i = 0; i < 6 && !secret; i++) {
+        await new Promise((res) => setTimeout(res, this.o.pollMs ?? 2_000));
+        secret = await read();
+      }
     }
-    this.bypassSecret = secret ?? "";
+    if (secret) this.bypassSecret = secret;
     return secret;
   }
 

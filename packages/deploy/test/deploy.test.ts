@@ -266,6 +266,29 @@ describe("VercelDeploy", () => {
     expect(calls.filter((c) => c[0] === "project").length).toBe(1);
   });
 
+  it("creates a bypass secret when there is none, waits for it to appear, and does not remember a miss", async () => {
+    let reads = 0;
+    let enabled = false;
+    const exec: VercelExec = async (_f, args) => {
+      if (args[2] === "enable") {
+        enabled = true;
+        return { stdout: "", stderr: "", code: 0 };
+      }
+      if (args[0] === "project") {
+        reads++;
+        // the new secret shows up only on the third read after enabling
+        const visible = enabled && reads >= 3;
+        return { stdout: visible ? '{"protectionBypass":{"NEW-SECRET-0123456789":{"scope":"automation-bypass"}}}' : "{}", stderr: "", code: 0 };
+      }
+      return { stdout: "", stderr: "", code: 0 };
+    };
+    const f = (async (_u: string, init: { headers: Record<string, string> }) =>
+      init.headers["x-vercel-protection-bypass"] ? new Response("ok", { status: 200 }) : new Response(null, { status: 302, headers: { location: "https://vercel.com/sso-api" } })) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: f, pollMs: 1 });
+    expect((await d.checkUrl("https://p-x.vercel.app/")).ok).toBe(true);
+    expect(enabled).toBe(true);
+  });
+
   it("a redirect to Vercel's login is not healthy without a bypass", async () => {
     const { exec } = scripted({ project: { stdout: "{}" } });
     const toLogin = (async () => new Response(null, { status: 302, headers: { location: "https://vercel.com/sso-api?url=x" } })) as unknown as typeof fetch;

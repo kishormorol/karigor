@@ -193,7 +193,8 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     const live = await liveRelease();
     return live ? { live } : {};
   };
-  const productionCount = async () => (await deployRecords()).filter((r) => r.meta.environment === "production" && r.meta.status === "deployed").length;
+  /** Releases, not records: applying settings rewrites the live record for the same version. */
+  const productionCount = async () => new Set((await deployRecords()).filter((r) => r.meta.environment === "production" && r.meta.status === "deployed").map((r) => r.meta.version)).size;
   /** Secrets nobody needs to know (signing keys) are made and stored before the preview, so it can run. */
   const generateSettings = async () => {
     const d = opts.deploy!;
