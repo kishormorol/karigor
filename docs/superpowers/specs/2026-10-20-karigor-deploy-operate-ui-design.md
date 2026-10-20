@@ -134,3 +134,13 @@ It lives in the CLI package because it drives `runProject`; a separate package w
 ## 8. Out of scope
 
 A public hosted instance (running it is an operator's choice; the code and image are here), accounts and multi-tenant isolation, paid deploy targets, Cloudflare and Netlify adapters, log drains from Vercel, a competitor survey and a Claude Design pass on the UI (the UI here is a sound first version to iterate on).
+
+## 9. Addendum (20 October 2026): settings the live app needs
+
+The first real run produced an app that went live but could not work: it needed a family passcode, a signing secret and a hosted database that nobody had set. Settings now have a kind, so no question is ever technical:
+
+- **generate**: a secret nobody needs to know (a signing key). Karigor makes 32 random bytes and stores them before the preview, so the preview can run.
+- **ask**: a product choice only the person can make (a passcode). The developer's comment in `.env.example` is the question, in plain words.
+- **service**: a connection to an outside service with its own account (a hosted database). The person creates the account and pastes what it gives them; Karigor never creates accounts.
+
+The developer states the kind in `.env.example` with a `# karigor: generate|ask|service <name>` line (the stack guide asks for it); without one it is guessed from the name and comment. Values are stored only where the app reads them: Vercel sensitive environment variables for production and previews (sent on stdin, never as arguments), or `<project>/run/settings.json` (mode 0600, ignored by git) for the local target. The event log records `settings-provided` with names only. After the person provides settings (`karigor setup`, or the chat UI's form), the live release is rebuilt to pick them up (Vercel `redeploy`, then the same wait-until-live as promotion; locally, `serve` restarts it) and a fresh production record says what, if anything, is still missing.

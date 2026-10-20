@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore } from "@karigor/store";
-import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, operateOnce, recordSignals, runOptions, runProject } from "@karigor/cli";
+import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, operateOnce, provideSettings, recordSignals, runOptions, runProject } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -243,6 +243,31 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       });
       const fixing = r.workItemId && !runs.has(id) && canStartMaintenance(await store.replay()) ? startRun(id, "fix", optionalKey(b)) : false;
       return send(res, 202, { ...r, fixing });
+    }
+    if (method === "POST" && action === "settings") {
+      const b = await body(req);
+      const raw = b["values"];
+      if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new HttpError(400, "values is missing");
+      const values: Record<string, string> = {};
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === "string" && v.length <= 4000) values[k] = v;
+      if (runs.has(id)) throw new HttpError(409, "it is being worked on right now; try again when this round finishes");
+      const store = await FsStore.open(o.root, id).catch(() => {
+        throw new HttpError(404, "no such project");
+      });
+      const opts = await runOptions(o.root, id, flags, { log: (l) => log(`[${id}] ${l}`) });
+      if (!opts.deploy) throw new HttpError(400, "this Karigor does not put apps online, so there is nowhere to store settings");
+      // Applying settings rebuilds the live app; it is tracked like a run so nothing else starts meanwhile.
+      let result: Awaited<ReturnType<typeof provideSettings>> | undefined;
+      const p = provideSettings({ store, deploy: opts.deploy, values, log: (l) => log(`[${id}] ${l}`) })
+        .then((r) => {
+          result = r;
+        })
+        .finally(() => runs.delete(id));
+      runs.set(id, p.catch(() => {}));
+      await p.catch((e: Error) => {
+        throw new HttpError(400, e.message);
+      });
+      return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null });
     }
     return send(res, 404, { error: "not found" });
   };

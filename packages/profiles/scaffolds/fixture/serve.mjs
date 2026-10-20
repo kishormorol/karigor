@@ -1,10 +1,12 @@
 import { createServer } from "node:http";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 if (existsSync("start-fail")) { console.error("Error: could not start"); process.exit(1); }
 const port = Number(process.env.PORT ?? 3000);
 createServer((req, res) => {
   if (req.url === "/health") {
-    const ok = !existsSync("health-fail");
+    // `needs-setting` names environment variables the app cannot work without.
+    const needs = existsSync("needs-setting") ? readFileSync("needs-setting", "utf8").split(/\s+/).filter(Boolean) : [];
+    const ok = !existsSync("health-fail") && needs.every((n) => process.env[n]);
     res.writeHead(ok ? 200 : 500, { "content-type": "application/json" });
     res.end(JSON.stringify({ status: ok ? "ok" : "broken" }));
     return;

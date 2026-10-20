@@ -1,5 +1,14 @@
+import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+/**
+ * How a setting gets its value, without a technical question:
+ * - `generate`: a secret nobody needs to know (a signing key); Karigor makes one.
+ * - `ask`: a product choice only the person can make (the family passcode); asked in plain words.
+ * - `service`: a connection to an outside service that needs its own account (a hosted database).
+ */
+export type SettingKind = "generate" | "ask" | "service";
 
 /** One setting the app reads from its environment, as documented in `.env.example`. */
 export interface Setting {
@@ -9,29 +18,61 @@ export interface Setting {
   /** The comment lines above it, in the developer's words. */
   note: string;
   optional: boolean;
+  kind: SettingKind;
+  /** For `service`: which service, when the developer named it. */
+  service?: string;
 }
 
-/** Settings documented in the workspace's `.env.example` (the stack guide requires new ones to be listed there). */
+/** A setting the live app still lacks, as the person and the UI see it. */
+export interface MissingSetting {
+  name: string;
+  note: string;
+  kind: SettingKind;
+  service?: string;
+}
+
+const GENERATE_NAME = /(SECRET|SALT|SIGNING_KEY|ENCRYPTION_KEY|COOKIE_KEY|JWT_KEY|SESSION_KEY)$/;
+const SERVICE_NAME = /^(DATABASE_|DB_|REDIS_|POSTGRES|TURSO_|SUPABASE_|NEON_|SMTP_|STRIPE_|RESEND_|SENDGRID_|TWILIO_)|_(API_KEY|AUTH_TOKEN|DSN)$/;
+
+/** The kind of a setting with no annotation: a best guess from its name and note. */
+export function guessKind(name: string, note: string): SettingKind {
+  if (GENERATE_NAME.test(name) || /\brandom\b/i.test(note)) return "generate";
+  if (SERVICE_NAME.test(name) || /\b(turso|supabase|neon|stripe|smtp|api key)\b/i.test(note)) return "service";
+  return "ask";
+}
+
+/**
+ * Settings documented in the workspace's `.env.example`. A comment line
+ * `karigor: generate`, `karigor: ask` or `karigor: service <name>` states the kind;
+ * otherwise it is guessed.
+ */
 export async function readSettings(dir: string): Promise<Setting[]> {
   const text = await readFile(join(dir, ".env.example"), "utf8").catch(() => "");
   const out: Setting[] = [];
   let note: string[] = [];
+  let kind: { kind: SettingKind; service?: string } | undefined;
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) {
       note = [];
+      kind = undefined;
       continue;
     }
     if (line.startsWith("#")) {
-      note.push(line.replace(/^#+\s?/, ""));
+      const c = line.replace(/^#+\s?/, "");
+      const k = /^karigor:\s*(generate|ask|service)\b\s*(.*)$/i.exec(c);
+      if (k) kind = { kind: k[1]!.toLowerCase() as SettingKind, ...(k[2]?.trim() ? { service: k[2].trim() } : {}) };
+      else note.push(c);
       continue;
     }
     const m = /^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
     if (m) {
       const example = m[2]!.replace(/^["']|["']$/g, "");
-      out.push({ name: m[1]!, example, note: note.join(" "), optional: /^optional\b/i.test(note.join(" ")) });
+      const n = note.join(" ");
+      out.push({ name: m[1]!, example, note: n, optional: /^optional\b/i.test(n), ...(kind ?? { kind: guessKind(m[1]!, n) }) });
     }
     note = [];
+    kind = undefined;
   }
   return out;
 }
@@ -42,4 +83,13 @@ export async function readSettings(dir: string): Promise<Setting[]> {
  */
 export function requiredSettings(all: Setting[], hosted: boolean): Setting[] {
   return all.filter((s) => !s.optional && (s.example === "" || (hosted && s.example.startsWith("file:"))));
+}
+
+export function toMissing(s: Setting): MissingSetting {
+  return { name: s.name, note: s.note, kind: s.kind, ...(s.service ? { service: s.service } : {}) };
+}
+
+/** A value for a `generate` setting: 32 random bytes, URL-safe. */
+export function generateSettingValue(): string {
+  return randomBytes(32).toString("base64url");
 }

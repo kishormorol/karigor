@@ -1,18 +1,20 @@
 import { execFile } from "node:child_process";
 import type { CommandResult, UrlCheck } from "@karigor/gates";
-import { readSettings, requiredSettings } from "@karigor/profiles";
+import { readSettings, requiredSettings, toMissing, type MissingSetting } from "@karigor/profiles";
 import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./types.js";
 
-export type VercelExec = (file: string, args: string[], opts: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
+export type VercelExec = (file: string, args: string[], opts: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv; input?: string }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
 
-const defaultExec: VercelExec = (file, args, { cwd, timeoutMs, env }) =>
+const defaultExec: VercelExec = (file, args, { cwd, timeoutMs, env, input }) =>
   new Promise((resolve) => {
-    execFile(file, args, { cwd, timeout: timeoutMs, env, maxBuffer: 32 * 1024 * 1024 }, (err, stdout, stderr) => {
+    const child = execFile(file, args, { cwd, timeout: timeoutMs, env, maxBuffer: 32 * 1024 * 1024 }, (err, stdout, stderr) => {
       const e = err as (Error & { code?: unknown; killed?: boolean }) | null;
       if (e?.killed) return resolve({ stdout: String(stdout), stderr: `${String(stderr)}\n(timed out)`, code: null });
       if (e && typeof e.code !== "number") return resolve({ stdout: String(stdout), stderr: `${String(stderr)}\n${e.message}`, code: 127 });
       resolve({ stdout: String(stdout), stderr: String(stderr), code: e ? (e.code as number) : 0 });
     });
+    // Values go in on stdin, never as arguments (other users can read a process's arguments).
+    child.stdin?.end(input ?? "");
   });
 
 export interface VercelDeployOptions {
@@ -54,14 +56,14 @@ export class VercelDeploy implements DeployAdapter {
     return `Vercel's free hosting, project "${this.o.project}"`;
   }
 
-  private async cli(args: string[], cwd: string): Promise<{ ok: boolean; stdout: string; output: string; raw: string }> {
+  private async cli(args: string[], cwd: string, input?: string): Promise<{ ok: boolean; stdout: string; output: string; raw: string }> {
     const token = this.token;
     const own = [...(token ? ["--token", token] : []), "--non-interactive", ...(this.o.scope ? ["--scope", this.o.scope] : [])];
     // Arguments after `--` belong to another program (curl); Vercel's own flags go before them.
     const cut = args.indexOf("--");
     const full = cut < 0 ? [...args, ...own] : [...args.slice(0, cut), ...own, ...args.slice(cut)];
     const env = { ...process.env, VERCEL_TELEMETRY_DISABLED: "1" };
-    const r = await this.exec(this.o.binary ?? "vercel", full, { cwd, timeoutMs: this.o.timeoutMs ?? 20 * 60 * 1000, env });
+    const r = await this.exec(this.o.binary ?? "vercel", full, { cwd, timeoutMs: this.o.timeoutMs ?? 20 * 60 * 1000, env, ...(input !== undefined ? { input } : {}) });
     const raw = `${r.stdout}\n${r.stderr}`;
     let output = `$ vercel ${args.join(" ")}\n${raw}`.trim();
     if (token) output = output.replaceAll(token, "***");
@@ -101,6 +103,12 @@ export class VercelDeploy implements DeployAdapter {
     if (!res.ok) return { ok: false, output: res.output };
     const id = productionDeploymentId(res.raw);
     if (!id) return { ok: false, output: `${res.output}\nthe new production deployment could not be identified` };
+    return this.waitLive(id, r.dir, res);
+  }
+
+  /** Wait until deployment `id` is Ready, the public domain points at it, and it answers publicly. */
+  private async waitLive(id: string, dir: string, res: { stdout: string; output: string }): Promise<DeployResult> {
+    const r = { dir };
     const deadline = Date.now() + (this.o.productionWaitMs ?? 10 * 60 * 1000);
     const wait = () => new Promise((res) => setTimeout(res, this.o.pollMs ?? 5_000));
     const same = (a?: string) => !!a && a.replace(/^dpl_/, "") === id.replace(/^dpl_/, "");
@@ -133,7 +141,7 @@ export class VercelDeploy implements DeployAdapter {
     return { ok: false, url: domain, id, output: `${res.output}\nproduction was not live in time (${step}: ${detail})` };
   }
 
-  async missingSettings(dir: string): Promise<{ name: string; note: string }[]> {
+  async missingSettings(dir: string): Promise<MissingSetting[]> {
     const required = requiredSettings(await readSettings(dir), true);
     if (!required.length) return [];
     const res = await this.cli(["env", "ls", "production", "--project", this.o.project, "--json"], dir);
@@ -144,7 +152,33 @@ export class VercelDeploy implements DeployAdapter {
       /* unknown: report everything as missing rather than claim it is set */
     }
     const passed = (this.o.envNames ?? DEFAULT_ENV_NAMES).filter((n) => process.env[n]);
-    return required.filter((s) => !names.includes(s.name) && !passed.includes(s.name)).map((s) => ({ name: s.name, note: s.note }));
+    return required.filter((s) => !names.includes(s.name) && !passed.includes(s.name)).map(toMissing);
+  }
+
+  /** Each value becomes a sensitive environment variable for production and previews; it cannot be read back. */
+  async setSettings(dir: string, values: Record<string, string>): Promise<CommandResult> {
+    const done: string[] = [];
+    for (const [name, value] of Object.entries(values)) {
+      for (const target of ["production", "preview"]) {
+        const res = await this.cli(["env", "add", name, target, "--project", this.o.project, "--force", "--sensitive", "--yes"], dir, value);
+        if (!res.ok) return { ok: false, output: `could not save ${name} for ${target}:\n${res.output.replaceAll(value, "***")}` };
+      }
+      done.push(name);
+    }
+    return { ok: true, output: `saved on Vercel as sensitive settings: ${done.join(", ")}` };
+  }
+
+  /** Settings apply to new builds only, so the live deployment is built again and must become live again. */
+  async applySettings(r: { dir: string; live: LiveRelease }): Promise<DeployResult> {
+    const res = await this.cli(["redeploy", r.live.id, "--target", "production"], r.dir);
+    if (!res.ok) return { ok: false, output: res.output };
+    let id = productionDeploymentId(res.raw);
+    if (!id) {
+      const url = deploymentUrl(res.raw);
+      if (url) id = (await this.inspect(url, r.dir)).id?.replace(/^dpl_/, "");
+    }
+    if (!id) return { ok: false, output: `${res.output}\nthe new deployment could not be identified` };
+    return this.waitLive(id, r.dir, res);
   }
 
   /** What `vercel inspect` says about a deployment or a domain. */

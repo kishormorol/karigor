@@ -79,6 +79,8 @@ export interface ProjectState {
   cycle: number;
   /** Corrections from the person, keyed by assumption id. */
   corrections: Record<string, string>;
+  /** Names of settings stored for the live app, by anyone. */
+  settingsProvided: string[];
 }
 
 export function emptyState(projectId: string): ProjectState {
@@ -98,6 +100,7 @@ export function emptyState(projectId: string): ProjectState {
     workItems: {},
     cycle: 0,
     corrections: {},
+    settingsProvided: [],
   };
 }
 
@@ -218,6 +221,9 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       }
       break;
     }
+    case "settings-provided":
+      for (const n of e.names) if (!s.settingsProvided.includes(n)) s.settingsProvided.push(n);
+      break;
     case "assumption-corrected":
       s.corrections[e.assumptionId] = e.correctedTo;
       register(s, "ledger", e.ledgerId);

@@ -96,6 +96,16 @@ describe("server", { timeout: 60_000 }, () => {
     expect(seen.at(-1)).toMatchObject({ status: "finished", running: false });
   });
 
+  it("refuses settings while there is nowhere to store them, and rejects bad shapes", async () => {
+    const { k, call } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    expect((await call(`/api/projects/${id}/settings`, { method: "POST", body: JSON.stringify({ values: "x" }) })).status).toBe(400);
+    const r = await call(`/api/projects/${id}/settings`, { method: "POST", body: JSON.stringify({ values: { FAMILY_PASSCODE: "x" } }) });
+    expect(r.status).toBe(400);
+    expect(r.json["error"]).toMatch(/does not put apps online/);
+  });
+
   it("guards the API with a token, sets it as a cookie from an access link, and rejects bad input", async () => {
     const { call, base } = await start({ token: "s3cret-token" });
     expect((await call("/api/projects")).status).toBe(401);

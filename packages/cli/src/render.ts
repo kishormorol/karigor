@@ -1,4 +1,4 @@
-import type { FsStore, ProjectState, Event, BacklogItem } from "@karigor/store";
+import type { FsStore, ProjectState, Event, BacklogItem, MetaOf } from "@karigor/store";
 import { meter, renderMeter } from "@karigor/budget";
 
 /** Plain-language project status for a non-technical reader. */
@@ -67,11 +67,11 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
 
 /** The production release that is live now, if any. */
 export async function liveRecord(store: FsStore, state: ProjectState) {
-  const stack: { version: string; url?: string; missingSettings?: { name: string; note: string }[] }[] = [];
+  const stack: { version: string; url?: string; releaseId?: string; target: string; missingSettings?: MetaOf<"deploy-record">["missingSettings"] }[] = [];
   for (const id of state.artifacts["deploy-record"] ?? []) {
     const r = (await store.readArtifact("deploy-record", id).catch(() => undefined))?.meta;
     if (!r || r.environment !== "production") continue;
-    if (r.status === "deployed") stack.push({ version: r.version, ...(r.url ? { url: r.url } : {}), ...(r.missingSettings ? { missingSettings: r.missingSettings } : {}) });
+    if (r.status === "deployed") stack.push({ version: r.version, target: r.target, ...(r.url ? { url: r.url } : {}), ...(r.releaseId ? { releaseId: r.releaseId } : {}), ...(r.missingSettings ? { missingSettings: r.missingSettings } : {}) });
     else if (r.status === "rolled-back") stack.pop();
   }
   return stack.at(-1);
@@ -152,6 +152,9 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
       }
       case "maintenance-started":
         lines.push(`${t} Started fix round ${e.cycle} for ${e.workItemIds.length} problem${e.workItemIds.length === 1 ? "" : "s"} or request${e.workItemIds.length === 1 ? "" : "s"}.`);
+        break;
+      case "settings-provided":
+        lines.push(`${t} ${e.by === "system" ? "Made and stored" : "Stored"} the setting${e.names.length === 1 ? "" : "s"} ${e.names.join(", ")} where the app reads ${e.names.length === 1 ? "it" : "them"}.`);
         break;
       case "assumption-corrected":
         lines.push(`${t} You corrected decision ${e.assumptionId}: ${e.correctedTo}.`);

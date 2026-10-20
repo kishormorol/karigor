@@ -18,7 +18,7 @@ import {
 } from "@karigor/store";
 import { eventsFor, listTemplates, loadTemplate, next, scopeOf, workerStartEvent, type Action, type Outcome, type Template } from "@karigor/process";
 import { evaluate, type GateContext, type Sandbox } from "@karigor/gates";
-import type { Profile } from "@karigor/profiles";
+import { generateSettingValue, type Profile } from "@karigor/profiles";
 import { LocalSandbox, Workspace, clip } from "@karigor/sandbox";
 import { releaseVersion, type DeployAdapter, type LiveRelease } from "@karigor/deploy";
 import { join } from "node:path";
@@ -194,6 +194,21 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     return live ? { live } : {};
   };
   const productionCount = async () => (await deployRecords()).filter((r) => r.meta.environment === "production" && r.meta.status === "deployed").length;
+  /** Secrets nobody needs to know (signing keys) are made and stored before the preview, so it can run. */
+  const generateSettings = async () => {
+    const d = opts.deploy!;
+    if (!d.missingSettings || !d.setSettings) return;
+    const ws = await getWorkspace();
+    const gen = (await d.missingSettings(ws.dir).catch(() => [])).filter((m) => m.kind === "generate");
+    if (!gen.length) return;
+    const r = await d.setSettings(ws.dir, Object.fromEntries(gen.map((g) => [g.name, generateSettingValue()])));
+    if (!r.ok) {
+      log(`  could not store generated settings: ${r.output.split("\n")[0]}`);
+      return;
+    }
+    log(`  made and stored ${gen.map((g) => g.name).join(", ")}`);
+    await append({ type: "settings-provided", by: "system", names: gen.map((g) => g.name) });
+  };
   /** Deploy the workspace to a preview before the releaser describes it. Reused on resume by its key. */
   const ensurePreview = async (key: string, phase: string) => {
     const existing = (await deployRecords()).find((r) => r.meta.key === key);
@@ -396,6 +411,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
           const extra: Partial<RoleContext> & { itemId?: string } = action.itemId !== undefined ? { itemId: action.itemId } : {};
           if (action.role === "releaser" && opts.deploy) {
             if (!agentic) throw new RunError("a deploy target needs a real workspace (a profile and a developer agent)");
+            await generateSettings();
             extra.deploy = await ensurePreview(action.key, action.phase);
             extra.deployTarget = opts.deploy.describe();
           }

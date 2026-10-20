@@ -77,6 +77,8 @@ export const EventSchema = z.discriminatedUnion("type", [
     template: z.string().min(1),
     workItemIds: z.array(Id).min(1),
   }),
+  /** Settings the live app reads were stored where it reads them. Names only; values never enter the log. */
+  ev("settings-provided", { names: z.array(z.string().min(1)).min(1) }),
   /** The person corrected a decision made on their behalf. */
   ev("assumption-corrected", { assumptionId: z.string().min(1), correctedTo: z.string().min(1), ledgerId: Id }),
   ev("project-finished", {}),

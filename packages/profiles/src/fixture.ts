@@ -12,7 +12,8 @@ export const SCAFFOLDS_DIR = join(here, "..", "scaffolds");
  * counts come from `tests.json`, so a test scripts failures by editing that file.
  * `lint.mjs` fails if a `lint-fail` file exists; `build.mjs` fails if `build-fail` exists.
  * `serve.mjs` serves the release on `PORT`; its health check fails if `health-fail` exists, and it
- * exits at once if `start-fail` exists.
+ * exits at once if `start-fail` exists; its health check also fails while any variable named in
+ * `needs-setting` is missing from its environment.
  */
 export const fixture: Profile = {
   name: "fixture",

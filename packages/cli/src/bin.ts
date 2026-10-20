@@ -3,7 +3,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, operateOnce, recordSignals, serveProject } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, operateOnce, provideSettings, recordSignals, serveProject } from "./operate.js";
+import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject } from "./run.js";
 import { runOptions as setupRun, type RunFlags } from "./setup.js";
@@ -76,6 +77,77 @@ program
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
     const r = await correctAssumption(store, decisionId, text);
     console.log(r.workItemId ? `Noted. The change is queued as ${r.workItemId}; run karigor fix ${projectId} to apply it now.` : "Noted. Every step from now on will follow it.");
+  });
+
+/** Read a line without echoing it (for passcodes and service keys). */
+function askHidden(question: string): Promise<string> {
+  return new Promise((resolve) => {
+    const stdin = process.stdin;
+    process.stdout.write(question);
+    let value = "";
+    stdin.setRawMode?.(true);
+    stdin.resume();
+    stdin.setEncoding("utf8");
+    const onData = (ch: string) => {
+      for (const c of ch) {
+        if (c === "\r" || c === "\n") {
+          stdin.setRawMode?.(false);
+          stdin.pause();
+          stdin.off("data", onData);
+          process.stdout.write("\n");
+          resolve(value);
+          return;
+        }
+        if (c === "\u0003") process.exit(130);
+        if (c === "\u007f") value = value.slice(0, -1);
+        else value += c;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
+
+runFlags(program.command("setup").argument("<projectId>"))
+  .option("--set <name=value...>", "give a setting's value without being asked (repeatable)")
+  .description("give the live app the settings it still needs (a passcode, a database), in plain words")
+  .action(async (projectId: string, o: RunFlags & { set?: string[] }) => {
+    const root = program.opts<{ root: string }>().root;
+    const opts = await runOptions(root, projectId, o);
+    if (!opts.deploy || !opts.profile) throw new Error("setup needs a real adapter and a deploy target");
+    const store = await FsStore.open(root, projectId);
+    const dir = join(store.dir, "workspace");
+    const values: Record<string, string> = {};
+    for (const kv of o.set ?? []) {
+      const i = kv.indexOf("=");
+      if (i < 1) throw new Error(`--set needs NAME=value, got "${kv}"`);
+      values[kv.slice(0, i)] = kv.slice(i + 1);
+    }
+    const missing = (opts.deploy.missingSettings ? await opts.deploy.missingSettings(dir) : []).filter((m) => m.kind !== "generate" && !values[m.name]);
+    if (missing.length && process.stdin.isTTY) {
+      const all = await readSettings(dir);
+      const asked = new Set<string>();
+      for (const m of missing) {
+        if (asked.has(m.name)) continue;
+        if (m.kind === "service") {
+          const group = all.filter((s) => s.kind === "service" && s.service && s.service === m.service);
+          console.log(`\nThe app needs ${m.service ? `a ${m.service} account (free)` : "an outside service"} for this. Create one, then paste what it gives you.`);
+          for (const s of group.length ? group : [{ name: m.name, note: m.note, optional: false }]) {
+            asked.add(s.name);
+            const v = await askHidden(`  ${s.note || s.name}${s.optional ? " (leave empty to skip)" : ""}\n  ${s.name}: `);
+            if (v.trim()) values[s.name] = v;
+          }
+        } else {
+          asked.add(m.name);
+          const v = await askHidden(`\n${m.note || m.name}\n  ${m.name}: `);
+          if (v.trim()) values[m.name] = v;
+        }
+      }
+    } else if (missing.length) {
+      console.log(`Still needed: ${missing.map((m) => m.name).join(", ")}. Pass them with --set NAME=value.`);
+    }
+    const r = await provideSettings({ store, deploy: opts.deploy, values, log: (l) => console.log(l) });
+    console.log(r.stored.length ? `Stored ${r.stored.join(", ")}. ${r.output.split("\n").at(-1) ?? ""}` : "Nothing new to store.");
+    console.log(r.stillMissing.length ? `Still needed before it can be used: ${r.stillMissing.map((m) => m.name).join(", ")}.` : `Everything it needs is in place${r.url ? `: ${r.url}` : ""}.`);
   });
 
 runFlags(program.command("fix").argument("<projectId>"))

@@ -11,7 +11,8 @@ import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
 import type { ModelAdapter } from "@karigor/runtime";
 import { LocalSandbox, Workspace, checkUrl } from "@karigor/sandbox";
-import { LocalDeploy, startServer, type RunningServer } from "@karigor/deploy";
+import { LocalDeploy, startServer, type DeployAdapter, type RunningServer } from "@karigor/deploy";
+import { generateSettingValue, readSettings, type MissingSetting } from "@karigor/profiles";
 import { liveRecord } from "./render.js";
 import { runProject, type RunOptions } from "./run.js";
 
@@ -264,7 +265,7 @@ export async function serveProject(o: ServeOptions): Promise<void> {
       log("nothing is live yet; waiting for a release");
       return;
     }
-    const s = startServer(o.profile.commands.start!, deploy.releaseDir(cur.version), o.port);
+    const s = startServer(o.profile.commands.start!, deploy.releaseDir(cur.version), o.port, await deploy.settingsEnv());
     s.onLine((l) => lines.push(l));
     const h = await s.waitHealthy(healthPath, 120_000);
     server = s;
@@ -295,4 +296,72 @@ export async function serveProject(o: ServeOptions): Promise<void> {
     await server?.stop();
     await deploy.stop();
   }
+}
+
+export interface ProvideSettingsResult {
+  stored: string[];
+  /** What the live app still lacks afterwards. */
+  stillMissing: MissingSetting[];
+  /** The live address after the settings were applied, when something is live. */
+  url?: string;
+  output: string;
+}
+
+/**
+ * Store settings for the live app and make it use them. Only settings the app documents can be
+ * set. Values go to the deploy target's secret store and nowhere else; the log records names.
+ * Missing `generate` settings are filled in at the same time.
+ */
+export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter; values: Record<string, string>; by?: "user" | "system"; clock?: () => Date; log?: (line: string) => void }): Promise<ProvideSettingsResult> {
+  const clock = o.clock ?? (() => new Date());
+  const dir = join(o.store.dir, "workspace");
+  if (!o.deploy.setSettings || !o.deploy.missingSettings) throw new Error(`the ${o.deploy.name} target cannot store settings`);
+  const known = new Set((await readSettings(dir)).map((s) => s.name));
+  const values: Record<string, string> = {};
+  for (const [k, v] of Object.entries(o.values)) {
+    if (!known.has(k)) throw new Error(`the app has no setting called ${k} (it has: ${[...known].join(", ") || "none"})`);
+    if (typeof v !== "string" || !v.trim()) continue;
+    values[k] = v.trim();
+  }
+  for (const m of await o.deploy.missingSettings(dir)) if (m.kind === "generate" && !values[m.name]) values[m.name] = generateSettingValue();
+  const names = Object.keys(values);
+  if (!names.length) return { stored: [], stillMissing: await o.deploy.missingSettings(dir), output: "nothing to store" };
+  const saved = await o.deploy.setSettings(dir, values);
+  if (!saved.ok) throw new Error(saved.output);
+  await o.store.appendEvent({ type: "settings-provided", by: o.by ?? "user", names });
+  const state = await o.store.replay();
+  const live = await liveRecord(o.store, state);
+  const stillMissing = await o.deploy.missingSettings(dir);
+  if (!live || !o.deploy.applySettings) {
+    await o.store.commit(`karigor: settings stored (${names.join(", ")})`);
+    return { stored: names, stillMissing, output: saved.output };
+  }
+  o.log?.(`applying the settings to the live version ${live.version}`);
+  const res = await o.deploy.applySettings({ dir, live: { url: live.url ?? "", id: live.releaseId ?? live.url ?? "", version: live.version } });
+  if (!res.ok) {
+    await o.store.commit(`karigor: settings stored (${names.join(", ")}); not applied yet`);
+    return { stored: names, stillMissing, output: `${saved.output}\nthe live version did not pick them up yet: ${res.output.split("\n").at(-1)}` };
+  }
+  const record: Artifact = {
+    meta: {
+      id: makeId("deploy-record", clock()),
+      kind: "deploy-record",
+      createdAt: clock().toISOString(),
+      createdBy: "system",
+      target: live.target,
+      environment: "production",
+      version: live.version,
+      status: "deployed",
+      rollbackVerified: true,
+      key: `settings:${state.lastSeq}`,
+      ...(res.url ? { url: res.url } : live.url ? { url: live.url } : {}),
+      ...(res.id ? { releaseId: res.id } : {}),
+      ...(stillMissing.length ? { missingSettings: stillMissing } : {}),
+    },
+    body: `${saved.output}\n\n${res.output}`,
+  };
+  await o.store.writeArtifact(record);
+  await o.store.appendEvent({ type: "artifact-written", by: "system", kind: "deploy-record", id: record.meta.id });
+  await o.store.commit(`karigor: settings applied to ${live.version}`);
+  return { stored: names, stillMissing, ...(res.url ?? live.url ? { url: (res.url ?? live.url)! } : {}), output: `${saved.output}\n${res.output.split("\n").at(-1) ?? ""}` };
 }

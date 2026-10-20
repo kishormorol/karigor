@@ -1,4 +1,5 @@
 import type { CommandResult, UrlCheck } from "@karigor/gates";
+import type { MissingSetting } from "@karigor/profiles";
 
 export interface DeployRequest {
   /** The workspace: a git repository holding the code to release. */
@@ -43,8 +44,12 @@ export interface DeployAdapter {
   checkUrl?(url: string): Promise<UrlCheck>;
   /** Bring a preview back if a crash took it down. */
   ensure?(r: { url: string; id: string }): Promise<void>;
-  /** Settings the released app needs that the target does not have. Names only; values are never read. */
-  missingSettings?(dir: string): Promise<{ name: string; note: string }[]>;
+  /** Settings the released app needs that the target does not have. Names only; values are never read back. */
+  missingSettings?(dir: string): Promise<MissingSetting[]>;
+  /** Store values where the app reads them (the target's secret store). Output names only, never values. */
+  setSettings?(dir: string, values: Record<string, string>): Promise<CommandResult>;
+  /** Make the live release pick up changed settings. */
+  applySettings?(r: { dir: string; live: LiveRelease }): Promise<DeployResult>;
   /** Stop everything this adapter started. */
   stop(): Promise<void>;
 }

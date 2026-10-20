@@ -59,5 +59,26 @@ describe("settings from .env.example", () => {
     expect(requiredSettings(all, false).map((s) => s.name)).toEqual(["FAMILY_PASSCODE", "SESSION_SECRET"]);
     expect(requiredSettings(all, true).map((s) => s.name)).toEqual(["DATABASE_URL", "FAMILY_PASSCODE", "SESSION_SECRET"]);
     expect(await readSettings(join(dir, "nope"))).toEqual([]);
+    expect(all.map((s) => s.kind)).toEqual(["service", "ask", "ask", "generate"]);
+  });
+
+  it("takes the kind from a karigor: line, and guesses sensibly without one", async () => {
+    const { mkdtemp, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { readSettings, guessKind, generateSettingValue } = await import("../src/index.js");
+    const dir = await mkdtemp(join(tmpdir(), "karigor-env-"));
+    await writeFile(join(dir, ".env.example"), "# The word your team types to get in\n# karigor: ask\nTEAM_WORD=\n# A hosted database\n# karigor: service turso\nDATABASE_URL=\n# Signs the cookie\n# karigor: generate\nCOOKIE_PEPPER=\n");
+    expect((await readSettings(dir)).map((s) => [s.name, s.kind, s.service ?? "", s.note])).toEqual([
+      ["TEAM_WORD", "ask", "", "The word your team types to get in"],
+      ["DATABASE_URL", "service", "turso", "A hosted database"],
+      ["COOKIE_PEPPER", "generate", "", "Signs the cookie"],
+    ]);
+    expect(guessKind("SESSION_SECRET", "")).toBe("generate");
+    expect(guessKind("STRIPE_KEY", "")).toBe("service");
+    expect(guessKind("RESEND_API_KEY", "")).toBe("service");
+    expect(guessKind("FAMILY_PASSCODE", "The passcode the family types")).toBe("ask");
+    expect(guessKind("TOKEN_SALT", "")).toBe("generate");
+    expect(generateSettingValue()).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
 });

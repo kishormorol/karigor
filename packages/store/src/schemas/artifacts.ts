@@ -134,7 +134,7 @@ export const DeployRecordMeta = meta("deploy-record", {
   /** The target's own id for the deployment (a release directory, a Vercel deployment id). */
   releaseId: z.string().optional(),
   /** Settings the live app needs that the target does not have yet (names only). */
-  missingSettings: z.array(z.object({ name: z.string().min(1), note: z.string() })).optional(),
+  missingSettings: z.array(z.object({ name: z.string().min(1), note: z.string(), kind: z.enum(["generate", "ask", "service"]).default("ask"), service: z.string().optional() })).optional(),
   /** What caused this record (the releaser's key, or `promote:<preview record>`), so a resumed run does not deploy twice. */
   key: z.string().optional(),
 });

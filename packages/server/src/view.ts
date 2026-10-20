@@ -18,7 +18,7 @@ export interface ProjectView {
   decisions: { id: string; topic: string; decision: string; correctedTo?: string }[];
   cost?: { currency: string; spent: number; budget: number; tier: string; apiEquivalent: number };
   summary?: { headline: string; whatItDoes: string; howToUse: string; url?: string };
-  live?: { version: string; url?: string; missingSettings?: { name: string; note: string }[] };
+  live?: NonNullable<Awaited<ReturnType<typeof liveRecord>>>;
   workItems: { id: string; title: string; status: string; source: string }[];
   /** The event log as plain sentences, oldest first. */
   story: string[];

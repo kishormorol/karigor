@@ -267,10 +267,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     if (view.decisions.length) main.append(decisionsCard());
     if (view.problem) main.append(el("div", { class: "card problem" }, el("h2", {}, "Something got in the way"), el("p", {}, view.problem), el("div", { class: "row" }, el("button", { class: "btn", onclick: resume }, "Try again"))));
     if (view.status === "finished" && view.summary) main.append(resultCard());
-    if (view.live && view.live.missingSettings && view.live.missingSettings.length) main.append(el("div", { class: "card problem" },
-      el("h2", {}, "Online, but not usable yet"),
-      el("p", {}, "It needs these settings where it is hosted before it can do its job. Whoever runs this Karigor can add them:"),
-      el("ul", {}, view.live.missingSettings.map((m) => el("li", {}, el("strong", {}, m.name), m.note ? ` — ${m.note}` : "")))));
+    if (view.live && view.live.missingSettings && view.live.missingSettings.length) main.append(settingsCard(view.live.missingSettings));
     main.append(statusCard());
     requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight }));
   }
@@ -299,6 +296,37 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, "Open it"), el("span", { class: "meta" }, url)) : null,
       el("p", { class: "meta" }, "Something not right, or something to add? Write it below and a fix round starts on its own."),
     );
+  }
+
+  /** The few things only the person can give: a choice (a passcode) or an outside service's details. Secrets nobody needs to know are made automatically. */
+  function settingsCard(missing) {
+    const needed = missing.filter((m) => m.kind !== "generate");
+    const form = el("form", { class: "card problem", style: "gap:12px" },
+      el("h2", {}, "Online, but it needs a few things from you"),
+      el("p", {}, needed.length ? "Only you can choose or provide these. They are stored privately where the app runs, never shown again, and never saved by Karigor." : "It needs a couple of hidden settings. Karigor can make them for you."));
+    const inputs = [];
+    for (const m of needed) {
+      const field = el("input", { type: "password", autocomplete: "off", name: m.name, "aria-label": m.note || m.name });
+      inputs.push(field);
+      form.append(el("label", { class: "field" },
+        el("span", {}, m.note || m.name),
+        m.kind === "service" ? el("span", { class: "meta" }, `This comes from ${m.service ? `a free ${m.service} account` : "an outside service"} you create yourself.`) : null,
+        field));
+    }
+    const btn = el("button", { class: "btn" }, needed.length ? "Save and update the app" : "Make them for me");
+    form.append(el("div", { class: "row" }, btn));
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const values = {};
+      for (const f of inputs) if (f.value.trim()) values[f.name] = f.value;
+      btn.disabled = true;
+      hint.textContent = "Saving and updating the live app. This can take a few minutes.";
+      try {
+        const r = await api(`/api/projects/${current}/settings`, { method: "POST", body: JSON.stringify({ values }) });
+        hint.textContent = r.stillMissing.length ? `Saved. Still needed: ${r.stillMissing.map((m) => m.note || m.name).join("; ")}.` : "Saved. Everything it needs is in place.";
+      } catch (err) { hint.textContent = err.message; btn.disabled = false; }
+    });
+    return form;
   }
 
   function decisionsCard() {

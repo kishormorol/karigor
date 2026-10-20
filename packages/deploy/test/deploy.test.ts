@@ -104,6 +104,21 @@ describe("LocalDeploy", { timeout: 60_000 }, () => {
     expect(v.output).toMatch(/no longer starts/);
   });
 
+  it("stores settings in a private file, counts them as present, and starts the app with them", async () => {
+    const { projectDir, ws, deploy } = await setup();
+    const sha = await commit(ws, { "needs-setting": "FAMILY_PASSCODE", ".env.example": "# The passcode the family types\nFAMILY_PASSCODE=\n" });
+    expect(await deploy.missingSettings(ws.dir)).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types", kind: "ask" }]);
+    const r = req(ws, 1, sha);
+    expect((await deploy.preview(r)).ok).toBe(false);
+    expect((await deploy.setSettings(ws.dir, { FAMILY_PASSCODE: "plum-tree-42" })).output).not.toMatch(/plum-tree/);
+    const { stat: statFile } = await import("node:fs/promises");
+    expect((await statFile(join(projectDir, "run", "settings.json"))).mode & 0o777).toBe(0o600);
+    expect(await readFile(join(projectDir, ".gitignore"), "utf8")).toMatch(/^run\/$/m);
+    expect(await deploy.missingSettings(ws.dir)).toEqual([]);
+    const p = await deploy.preview({ ...r, key: "k2" });
+    expect(p.ok, p.output).toBe(true);
+  });
+
   it("ensure brings a preview back on the same URL after it stopped", async () => {
     const { ws, deploy } = await setup();
     const sha = await commit(ws, { "src/a.js": "1" });
@@ -194,6 +209,28 @@ describe("VercelDeploy", () => {
     expect(calls.find((c) => c[0] === "rollback")?.slice(0, 2)).toEqual(["rollback", newId]);
     expect((await d.rollback({ dir: "/w" })).ok).toBe(false);
     delete process.env["DATABASE_URL"];
+  });
+
+  it("settings go in on stdin as sensitive values for production and previews, and a redeploy applies them", async () => {
+    const calls: { args: string[]; input?: string }[] = [];
+    const id = "NEWNEWNEWNEWNEWNEWNEWNEW";
+    const exec: VercelExec = async (_f, args, o) => {
+      calls.push({ args, ...(o.input !== undefined ? { input: o.input } : {}) });
+      if (args[0] === "redeploy") return { stdout: "", stderr: `> Successfully created new deployment of p at https://vercel.com/t/p/${id}`, code: 0 };
+      if (args[0] === "inspect" && args[1] === id) return { stdout: `    id\t\tdpl_${id}\n    status\t● Ready\n\n  Aliases\n\n    ╶ https://p.vercel.app\n\n  Builds\n`, stderr: "", code: 0 };
+      if (args[0] === "inspect") return { stdout: `    id\t\tdpl_${id}\n`, stderr: "", code: 0 };
+      return { stdout: "Added", stderr: "", code: 0 };
+    };
+    const ok = (async () => new Response("ok", { status: 200 })) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: ok, pollMs: 1 });
+    const saved = await d.setSettings("/w", { FAMILY_PASSCODE: "plum-tree-42" });
+    expect(saved).toEqual({ ok: true, output: "saved on Vercel as sensitive settings: FAMILY_PASSCODE" });
+    const adds = calls.filter((c) => c.args[0] === "env");
+    expect(adds.map((c) => c.args.slice(0, 4))).toEqual([["env", "add", "FAMILY_PASSCODE", "production"], ["env", "add", "FAMILY_PASSCODE", "preview"]]);
+    expect(adds.every((c) => c.input === "plum-tree-42" && !c.args.includes("plum-tree-42") && c.args.includes("--sensitive"))).toBe(true);
+    const live = await d.applySettings({ dir: "/w", live: { url: "https://p.vercel.app", id: "OLD", version: "r1" } });
+    expect(live).toMatchObject({ ok: true, id, url: "https://p.vercel.app" });
+    expect(calls.find((c) => c.args[0] === "redeploy")?.args.slice(0, 4)).toEqual(["redeploy", "OLD", "--target", "production"]);
   });
 
   it("a production build that errors fails the promotion", async () => {

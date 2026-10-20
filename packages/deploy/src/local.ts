@@ -1,7 +1,7 @@
-import { appendFile, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CommandResult } from "@karigor/gates";
-import { readSettings, requiredSettings, type Profile } from "@karigor/profiles";
+import { readSettings, requiredSettings, toMissing, type MissingSetting, type Profile } from "@karigor/profiles";
 import { Workspace, clip, run } from "@karigor/sandbox";
 import { freePort, startServer, type RunningServer } from "./server.js";
 import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./types.js";
@@ -109,7 +109,7 @@ export class LocalDeploy implements DeployAdapter {
   async start(version: string, port: number): Promise<{ server: RunningServer; ok: boolean; output: string }> {
     const argv = this.o.profile.commands.start;
     if (!argv?.length) throw new Error(`the ${this.o.profile.name} profile has no start command, so it cannot be served`);
-    const server = startServer(argv, this.releaseDir(version), port);
+    const server = startServer(argv, this.releaseDir(version), port, await this.settingsEnv());
     const h = await server.waitHealthy(this.o.profile.healthPath ?? "/", this.o.healthTimeoutMs ?? 90_000);
     if (!h.ok) await server.stop();
     return { server, ok: h.ok, output: h.output };
@@ -174,9 +174,39 @@ export class LocalDeploy implements DeployAdapter {
     return s.ok ? { ok: true, output: `the live release ${cur.version} starts and answers its health check, so going back to it works` } : { ok: false, output: `the live release ${cur.version} no longer starts:\n${s.output}` };
   }
 
-  /** On this computer a local database file is fine; settings with no default must be in the environment. */
-  async missingSettings(dir: string): Promise<{ name: string; note: string }[]> {
-    return requiredSettings(await readSettings(dir), false).filter((s) => !process.env[s.name]).map((s) => ({ name: s.name, note: s.note }));
+  /** On this computer a local database file is fine; settings with no default must be in the environment or the settings file. */
+  async missingSettings(dir: string): Promise<MissingSetting[]> {
+    const stored = await this.settingsEnv();
+    return requiredSettings(await readSettings(dir), false).filter((s) => !process.env[s.name] && !stored[s.name]).map(toMissing);
+  }
+
+  /** `<project>/run/settings.json`, readable by this user only and ignored by the project's git. */
+  private get settingsFile(): string {
+    return join(this.o.projectDir, "run", "settings.json");
+  }
+
+  /** Values saved with `setSettings`, passed to the app as its environment when it starts. */
+  async settingsEnv(): Promise<Record<string, string>> {
+    try {
+      return JSON.parse(await readFile(this.settingsFile, "utf8")) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+
+  async setSettings(_dir: string, values: Record<string, string>): Promise<CommandResult> {
+    await this.ignoreReleasesInProjectGit();
+    await mkdir(join(this.o.projectDir, "run"), { recursive: true, mode: 0o700 });
+    await writeFile(this.settingsFile, JSON.stringify({ ...(await this.settingsEnv()), ...values }, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+    await chmod(this.settingsFile, 0o600);
+    return { ok: true, output: `saved on this computer: ${Object.keys(values).join(", ")}` };
+  }
+
+  /** Previews and `serve` read the settings file when they start; restarting the live release applies them. */
+  async applySettings(r: { dir: string; live: { url: string; id: string; version: string } }): Promise<DeployResult> {
+    const cur = await this.current();
+    if (cur) await this.setCurrent(cur);
+    return { ok: true, url: r.live.url, id: r.live.id, output: "the live release restarts with the new settings when karigor serve is running" };
   }
 
   /** Delete old releases, keeping the live one, its predecessors in history, and the newest few. */

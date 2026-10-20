@@ -83,11 +83,42 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     const state = await runProject(opts(root, projectId, deploy, agent));
     expect(state.status).toBe("finished");
     const prod = (await records(root, projectId, state)).at(-1)!;
-    expect(prod.missingSettings).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types once on each phone" }]);
+    expect(prod.missingSettings).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types once on each phone", kind: "ask" }]);
     const store = await FsStore.open(root, projectId, { committer: noopCommitter });
     expect((await store.readArtifact("summary", state.artifacts.summary!.at(-1)!)).body).toMatch(/## Before it can be used[\s\S]*FAMILY_PASSCODE/);
     const { renderStatus } = await import("../src/index.js");
     expect(await renderStatus(store, state)).toMatch(/cannot be used until these settings are added[\s\S]*FAMILY_PASSCODE: The passcode/);
+  });
+
+  it("secrets are made before the preview, the person's settings are taken afterwards, and no value enters the log", async () => {
+    const { root, projectId } = await fresh();
+    const deploy = local(root, projectId);
+    const env = "# Signs the remember-me cookie\n# karigor: generate\nSESSION_SECRET=\n# The passcode the family types once on each phone\n# karigor: ask\nFAMILY_PASSCODE=\n";
+    // the app will not even answer its health check without its signing secret
+    const agent = devAgent((id) => (id === "b1" ? { ".env.example": env, "needs-setting": "SESSION_SECRET" } : {}));
+    const state = await runProject(opts(root, projectId, deploy, agent));
+    expect(state.status, state.stopReason).toBe("finished");
+    expect(state.settingsProvided).toEqual(["SESSION_SECRET"]);
+    const prod = (await records(root, projectId, state)).at(-1)!;
+    expect(prod.missingSettings).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types once on each phone", kind: "ask" }]);
+    const { provideSettings } = await import("../src/index.js");
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    await expect(provideSettings({ store, deploy, values: { NOT_A_SETTING: "x" } })).rejects.toThrow(/no setting called NOT_A_SETTING/);
+    const r = await provideSettings({ store, deploy, values: { FAMILY_PASSCODE: "plum-tree-42" } });
+    expect(r).toMatchObject({ stored: ["FAMILY_PASSCODE"], stillMissing: [] });
+    const after = await store.replay();
+    expect(after.settingsProvided).toEqual(["SESSION_SECRET", "FAMILY_PASSCODE"]);
+    expect((await records(root, projectId, after)).at(-1)).toMatchObject({ environment: "production", status: "deployed", version: prod.version });
+    expect((await records(root, projectId, after)).at(-1)!.missingSettings).toBeUndefined();
+    const { renderStatus, renderExplain } = await import("../src/index.js");
+    expect(await renderStatus(store, after)).not.toMatch(/cannot be used/);
+    expect(await renderExplain(store, await store.readEvents())).toMatch(/Made and stored the setting SESSION_SECRET[\s\S]*Stored the setting FAMILY_PASSCODE/);
+    // values live only in the private settings file
+    const saved = JSON.parse(await readFile(join(root, projectId, "run", "settings.json"), "utf8")) as Record<string, string>;
+    expect(saved["FAMILY_PASSCODE"]).toBe("plum-tree-42");
+    const { run: sh } = await import("@karigor/sandbox");
+    const grep = await sh("grep", ["-rl", "--exclude-dir=run", "--exclude-dir=releases", "--exclude-dir=workspace", "-e", "plum-tree-42", "-e", saved["SESSION_SECRET"]!, "."], { cwd: join(root, projectId) });
+    expect(grep.stdout).toBe("");
   });
 
   it("a release whose health check fails is never promoted; the ladder retries and stops with the reason", async () => {

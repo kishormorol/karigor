@@ -1,1 +1,6 @@
+# Where the app keeps its data. On this computer it is a file; when hosted, a free Turso database (libsql://<name>.turso.io).
+# karigor: service turso
 DATABASE_URL=file:./data/app.db
+# Optional: the Turso database token, needed only when hosted.
+# karigor: service turso
+DATABASE_AUTH_TOKEN=

@@ -13,7 +13,7 @@ It is designed to cost nothing to try. Every step has a zero-dollar path (local 
 
 All six sub-projects of the first roadmap are in: the kernel, intake, the build crew, deploy and operate, the maintenance loop, and the chat UI with a Docker self-host.
 
-On 20 October 2026 a real run on a Claude Code login took "a page where my family keeps one shared shopping list" from idea to Vercel: the `linear` process, 12 backlog items built and reviewed, one lint failure caught and fixed, a preview checked behind Vercel's login, then promoted to a public `*.vercel.app` address. It cost nothing extra on the subscription (about USD 6.48 at API prices). The same run exposed real gaps, now fixed: Vercel needed the project created first and a framework declared; a protected preview's redirect to the login page must not count as healthy; and promotion must wait until the public address serves the new build, not the one before it. One gap is only reported, not solved: the app needed a family passcode, a signing secret and a hosted database, which nobody had set. Karigor now says so plainly ("online, but not usable yet", with the names of the settings) instead of calling it finished and working; supplying those values is still the person's or operator's job.
+On 20 October 2026 a real run on a Claude Code login took "a page where my family keeps one shared shopping list" from idea to Vercel: the `linear` process, 12 backlog items built and reviewed, one lint failure caught and fixed, a preview checked behind Vercel's login, then promoted to a public `*.vercel.app` address. It cost nothing extra on the subscription (about USD 6.48 at API prices). The same run exposed real gaps, now fixed: Vercel needed the project created first and a framework declared; a protected preview's redirect to the login page must not count as healthy; and promotion must wait until the public address serves the new build, not the one before it. It also produced an app that went live but could not work: it needed a family passcode, a signing secret and a hosted database that nobody had set. Karigor now makes secrets like the signing key itself, asks the person in plain words for what only they can choose (the passcode) or provide (a free database account), stores the values only where the app runs, and rebuilds the live version with them.
 
 The Docker image builds and serves the UI; it refuses to listen beyond localhost without a token.
 
@@ -82,12 +82,13 @@ VERCEL_TOKEN=... node packages/cli/dist/bin.js new "..." --deploy vercel --run
 node packages/cli/dist/bin.js watch <projectId> --every 15     # health and audit, fix rounds when needed
 ```
 
-The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project. Any other setting the app documents in its `.env.example` without a value (a passcode, a signing secret) must be added in the Vercel project's settings; `karigor status` lists the ones still missing after each release. Without `VERCEL_TOKEN`, the Vercel CLI's own login (`vercel login`) is used.
+The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project. Secrets the app needs (a signing key) are made and stored automatically before the preview. Anything only you can choose or provide (a passcode, a database account) is listed by `karigor status`; give it with `karigor setup <id>` (it asks in plain words and hides what you type) or in the chat UI, and the live version is rebuilt with it. Values go only to Vercel's sensitive settings, or a private file on this computer for the local target; Karigor's own records keep names, never values. Without `VERCEL_TOKEN`, the Vercel CLI's own login (`vercel login`) is used.
 
 ### After release
 
 - `karigor feedback <id> "..."`: say what is wrong or what you want, in your own words.
 - `karigor correct <id> a3 "..."`: change a decision made on your behalf (ids are in `karigor status`).
+- `karigor setup <id>`: give the live app what it still needs (a passcode, a database), in plain words.
 - `karigor fix <id>`: start a fix round now. `serve` and `watch` start them on their own.
 
 Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
