@@ -206,7 +206,7 @@ describe("VercelDeploy", () => {
     const liveRel = { url: live.url!, id: live.id!, version: "r1" };
     expect((await d.verifyRollback({ dir: "/w", live: liveRel })).ok).toBe(true);
     expect((await d.rollback({ dir: "/w", live: liveRel })).ok).toBe(true);
-    expect(calls.find((c) => c[0] === "rollback")?.slice(0, 2)).toEqual(["rollback", newId]);
+    expect(calls.find((c) => c[0] === "rollback")?.slice(0, 2)).toEqual(["rollback", `dpl_${newId}`]);
     expect((await d.rollback({ dir: "/w" })).ok).toBe(false);
     delete process.env["DATABASE_URL"];
   });
@@ -228,9 +228,9 @@ describe("VercelDeploy", () => {
     const adds = calls.filter((c) => c.args[0] === "env");
     expect(adds.map((c) => c.args.slice(0, 4))).toEqual([["env", "add", "FAMILY_PASSCODE", "production"], ["env", "add", "FAMILY_PASSCODE", "preview"]]);
     expect(adds.every((c) => c.input === "plum-tree-42" && !c.args.includes("plum-tree-42") && c.args.includes("--sensitive"))).toBe(true);
-    const live = await d.applySettings({ dir: "/w", live: { url: "https://p.vercel.app", id: "OLD", version: "r1" } });
+    const live = await d.applySettings({ dir: "/w", live: { url: "https://p.vercel.app", id: "OLDOLDOLDOLDOLDOLDOLDOLD", version: "r1" } });
     expect(live).toMatchObject({ ok: true, id, url: "https://p.vercel.app" });
-    expect(calls.find((c) => c.args[0] === "redeploy")?.args.slice(0, 4)).toEqual(["redeploy", "OLD", "--target", "production"]);
+    expect(calls.find((c) => c.args[0] === "redeploy")?.args.slice(0, 4)).toEqual(["redeploy", "dpl_OLDOLDOLDOLDOLDOLDOLDOLD", "--target", "production"]);
   });
 
   it("a production build that errors fails the promotion", async () => {

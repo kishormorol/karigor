@@ -143,7 +143,7 @@ runFlags(program.command("setup").argument("<projectId>"))
         }
       }
     } else if (missing.length) {
-      console.log(`Still needed: ${missing.map((m) => m.name).join(", ")}. Pass them with --set NAME=value.`);
+      console.log(`Still needed: ${missing.map((m) => m.name).join(", ")}. This window cannot ask questions; run the same command in your own terminal to be asked privately, or pass --set NAME=value.`);
     }
     const r = await provideSettings({ store, deploy: opts.deploy, values, log: (l) => console.log(l) });
     console.log(r.stored.length ? `Stored ${r.stored.join(", ")}. ${r.output.split("\n").at(-1) ?? ""}` : "Nothing new to store.");

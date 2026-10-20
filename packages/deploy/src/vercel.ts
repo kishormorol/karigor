@@ -170,7 +170,7 @@ export class VercelDeploy implements DeployAdapter {
 
   /** Settings apply to new builds only, so the live deployment is built again and must become live again. */
   async applySettings(r: { dir: string; live: LiveRelease }): Promise<DeployResult> {
-    const res = await this.cli(["redeploy", r.live.id, "--target", "production"], r.dir);
+    const res = await this.cli(["redeploy", deploymentRef(r.live.id), "--target", "production"], r.dir);
     if (!res.ok) return { ok: false, output: res.output };
     let id = productionDeploymentId(res.raw);
     if (!id) {
@@ -189,7 +189,7 @@ export class VercelDeploy implements DeployAdapter {
 
   async rollback(r: { dir: string; live?: LiveRelease }): Promise<CommandResult> {
     if (!r.live) return { ok: false, output: "there was no earlier release to go back to; the new version stays up until it is fixed" };
-    const res = await this.cli(["rollback", r.live.id, "--yes", "--timeout", "5m"], r.dir);
+    const res = await this.cli(["rollback", deploymentRef(r.live.id), "--yes", "--timeout", "5m"], r.dir);
     return { ok: res.ok, output: res.output };
   }
 
@@ -258,6 +258,11 @@ async function publicCheck(url: string, f: typeof fetch, headers: Record<string,
   } catch (e) {
     return { ok: false, status: 0, output: `request failed: ${(e as Error).message}` };
   }
+}
+
+/** A bare deployment id as the CLI's redeploy and rollback accept it (`dpl_<id>`); URLs pass through. */
+export function deploymentRef(id: string): string {
+  return /^[A-Za-z0-9]{16,}$/.test(id) ? `dpl_${id}` : id;
 }
 
 /** id, status and aliases from `vercel inspect` text output. */
