@@ -229,7 +229,9 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     const res = await opts.deploy!.promote({ dir: ws.dir, version, commit: preview.meta.commit ?? (await ws.head()), key, preview: { ok: true, output: "", ...(preview.meta.url ? { url: preview.meta.url } : {}), ...(preview.meta.releaseId ? { id: preview.meta.releaseId } : {}) } });
     const base = { createdAt: clock().toISOString(), createdBy: "system" as const, phase: "release", target: opts.deploy!.name, environment: "production" as const, version, key, ...(preview.meta.commit ? { commit: preview.meta.commit } : {}) };
     if (res.ok) {
-      const record: Artifact = { meta: { id: newId("deploy-record"), kind: "deploy-record", ...base, status: "deployed", rollbackVerified: true, ...(res.url ? { url: res.url } : {}), ...(res.id ? { releaseId: res.id } : {}) }, body: clip(res.output, 20_000) };
+      // A live app that cannot start its real work (no passcode, no database) is not done; say what it needs.
+      const missing = (await opts.deploy!.missingSettings?.(ws.dir).catch(() => undefined)) ?? [];
+      const record: Artifact = { meta: { id: newId("deploy-record"), kind: "deploy-record", ...base, status: "deployed", rollbackVerified: true, ...(res.url ? { url: res.url } : {}), ...(res.id ? { releaseId: res.id } : {}), ...(missing.length ? { missingSettings: missing } : {}) }, body: clip(res.output, 20_000) };
       await store.writeArtifact(record);
       const events: NewEvent[] = [{ type: "artifact-written", by: "system", kind: "deploy-record", id: record.meta.id }];
       await ws.tag(`karigor-release-${version}`, preview.meta.commit ?? "HEAD").catch(() => undefined);
@@ -238,10 +240,12 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         const s = (await store.readArtifact("summary", lastSummary)).meta;
         const fresh = summaryArtifact(s, { id: newId("summary"), createdAt: clock().toISOString(), createdBy: "system", phase: "release" }, res.url);
         fresh.body += `\nIt lives on ${opts.deploy!.describe()}.\n`;
+        if (missing.length) fresh.body += `\n## Before it can be used\n\nIt is online, but it needs these settings on ${opts.deploy!.describe()} before it can do its job:\n\n${missing.map((m) => `- \`${m.name}\`${m.note ? `: ${m.note}` : ""}`).join("\n")}\n`;
         await store.writeArtifact(fresh);
         events.push({ type: "artifact-written", by: "system", kind: "summary", id: fresh.meta.id });
       }
       log(`  live: ${res.url ?? version}`);
+      if (missing.length) log(`  it still needs these settings before it can be used: ${missing.map((m) => m.name).join(", ")}`);
       return events;
     }
     const rb = await opts.deploy!.rollback({ dir: ws.dir, ...(live ? { live } : {}) });

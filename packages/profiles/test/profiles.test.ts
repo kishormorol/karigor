@@ -44,3 +44,20 @@ describe("profiles", () => {
     expect(profileFor("web-app").name).toBe("web-app");
   });
 });
+
+describe("settings from .env.example", () => {
+  it("reads names, notes and optional markers; hosted targets also need a real database", async () => {
+    const { mkdtemp, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { readSettings, requiredSettings } = await import("../src/index.js");
+    const dir = await mkdtemp(join(tmpdir(), "karigor-env-"));
+    await writeFile(join(dir, ".env.example"), "# Production: libsql://<db>.turso.io\nDATABASE_URL=file:./data/local.db\n\n# The passcode the family types once\nFAMILY_PASSCODE=\n# Optional: delay after a wrong passcode\nUNLOCK_FAIL_DELAY_MS=\nexport SESSION_SECRET=\"\"\n");
+    const all = await readSettings(dir);
+    expect(all.map((s) => `${s.name}:${s.optional}`)).toEqual(["DATABASE_URL:false", "FAMILY_PASSCODE:false", "UNLOCK_FAIL_DELAY_MS:true", "SESSION_SECRET:false"]);
+    expect(all[1]!.note).toBe("The passcode the family types once");
+    expect(requiredSettings(all, false).map((s) => s.name)).toEqual(["FAMILY_PASSCODE", "SESSION_SECRET"]);
+    expect(requiredSettings(all, true).map((s) => s.name)).toEqual(["DATABASE_URL", "FAMILY_PASSCODE", "SESSION_SECRET"]);
+    expect(await readSettings(join(dir, "nope"))).toEqual([]);
+  });
+});

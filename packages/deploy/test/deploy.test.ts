@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { fixture } from "@karigor/profiles";
 import { Workspace } from "@karigor/sandbox";
-import { LocalDeploy, VercelDeploy, deploymentUrl, productionDeploymentId, productionUrl, projectSlug, releaseVersion, type VercelExec } from "../src/index.js";
+import { LocalDeploy, VercelDeploy, deploymentUrl, parseInspect, productionDeploymentId, productionUrl, projectSlug, releaseVersion, type VercelExec } from "../src/index.js";
 
 const started: LocalDeploy[] = [];
 afterEach(async () => {
@@ -156,43 +156,61 @@ describe("VercelDeploy", () => {
     expect(p.output).toMatch(/run `vercel login` once, or set VERCEL_TOKEN/);
   });
 
-  it("deploys, promotes (waiting for production to answer publicly) and rolls back by deployment id", async () => {
+  it("promotion waits for the new build, for the domain to point at it, then checks it publicly", async () => {
     process.env["DATABASE_URL"] = "libsql://secret-db.turso.io";
-    const { calls, exec } = scripted({
-      deploy: { stdout: "Vercel CLI\nhttps://toolshare-abc123-k2j3h4g5f-team.vercel.app\n" },
-      promote: { stdout: "> Successfully created new deployment of toolshare-abc123 at https://vercel.com/team/toolshare-abc123/4mFd6c4V66uCWqj8LhnoUxJvPpW5\n" },
-      rollback: { stdout: "Success!" },
-      inspect: { stdout: "  status   ● Ready\n" },
-    });
-    let prodTries = 0;
-    const f = (async (url: string) => {
-      if (url.startsWith("https://toolshare-abc123.vercel.app")) return new Response("ok", { status: ++prodTries < 3 ? 404 : 200 });
-      return new Response("ok", { status: 200 });
-    }) as unknown as typeof fetch;
-    const d = new VercelDeploy({ project: "toolshare-abc123", token: "tok-SECRET", exec, fetchImpl: f, healthPath: "/api/health", pollMs: 1 });
+    const newId = "D6aZWDtgxZJq94LEKw5X4GBZsbNR";
+    let builds = 0;
+    let aliasChecks = 0;
+    const calls: string[][] = [];
+    const exec: VercelExec = async (_f, args) => {
+      calls.push(args);
+      if (args[0] === "deploy") return { stdout: "https://toolshare-abc123-k2j3h4g5f-team.vercel.app\n", stderr: "", code: 0 };
+      if (args[0] === "promote") return { stdout: "", stderr: `> Successfully created new deployment of toolshare-abc123 at https://vercel.com/team/toolshare-abc123/${newId}\n`, code: 0 };
+      if (args[0] === "inspect" && args[1] === newId) {
+        const st = ++builds < 3 ? "Building" : "Ready";
+        return { stdout: "", stderr: `  General\n\n    id\t\tdpl_${newId}\n    status\t● ${st}\n\n  Aliases\n\n    ╶ https://toolshare-abc123.vercel.app\n    ╶ https://toolshare-abc123-team.vercel.app\n\n  Builds\n`, code: 0 };
+      }
+      if (args[0] === "inspect") {
+        // the domain still points at the old release for a while
+        const pointsAt = ++aliasChecks < 2 ? "dpl_OLDOLDOLDOLDOLDOLDOLD" : `dpl_${newId}`;
+        return { stdout: "", stderr: `    id\t\t${pointsAt}\n    status\t● Ready\n`, code: 0 };
+      }
+      return { stdout: "Success!", stderr: "", code: 0 };
+    };
+    const ok = (async () => new Response("ok", { status: 200 })) as unknown as typeof fetch;
+    const d = new VercelDeploy({ project: "toolshare-abc123", token: "tok-SECRET", exec, fetchImpl: ok, healthPath: "/api/health", pollMs: 1 });
     const r = { dir: "/w", version: "r1-abc1234", commit: "abc1234", key: "k" };
     const p = await d.preview(r);
     expect(p).toMatchObject({ ok: true, url: "https://toolshare-abc123-k2j3h4g5f-team.vercel.app" });
     expect(p.output).not.toMatch(/tok-SECRET|secret-db/);
-    expect(calls[0]).toEqual(expect.arrayContaining(["deploy", "/w", "--yes", "--project", "toolshare-abc123", "-e", "DATABASE_URL=libsql://secret-db.turso.io", "--token", "tok-SECRET"]));
+    expect(calls[0]).toEqual(expect.arrayContaining(["deploy", "/w", "--yes", "--target", "preview", "--project", "toolshare-abc123", "-e", "DATABASE_URL=libsql://secret-db.turso.io", "--token", "tok-SECRET"]));
     const live = await d.promote({ ...r, preview: p });
-    expect(live).toMatchObject({ ok: true, url: "https://toolshare-abc123.vercel.app", id: "4mFd6c4V66uCWqj8LhnoUxJvPpW5" });
-    expect(prodTries).toBe(3);
+    expect(live).toMatchObject({ ok: true, url: "https://toolshare-abc123.vercel.app", id: newId });
+    expect(builds).toBe(3);
+    expect(aliasChecks).toBe(2);
     const liveRel = { url: live.url!, id: live.id!, version: "r1" };
     expect((await d.verifyRollback({ dir: "/w", live: liveRel })).ok).toBe(true);
     expect((await d.rollback({ dir: "/w", live: liveRel })).ok).toBe(true);
-    expect(calls.find((c) => c[0] === "rollback")?.slice(0, 2)).toEqual(["rollback", "4mFd6c4V66uCWqj8LhnoUxJvPpW5"]);
+    expect(calls.find((c) => c[0] === "rollback")?.slice(0, 2)).toEqual(["rollback", newId]);
     expect((await d.rollback({ dir: "/w" })).ok).toBe(false);
     delete process.env["DATABASE_URL"];
   });
 
+  it("a production build that errors fails the promotion", async () => {
+    const exec: VercelExec = async (_f, args) =>
+      args[0] === "promote" ? { stdout: "at https://vercel.com/t/p/AAAAAAAAAAAAAAAAAAAAAAAA", stderr: "", code: 0 } : { stdout: "    id\t\tdpl_AAAAAAAAAAAAAAAAAAAAAAAA\n    status\t● Error\n", stderr: "", code: 0 };
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, pollMs: 1 });
+    const res = await d.promote({ dir: "/w", version: "r1", commit: "c", key: "k", preview: { ok: true, url: "https://p-x.vercel.app", output: "" } });
+    expect(res).toMatchObject({ ok: false, output: expect.stringMatching(/production build failed \(Error\)/) });
+  });
+
   it("production that never answers publicly fails the promotion", async () => {
-    const { exec } = scripted({ promote: { stdout: "ok" } });
+    const { exec } = scripted({ promote: { stdout: "at https://vercel.com/t/p/AAAAAAAAAAAAAAAAAAAAAAAA" }, inspect: { stdout: "    id\t\tdpl_AAAAAAAAAAAAAAAAAAAAAAAA\n    status\t● Ready\n" } });
     const login = (async () => new Response(null, { status: 302, headers: { location: "https://vercel.com/sso-api?url=x" } })) as unknown as typeof fetch;
-    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: login, productionWaitMs: 0 });
+    const d = new VercelDeploy({ project: "p", token: "tok-123", exec, fetchImpl: login, productionWaitMs: 0, pollMs: 1 });
     const res = await d.promote({ dir: "/w", version: "r1", commit: "c", key: "k", preview: { ok: true, url: "https://p-x.vercel.app", id: "https://p-x.vercel.app", output: "" } });
     expect(res.ok).toBe(false);
-    expect(res.output).toMatch(/did not answer publicly/);
+    expect(res.output).toMatch(/was not live in time \(checking/);
   });
 
   it("checks protected deployments with the project's bypass secret, read on demand and never shown", async () => {
@@ -222,6 +240,7 @@ describe("VercelDeploy", () => {
     expect(deploymentUrl('{"deployment":{"url":"a-b.vercel.app"}}')).toBe("https://a-b.vercel.app");
     expect(deploymentUrl("Preview: https://x-1.vercel.app [2s]\nhttps://x-2.vercel.app")).toBe("https://x-2.vercel.app");
     expect(productionUrl("aliased https://x-k2j3h4g5f-t.vercel.app and https://x.vercel.app", "x")).toBe("https://x.vercel.app");
+    expect(parseInspect("  General\n\n    id\t\tdpl_abc123\n    status\t● Ready\n\n  Aliases\n\n    ╶ https://x.vercel.app\n\n  Builds\n")).toEqual({ id: "dpl_abc123", status: "Ready", aliases: ["https://x.vercel.app"] });
     expect(productionDeploymentId("created new deployment of x at https://vercel.com/team/x/4mFd6c4V66uCWqj8LhnoUxJvPpW5")).toBe("4mFd6c4V66uCWqj8LhnoUxJvPpW5");
     expect(projectSlug("ToolShare: Neighbours' Tools!", "20261020-abcdef")).toBe("toolshare-neighbours-tools-abcdef");
     expect(projectSlug("A page where my family keeps one shared list", "p-x-01d1")).toBe("a-page-where-my-family-keeps-p-x-01d1".replace("p-x-01d1", "x-01d1"));

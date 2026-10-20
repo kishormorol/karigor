@@ -267,6 +267,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     if (view.decisions.length) main.append(decisionsCard());
     if (view.problem) main.append(el("div", { class: "card problem" }, el("h2", {}, "Something got in the way"), el("p", {}, view.problem), el("div", { class: "row" }, el("button", { class: "btn", onclick: resume }, "Try again"))));
     if (view.status === "finished" && view.summary) main.append(resultCard());
+    if (view.live && view.live.missingSettings && view.live.missingSettings.length) main.append(el("div", { class: "card problem" },
+      el("h2", {}, "Online, but not usable yet"),
+      el("p", {}, "It needs these settings where it is hosted before it can do its job. Whoever runs this Karigor can add them:"),
+      el("ul", {}, view.live.missingSettings.map((m) => el("li", {}, el("strong", {}, m.name), m.note ? ` — ${m.note}` : "")))));
     main.append(statusCard());
     requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight }));
   }

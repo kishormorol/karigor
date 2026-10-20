@@ -76,6 +76,20 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     expect(JSON.stringify(rb.meta.evidence)).toMatch(/first release/);
   });
 
+  it("a live release that still needs settings says so plainly instead of claiming it is ready", async () => {
+    const { root, projectId } = await fresh();
+    const deploy = local(root, projectId);
+    const agent = devAgent((id) => (id === "b1" ? { ".env.example": "# The passcode the family types once on each phone\nFAMILY_PASSCODE=\n" } : {}));
+    const state = await runProject(opts(root, projectId, deploy, agent));
+    expect(state.status).toBe("finished");
+    const prod = (await records(root, projectId, state)).at(-1)!;
+    expect(prod.missingSettings).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types once on each phone" }]);
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    expect((await store.readArtifact("summary", state.artifacts.summary!.at(-1)!)).body).toMatch(/## Before it can be used[\s\S]*FAMILY_PASSCODE/);
+    const { renderStatus } = await import("../src/index.js");
+    expect(await renderStatus(store, state)).toMatch(/cannot be used until these settings are added[\s\S]*FAMILY_PASSCODE: The passcode/);
+  });
+
   it("a release whose health check fails is never promoted; the ladder retries and stops with the reason", async () => {
     const { root, projectId } = await fresh();
     const deploy = local(root, projectId);

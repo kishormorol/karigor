@@ -15,3 +15,4 @@ export function profileFor(name: string): Profile {
   if (!p) throw new Error(`no target profile "${name}" is not implemented yet (have: ${Object.keys(PROFILES).join(", ")})`);
   return p;
 }
+export * from "./settings.js";

@@ -43,6 +43,8 @@ export interface DeployAdapter {
   checkUrl?(url: string): Promise<UrlCheck>;
   /** Bring a preview back if a crash took it down. */
   ensure?(r: { url: string; id: string }): Promise<void>;
+  /** Settings the released app needs that the target does not have. Names only; values are never read. */
+  missingSettings?(dir: string): Promise<{ name: string; note: string }[]>;
   /** Stop everything this adapter started. */
   stop(): Promise<void>;
 }

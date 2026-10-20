@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import type { CommandResult, UrlCheck } from "@karigor/gates";
+import { readSettings, requiredSettings } from "@karigor/profiles";
 import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./types.js";
 
 export type VercelExec = (file: string, args: string[], opts: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
@@ -90,27 +91,66 @@ export class VercelDeploy implements DeployAdapter {
   }
 
   /**
-   * Promoting a preview makes Vercel build it again for production, so production is polled until
-   * it answers. Production must answer publicly (no bypass): it is the link the person shares.
+   * Promoting a preview makes Vercel build it again for production. Live means: that new
+   * deployment is Ready, the public domain points at it (not at the release before), and the
+   * domain answers its health check without any bypass, because it is the link the person shares.
    */
   async promote(r: DeployRequest & { preview: DeployResult }): Promise<DeployResult> {
     if (!r.preview.url) return { ok: false, output: "no preview to promote" };
     const res = await this.cli(["promote", r.preview.url, "--yes", "--timeout", "5m"], r.dir);
     if (!res.ok) return { ok: false, output: res.output };
-    const id = productionDeploymentId(res.raw) ?? r.preview.id ?? r.preview.url;
-    const candidates = [...new Set([productionUrl(res.stdout, this.o.project), `https://${this.o.project}.vercel.app`].filter(Boolean) as string[])];
-    const deadline = Date.now() + (this.o.productionWaitMs ?? 8 * 60 * 1000);
-    let last = "";
+    const id = productionDeploymentId(res.raw);
+    if (!id) return { ok: false, output: `${res.output}\nthe new production deployment could not be identified` };
+    const deadline = Date.now() + (this.o.productionWaitMs ?? 10 * 60 * 1000);
+    const wait = () => new Promise((res) => setTimeout(res, this.o.pollMs ?? 5_000));
+    const same = (a?: string) => !!a && a.replace(/^dpl_/, "") === id.replace(/^dpl_/, "");
+    let step = "building";
+    let detail = "";
+    let domain = productionUrl(res.stdout, this.o.project) ?? `https://${this.o.project}.vercel.app`;
     for (;;) {
-      for (const url of candidates) {
-        const h = await publicCheck(`${url}${this.o.healthPath ?? ""}`, this.o.fetchImpl ?? fetch);
-        if (h.ok) return { ok: true, url, id, output: `${res.output}\n${url} answers publicly` };
-        last = `${url}: ${h.output.split("\n")[0]}`;
+      if (step === "building") {
+        const d = await this.inspect(id, r.dir);
+        detail = `deployment ${id}: ${d.status ?? "unknown"}`;
+        if (d.status && /error|canceled/i.test(d.status)) return { ok: false, id, url: domain, output: `${res.output}\nthe production build failed (${d.status})` };
+        if (d.status && /ready/i.test(d.status)) {
+          domain = d.aliases.find((a) => a === `https://${this.o.project}.vercel.app`) ?? d.aliases.sort((a, b) => a.length - b.length)[0] ?? domain;
+          step = "aliasing";
+        }
+      }
+      if (step === "aliasing") {
+        const d = await this.inspect(domain, r.dir);
+        detail = `${domain} points at ${d.id ?? "nothing yet"}`;
+        if (same(d.id)) step = "checking";
+      }
+      if (step === "checking") {
+        const h = await publicCheck(`${domain}${this.o.healthPath ?? ""}`, this.o.fetchImpl ?? fetch);
+        if (h.ok) return { ok: true, url: domain, id, output: `${res.output}\n${domain} now serves ${id} and answers publicly` };
+        detail = `${domain}: ${h.output.split("\n")[0]}`;
       }
       if (Date.now() >= deadline) break;
-      await new Promise((res) => setTimeout(res, this.o.pollMs ?? 5_000));
+      await wait();
     }
-    return { ok: false, url: candidates[0]!, id, output: `${res.output}\nproduction did not answer publicly in time (${last})` };
+    return { ok: false, url: domain, id, output: `${res.output}\nproduction was not live in time (${step}: ${detail})` };
+  }
+
+  async missingSettings(dir: string): Promise<{ name: string; note: string }[]> {
+    const required = requiredSettings(await readSettings(dir), true);
+    if (!required.length) return [];
+    const res = await this.cli(["env", "ls", "production", "--project", this.o.project, "--json"], dir);
+    let names: string[] = [];
+    try {
+      names = ((JSON.parse(res.stdout.slice(res.stdout.indexOf("{"))) as { envs?: { key: string }[] }).envs ?? []).map((e) => e.key);
+    } catch {
+      /* unknown: report everything as missing rather than claim it is set */
+    }
+    const passed = (this.o.envNames ?? DEFAULT_ENV_NAMES).filter((n) => process.env[n]);
+    return required.filter((s) => !names.includes(s.name) && !passed.includes(s.name)).map((s) => ({ name: s.name, note: s.note }));
+  }
+
+  /** What `vercel inspect` says about a deployment or a domain. */
+  private async inspect(target: string, cwd: string): Promise<{ id?: string; status?: string; aliases: string[] }> {
+    const res = await this.cli(["inspect", target], cwd);
+    return parseInspect(res.raw);
   }
 
   async rollback(r: { dir: string; live?: LiveRelease }): Promise<CommandResult> {
@@ -122,9 +162,9 @@ export class VercelDeploy implements DeployAdapter {
   /** The live production deployment still exists and is ready, so rolling back to it would work. */
   async verifyRollback(r: { dir: string; live?: LiveRelease }): Promise<CommandResult> {
     if (!r.live) return { ok: true, output: "first release: there is nothing earlier to go back to, and nothing is live that could break" };
-    const res = await this.cli(["inspect", r.live.id], r.dir);
-    const ready = res.ok && /\bReady\b|READY/.test(res.raw);
-    return ready ? { ok: true, output: `the live deployment ${r.live.version} (${r.live.id}) is ready, so going back to it works` } : { ok: false, output: `the live deployment ${r.live.version} cannot be found or is not ready:\n${res.output.slice(0, 1500)}` };
+    const d = await this.inspect(r.live.id, r.dir);
+    const ready = !!d.status && /ready/i.test(d.status);
+    return ready ? { ok: true, output: `the live deployment ${r.live.version} (${r.live.id}) is ready, so going back to it works` } : { ok: false, output: `the live deployment ${r.live.version} (${r.live.id}) cannot be found or is not ready (${d.status ?? "no answer"})` };
   }
 
   /** The project's automation bypass secret, read from Vercel when needed and kept in memory only. */
@@ -184,6 +224,15 @@ async function publicCheck(url: string, f: typeof fetch, headers: Record<string,
   } catch (e) {
     return { ok: false, status: 0, output: `request failed: ${(e as Error).message}` };
   }
+}
+
+/** id, status and aliases from `vercel inspect` text output. */
+export function parseInspect(text: string): { id?: string; status?: string; aliases: string[] } {
+  const id = /^\s*id\s+(dpl_[A-Za-z0-9]+)/m.exec(text)?.[1];
+  const status = /^\s*status\s+(?:●\s*)?([A-Za-z]+)/m.exec(text)?.[1];
+  const block = /Aliases\s*\n([\s\S]*?)(?:\n\s*\n\s*[A-Z]|$)/.exec(text)?.[1] ?? "";
+  const aliases = block.match(/https:\/\/[a-z0-9.-]+/gi) ?? [];
+  return { ...(id ? { id } : {}), ...(status ? { status } : {}), aliases };
 }
 
 /** The new production deployment's id from `vercel promote` output ("... at https://vercel.com/<team>/<project>/<id>"). */

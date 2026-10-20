@@ -29,6 +29,10 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
   if (state.cycle > 0 && state.status === "running") lines.push(`This is fix round ${state.cycle}: problems seen after release are being fixed.`);
   const live = await liveRecord(store, state);
   if (live && state.status !== "finished") lines.push(`Live version: ${live.version}${live.url ? ` at ${live.url}` : ""}.`);
+  if (live?.missingSettings?.length) {
+    lines.push("", "It is online but cannot be used until these settings are added where it is hosted:");
+    for (const m of live.missingSettings) lines.push(`  - ${m.name}${m.note ? `: ${m.note}` : ""}`);
+  }
   const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done");
   if (open.length) {
     lines.push("", `Problems and requests waiting to be handled: ${open.length}.`);
@@ -63,11 +67,11 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
 
 /** The production release that is live now, if any. */
 export async function liveRecord(store: FsStore, state: ProjectState) {
-  const stack: { version: string; url?: string }[] = [];
+  const stack: { version: string; url?: string; missingSettings?: { name: string; note: string }[] }[] = [];
   for (const id of state.artifacts["deploy-record"] ?? []) {
     const r = (await store.readArtifact("deploy-record", id).catch(() => undefined))?.meta;
     if (!r || r.environment !== "production") continue;
-    if (r.status === "deployed") stack.push({ version: r.version, ...(r.url ? { url: r.url } : {}) });
+    if (r.status === "deployed") stack.push({ version: r.version, ...(r.url ? { url: r.url } : {}), ...(r.missingSettings ? { missingSettings: r.missingSettings } : {}) });
     else if (r.status === "rolled-back") stack.pop();
   }
   return stack.at(-1);

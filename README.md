@@ -11,7 +11,11 @@ It is designed to cost nothing to try. Every step has a zero-dollar path (local 
 
 ## Status
 
-All six sub-projects of the first roadmap are in: the kernel, intake, the build crew, deploy and operate, the maintenance loop, and the chat UI with a Docker self-host. Everything below runs on mocks in the test suite at zero cost. The deploy path has been exercised on the real Next.js scaffold (install, build, start, health check, promote, verified rollback, about 36 seconds on a laptop), and Ollama structured output has been checked against a local model. A full idea-to-production run on a real model with the new release path has not been recorded yet; the build crew's last real run (17 October 2026) stopped at the release gate because deployment did not exist then.
+All six sub-projects of the first roadmap are in: the kernel, intake, the build crew, deploy and operate, the maintenance loop, and the chat UI with a Docker self-host.
+
+On 20 October 2026 a real run on a Claude Code login took "a page where my family keeps one shared shopping list" from idea to Vercel: the `linear` process, 12 backlog items built and reviewed, one lint failure caught and fixed, a preview checked behind Vercel's login, then promoted to a public `*.vercel.app` address. It cost nothing extra on the subscription (about USD 6.48 at API prices). The same run exposed real gaps, now fixed: Vercel needed the project created first and a framework declared; a protected preview's redirect to the login page must not count as healthy; and promotion must wait until the public address serves the new build, not the one before it. One gap is only reported, not solved: the app needed a family passcode, a signing secret and a hosted database, which nobody had set. Karigor now says so plainly ("online, but not usable yet", with the names of the settings) instead of calling it finished and working; supplying those values is still the person's or operator's job.
+
+The Docker image builds and serves the UI; it refuses to listen beyond localhost without a token.
 
 The packages:
 
@@ -78,7 +82,7 @@ VERCEL_TOKEN=... node packages/cli/dist/bin.js new "..." --deploy vercel --run
 node packages/cli/dist/bin.js watch <projectId> --every 15     # health and audit, fix rounds when needed
 ```
 
-The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project.
+The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project. Any other setting the app documents in its `.env.example` without a value (a passcode, a signing secret) must be added in the Vercel project's settings; `karigor status` lists the ones still missing after each release. Without `VERCEL_TOKEN`, the Vercel CLI's own login (`vercel login`) is used.
 
 ### After release
 

@@ -1,7 +1,7 @@
 import { appendFile, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CommandResult } from "@karigor/gates";
-import type { Profile } from "@karigor/profiles";
+import { readSettings, requiredSettings, type Profile } from "@karigor/profiles";
 import { Workspace, clip, run } from "@karigor/sandbox";
 import { freePort, startServer, type RunningServer } from "./server.js";
 import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./types.js";
@@ -172,6 +172,11 @@ export class LocalDeploy implements DeployAdapter {
     const s = await this.start(cur.version, await freePort());
     await s.server.stop();
     return s.ok ? { ok: true, output: `the live release ${cur.version} starts and answers its health check, so going back to it works` } : { ok: false, output: `the live release ${cur.version} no longer starts:\n${s.output}` };
+  }
+
+  /** On this computer a local database file is fine; settings with no default must be in the environment. */
+  async missingSettings(dir: string): Promise<{ name: string; note: string }[]> {
+    return requiredSettings(await readSettings(dir), false).filter((s) => !process.env[s.name]).map((s) => ({ name: s.name, note: s.note }));
   }
 
   /** Delete old releases, keeping the live one, its predecessors in history, and the newest few. */
