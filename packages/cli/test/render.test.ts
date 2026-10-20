@@ -20,7 +20,7 @@ describe("renderers", () => {
     expect(status).toMatch(/Link: https:\/\/toolshare.pages.dev/);
     expect(status).toMatch(/Work: 3 done, 0 in progress, 0 to do, 0 parked/);
     expect(status).toMatch(/Decisions made on your behalf/);
-    expect(status).toMatch(/- English only for now\./);
+    expect(status).toMatch(/- a3: English only for now\./);
     expect(await renderCost(store, state)).toMatch(/Spent USD 0.0000 of USD 0.00 \(free tier/);
     const story = await renderExplain(store, await store.readEvents());
     expect(story).toMatch(/Chose the "iterative" process; building a web-app/);

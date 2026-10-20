@@ -19,12 +19,13 @@ import {
 import { eventsFor, listTemplates, loadTemplate, next, scopeOf, workerStartEvent, type Action, type Outcome, type Template } from "@karigor/process";
 import { evaluate, type GateContext, type Sandbox } from "@karigor/gates";
 import type { Profile } from "@karigor/profiles";
-import { LocalSandbox, Workspace } from "@karigor/sandbox";
+import { LocalSandbox, Workspace, clip } from "@karigor/sandbox";
+import { releaseVersion, type DeployAdapter, type LiveRelease } from "@karigor/deploy";
 import { join } from "node:path";
 import { stat } from "node:fs/promises";
 import { ROLE_PRIORS, check, costOf, estimate, isFlatRate, record, type CostLedgerMeta } from "@karigor/budget";
 import type { CostEntry } from "@karigor/store";
-import { isProducingRole, makeJudge, runAgentWorker, runWorker, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
+import { isProducingRole, makeJudge, runAgentWorker, runWorker, summaryArtifact, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
 
 export interface RunOptions {
   root: string;
@@ -35,6 +36,8 @@ export interface RunOptions {
   /** With `agent`, a real workspace is created from this profile and the developer works in it. */
   profile?: Profile;
   agent?: AgentAdapter;
+  /** Where releases go. Needs a workspace (`profile` and `agent`). Without one, the release gate fails honestly. */
+  deploy?: DeployAdapter;
   /** Skip the profile's install step (tests). */
   skipInstall?: boolean;
   /** Chosen once, when the kernel asks. Defaults to `free` for mock/local adapters, else `cheap`. */
@@ -120,10 +123,13 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     const model = tier === "mock" ? "mock" : opts.adapter.modelFor(tier);
     return costOf({ inputTokens: p.inputTokens, outputTokens: p.outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 }, model);
   };
-  const budgetFor = (phase: string, role: Role, itemId?: string): WorkerBudget => ({
+  /** Maintenance cycles spend from their own slice (`m<cycle>:<phase>`), never from the first build's. */
+  const budgetPhase = (phase: string) => (state.cycle > 0 ? `m${state.cycle}:${phase}` : phase);
+  const budgetFor = (phaseName: string, role: Role, itemId?: string): WorkerBudget => ({
     allow: (tier) => {
+      const phase = budgetPhase(phaseName);
       if (!ledger) return { ok: true, reason: "no ledger yet" };
-      const r = check({ ledger, phase, estimatedCost: estimateCall(role, opts.adapter.name === "mock" ? "mock" : tier), tier, downgraded: state.downgradedPhases.includes(phase), parkableItems: itemId ? parkableItems() : 0 });
+      const r = check({ ledger, phase, estimatedCost: estimateCall(role, opts.adapter.name === "mock" ? "mock" : tier), tier, downgraded: state.downgradedPhases.includes(phaseName), parkableItems: itemId ? parkableItems() : 0 });
       return r.ok ? { ok: true, reason: r.reason } : { ok: false, action: r.action!, reason: r.reason };
     },
     record: (e) => {
@@ -138,7 +144,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
         cacheWriteTokens: e.usage.cacheWriteTokens,
         cost: costOf(e.usage, e.model),
         idempotencyKey: e.key,
-        phase,
+        phase: budgetPhase(phaseName),
         ...(e.costUsd !== undefined && isFlatRate(e.model) ? { apiEquivalentCost: e.costUsd } : {}),
       };
       if (ledger) ledger = record(ledger, entry);
@@ -165,8 +171,92 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
   const getSandbox = async (): Promise<Sandbox> => {
     if (sandbox) return sandbox;
     if (!opts.profile) throw new RunError("no sandbox and no profile: pass one of them");
-    sandbox = new LocalSandbox(await getWorkspace(), opts.profile);
+    const ws = await getWorkspace();
+    const deploy = opts.deploy;
+    sandbox = new LocalSandbox(ws, opts.profile, deploy ? { deploy: { verifyRollback: async () => deploy.verifyRollback({ dir: ws.dir, ...(await liveOrNone()) }), ...(deploy.checkUrl ? { checkUrl: (u: string) => deploy.checkUrl!(u) } : {}) } } : {});
     return sandbox;
+  };
+
+  // ---- releases (deploy and operate) ----------------------------------------
+  const deployRecords = async () => Promise.all((state.artifacts["deploy-record"] ?? []).map((id) => store.readArtifact("deploy-record", id)));
+  /** What is live in production now: each deployed production record goes on top, each rolled-back one comes off. */
+  const liveRelease = async (): Promise<LiveRelease | undefined> => {
+    const stack: LiveRelease[] = [];
+    for (const r of await deployRecords()) {
+      if (r.meta.environment !== "production") continue;
+      if (r.meta.status === "deployed" && r.meta.url) stack.push({ url: r.meta.url, id: r.meta.releaseId ?? r.meta.url, version: r.meta.version });
+      else if (r.meta.status === "rolled-back") stack.pop();
+    }
+    return stack.at(-1);
+  };
+  const liveOrNone = async (): Promise<{ live?: LiveRelease }> => {
+    const live = await liveRelease();
+    return live ? { live } : {};
+  };
+  const productionCount = async () => (await deployRecords()).filter((r) => r.meta.environment === "production" && r.meta.status === "deployed").length;
+  /** Deploy the workspace to a preview before the releaser describes it. Reused on resume by its key. */
+  const ensurePreview = async (key: string, phase: string) => {
+    const existing = (await deployRecords()).find((r) => r.meta.key === key);
+    if (existing) return existing;
+    const ws = await getWorkspace();
+    const commit = await ws.head();
+    const version = releaseVersion((await productionCount()) + 1, commit);
+    log(`  putting ${version} on a preview (${opts.deploy!.name})`);
+    const res = await opts.deploy!.preview({ dir: ws.dir, version, commit, key });
+    const record: Artifact = {
+      meta: { id: newId("deploy-record"), kind: "deploy-record", createdAt: clock().toISOString(), createdBy: "system", phase, target: opts.deploy!.name, environment: "preview", version, status: res.ok ? "deployed" : "failed", rollbackVerified: false, commit, key, ...(res.url ? { url: res.url } : {}), ...(res.id ? { releaseId: res.id } : {}) },
+      body: clip(res.output, 20_000),
+    };
+    await store.writeArtifact(record);
+    await append({ type: "artifact-written", by: "system", kind: "deploy-record", id: record.meta.id });
+    if (!res.ok) log(`  the preview failed: ${res.output.split("\n").at(-1) ?? ""}`);
+    return record as Awaited<ReturnType<typeof deployRecords>>[number];
+  };
+  /**
+   * After the release gates pass: make the preview the production release. A failed promotion
+   * goes back to what was live, files a critical work item, and stops with a plain reason.
+   */
+  const promote = async (): Promise<NewEvent[]> => {
+    const records = await deployRecords();
+    const preview = records.filter((r) => r.meta.environment === "preview" && r.meta.status === "deployed").at(-1);
+    if (!preview) return [{ type: "project-stopped", by: "system", reason: "there is no healthy preview to put live" }];
+    const key = `promote:${preview.meta.id}`;
+    if (records.some((r) => r.meta.key === key && r.meta.status === "deployed")) return [];
+    const ws = await getWorkspace();
+    const live = await liveRelease();
+    const version = preview.meta.version;
+    log(`  putting ${version} live`);
+    const res = await opts.deploy!.promote({ dir: ws.dir, version, commit: preview.meta.commit ?? (await ws.head()), key, preview: { ok: true, output: "", ...(preview.meta.url ? { url: preview.meta.url } : {}), ...(preview.meta.releaseId ? { id: preview.meta.releaseId } : {}) } });
+    const base = { createdAt: clock().toISOString(), createdBy: "system" as const, phase: "release", target: opts.deploy!.name, environment: "production" as const, version, key, ...(preview.meta.commit ? { commit: preview.meta.commit } : {}) };
+    if (res.ok) {
+      const record: Artifact = { meta: { id: newId("deploy-record"), kind: "deploy-record", ...base, status: "deployed", rollbackVerified: true, ...(res.url ? { url: res.url } : {}), ...(res.id ? { releaseId: res.id } : {}) }, body: clip(res.output, 20_000) };
+      await store.writeArtifact(record);
+      const events: NewEvent[] = [{ type: "artifact-written", by: "system", kind: "deploy-record", id: record.meta.id }];
+      await ws.tag(`karigor-release-${version}`, preview.meta.commit ?? "HEAD").catch(() => undefined);
+      const lastSummary = latestId("summary");
+      if (lastSummary && res.url) {
+        const s = (await store.readArtifact("summary", lastSummary)).meta;
+        const fresh = summaryArtifact(s, { id: newId("summary"), createdAt: clock().toISOString(), createdBy: "system", phase: "release" }, res.url);
+        fresh.body += `\nIt lives on ${opts.deploy!.describe()}.\n`;
+        await store.writeArtifact(fresh);
+        events.push({ type: "artifact-written", by: "system", kind: "summary", id: fresh.meta.id });
+      }
+      log(`  live: ${res.url ?? version}`);
+      return events;
+    }
+    const rb = await opts.deploy!.rollback({ dir: ws.dir, ...(live ? { live } : {}) });
+    const record: Artifact = { meta: { id: newId("deploy-record"), kind: "deploy-record", ...base, status: "rolled-back", rollbackVerified: rb.ok }, body: clip(`${res.output}\n\nRollback: ${rb.output}`, 20_000) };
+    await store.writeArtifact(record);
+    const work: Artifact = {
+      meta: { id: newId("work-item"), kind: "work-item", createdAt: clock().toISOString(), createdBy: "system", source: "downtime", severity: "critical", title: `Version ${version} failed after going live`, description: `The new version did not work once it was live, so ${live ? `the previous version (${live.version}) was put back` : "it was taken offline"}. What went wrong:\n\n${clip(res.output, 4_000)}`, status: "todo", fingerprint: `promote:${version}` },
+      body: clip(res.output, 10_000),
+    };
+    await store.writeArtifact(work);
+    return [
+      { type: "artifact-written", by: "system", kind: "deploy-record", id: record.meta.id },
+      { type: "signal-received", by: "system", workItemId: work.meta.id, source: "downtime", severity: "critical", fingerprint: `promote:${version}` },
+      { type: "project-stopped", by: "system", reason: `the new version failed after going live; ${live ? `the previous version (${live.version}) is back` : "it was taken offline"} and a fix is queued` },
+    ];
   };
   /** Parked or dropped work must not leak into the release. */
   const revertItem = async (itemId: string, reason: string) => {
@@ -248,148 +338,169 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
   await refreshBacklog();
   await loadLedger();
 
-  for (let step = 0; step < maxSteps; step++) {
-    if (state.status === "finished" || state.status === "stopped") break;
+  try {
+    for (let step = 0; step < maxSteps; step++) {
+      if (state.status === "finished" || state.status === "stopped") break;
 
-    // Before a template exists the machine cannot be consulted; the selector runs first.
-    if (!template) {
-      const key = "select#1:selector";
-      log("selecting a process and a target");
-      const { result } = await invoke("selector", key, "select");
-      let chosen = "iterative";
-      let profile = "web-app";
-      if (result.outcome === "ok" && "output" in result) {
-        const out = SelectorOutput.safeParse(result.output);
-        if (out.success && templates.some((t) => t.name === out.data.template && t.name !== "maintenance")) {
-          chosen = out.data.template;
-          profile = out.data.targetProfile;
-        }
-      }
-      await appendAll([
-        { type: "worker-finished", by: "system", role: "selector", key, attempt: Math.max(1, result.attempt), outcome: result.outcome, artifacts: result.outcome === "ok" ? result.artifacts.map((a) => ({ kind: a.meta.kind, id: a.meta.id })) : [], ...(result.error ? { error: result.error } : {}) },
-        { type: "template-selected", by: "selector", template: chosen, targetProfile: profile },
-      ]);
-      template = templates.find((t) => t.name === chosen)!;
-      await store.commit(`karigor: process ${chosen}, target ${profile}`);
-      continue;
-    }
-
-    const action = next({ template, state, backlog });
-    opts.onAction?.(action, state);
-    log(describeAction(action));
-
-    switch (action.type) {
-      case "idle":
-        break;
-      case "selectTemplate":
-        throw new RunError("machine asked for a template after one was selected");
-      case "chooseBudget": {
-        const tiers = estimate(template, { judgmentModel: opts.adapter.modelFor("judgment"), routineModel: opts.adapter.modelFor("routine"), freeModel: opts.adapter.name === "mock" ? "mock" : "ollama/local" });
-        const flat = isFlatRate(opts.adapter.modelFor("judgment"));
-        // Flat-rate providers (a subscription, a local model) cost nothing per call, so the strongest models are the sensible default.
-        const tier = opts.tier ?? (opts.adapter.name === "mock" ? "free" : flat ? "best" : "cheap");
-        const t = tiers.find((x) => x.tier === tier)!;
-        const id = newId("cost-ledger");
-        ledger = { id, kind: "cost-ledger", createdAt: clock().toISOString(), createdBy: "system", currency: t.currency, tier, budgetTotal: t.total, phaseBudgets: t.phaseBudgets, entries: pending.splice(0) };
-        await saveLedger();
-        await appendAll(eventsFor(action, { type: "chooseBudget", tier, ledgerId: id }));
-        log(`budget: ${tier} tier, ${t.currency} ${t.total.toFixed(2)}`);
-        break;
-      }
-      case "invokeRole": {
-        if (!isProducingRole(action.role)) throw new RunError(`template invokes "${action.role}", which is not a producing role`);
-        const { result, outcome } = await invoke(action.role, action.key, action.phase, action.itemId !== undefined ? { itemId: action.itemId } : {});
-        const batch = eventsFor(action, outcome);
-        if (result.outcome === "over-budget") {
-          if (result.budgetAction === "park" && action.itemId) {
-            await revertItem(action.itemId, "over budget");
-            batch.push({ type: "item-status", by: "system", itemId: action.itemId, status: "parked", reason: `over budget: ${result.error ?? ""}` });
-          } else batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
-        }
-        await appendAll(batch);
-        await refreshBacklog();
-        break;
-      }
-      case "shrinkItem": {
-        const { result, outcome } = await invoke("planner", action.key, action.phase, { itemId: action.itemId, purpose: "shrink" });
-        if (result.outcome === "ok") await revertItem(action.itemId, "replaced by smaller items");
-        const batch = eventsFor(action, outcome);
-        if (result.outcome === "over-budget") batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
-        await appendAll(batch);
-        await refreshBacklog();
-        break;
-      }
-      case "parkItem": {
-        await revertItem(action.itemId, "parked");
-        await appendAll(eventsFor(action, { type: "none" }));
-        break;
-      }
-      case "evaluateGate": {
-        const scope = state.entry ? scopeOf(state.entry.phase, state.entry.n) : "";
-        const produced: ArtifactRef[] = [];
-        for (const [key, w] of Object.entries(state.workers)) {
-          if (!key.startsWith(`${scope}:`)) continue;
-          const rest = key.slice(scope.length + 1);
-          const itemScoped = rest.includes(":");
-          if (action.itemId ? !rest.includes(`:${action.itemId}@`) : itemScoped) continue;
-          for (const id of w.artifactIds) {
-            const kind = kindOf(id);
-            if (kind) produced.push({ kind, id });
+      // Before a template exists the machine cannot be consulted; the selector runs first.
+      if (!template) {
+        const key = "select#1:selector";
+        log("selecting a process and a target");
+        const { result } = await invoke("selector", key, "select");
+        let chosen = "iterative";
+        let profile = "web-app";
+        if (result.outcome === "ok" && "output" in result) {
+          const out = SelectorOutput.safeParse(result.output);
+          if (out.success && templates.some((t) => t.name === out.data.template && t.name !== "maintenance")) {
+            chosen = out.data.template;
+            profile = out.data.targetProfile;
           }
         }
-        const judgeBudget = budgetFor(action.phase, action.gate === "skeptic-review" ? "skeptic" : "reviewer", action.itemId);
-        // The same gate's verdict from the previous attempt (previous phase entry, or previous item round).
-        let previousReview: GateContext["previousReview"];
-        {
-          const entry = state.entry!;
-          const prevKey = action.itemId !== undefined && action.round !== undefined && action.round > 0
-            ? `${scope}:${action.gate}:${action.itemId}@${action.round - 1}`
-            : action.itemId === undefined && entry.n > 1
-              ? `${scopeOf(entry.phase, entry.n - 1)}:${action.gate}`
-              : undefined;
-          const g = prevKey ? state.gates[prevKey] : undefined;
-          if (g) {
-            try {
-              const r = await store.readArtifact("gate-result", g.resultId);
-              previousReview = { verdict: r.meta.verdict, reasons: r.meta.reasons, minor: r.meta.minor };
-            } catch {
-              /* missing artifact: review without history */
+        await appendAll([
+          { type: "worker-finished", by: "system", role: "selector", key, attempt: Math.max(1, result.attempt), outcome: result.outcome, artifacts: result.outcome === "ok" ? result.artifacts.map((a) => ({ kind: a.meta.kind, id: a.meta.id })) : [], ...(result.error ? { error: result.error } : {}) },
+          { type: "template-selected", by: "selector", template: chosen, targetProfile: profile },
+        ]);
+        template = templates.find((t) => t.name === chosen)!;
+        await store.commit(`karigor: process ${chosen}, target ${profile}`);
+        continue;
+      }
+
+      const action = next({ template, state, backlog });
+      opts.onAction?.(action, state);
+      log(describeAction(action));
+
+      switch (action.type) {
+        case "idle":
+          break;
+        case "selectTemplate":
+          throw new RunError("machine asked for a template after one was selected");
+        case "chooseBudget": {
+          const tiers = estimate(template, { judgmentModel: opts.adapter.modelFor("judgment"), routineModel: opts.adapter.modelFor("routine"), freeModel: opts.adapter.name === "mock" ? "mock" : "ollama/local" });
+          const flat = isFlatRate(opts.adapter.modelFor("judgment"));
+          // Flat-rate providers (a subscription, a local model) cost nothing per call, so the strongest models are the sensible default.
+          const tier = opts.tier ?? (opts.adapter.name === "mock" ? "free" : flat ? "best" : "cheap");
+          const t = tiers.find((x) => x.tier === tier)!;
+          const id = newId("cost-ledger");
+          ledger = { id, kind: "cost-ledger", createdAt: clock().toISOString(), createdBy: "system", currency: t.currency, tier, budgetTotal: t.total, phaseBudgets: t.phaseBudgets, entries: pending.splice(0) };
+          await saveLedger();
+          await appendAll(eventsFor(action, { type: "chooseBudget", tier, ledgerId: id }));
+          log(`budget: ${tier} tier, ${t.currency} ${t.total.toFixed(2)}`);
+          break;
+        }
+        case "invokeRole": {
+          if (!isProducingRole(action.role)) throw new RunError(`template invokes "${action.role}", which is not a producing role`);
+          const extra: Partial<RoleContext> & { itemId?: string } = action.itemId !== undefined ? { itemId: action.itemId } : {};
+          if (action.role === "releaser" && opts.deploy) {
+            if (!agentic) throw new RunError("a deploy target needs a real workspace (a profile and a developer agent)");
+            extra.deploy = await ensurePreview(action.key, action.phase);
+            extra.deployTarget = opts.deploy.describe();
+          }
+          const { result, outcome } = await invoke(action.role, action.key, action.phase, extra);
+          const batch = eventsFor(action, outcome);
+          if (result.outcome === "over-budget") {
+            if (result.budgetAction === "park" && action.itemId) {
+              await revertItem(action.itemId, "over budget");
+              batch.push({ type: "item-status", by: "system", itemId: action.itemId, status: "parked", reason: `over budget: ${result.error ?? ""}` });
+            } else batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
+          }
+          await appendAll(batch);
+          await refreshBacklog();
+          break;
+        }
+        case "shrinkItem": {
+          const { result, outcome } = await invoke("planner", action.key, action.phase, { itemId: action.itemId, purpose: "shrink" });
+          if (result.outcome === "ok") await revertItem(action.itemId, "replaced by smaller items");
+          const batch = eventsFor(action, outcome);
+          if (result.outcome === "over-budget") batch.push({ type: "project-stopped", by: "system", reason: `out of budget: ${result.error ?? ""}` });
+          await appendAll(batch);
+          await refreshBacklog();
+          break;
+        }
+        case "parkItem": {
+          await revertItem(action.itemId, "parked");
+          await appendAll(eventsFor(action, { type: "none" }));
+          break;
+        }
+        case "evaluateGate": {
+          if (action.gate === "preview-healthy" && opts.deploy?.ensure) {
+            const p = (await deployRecords()).filter((r) => r.meta.environment === "preview").at(-1);
+            if (p?.meta.status === "deployed" && p.meta.url && p.meta.releaseId) await opts.deploy.ensure({ url: p.meta.url, id: p.meta.releaseId });
+          }
+          const scope = state.entry ? scopeOf(state.entry.phase, state.entry.n) : "";
+          const produced: ArtifactRef[] = [];
+          for (const [key, w] of Object.entries(state.workers)) {
+            if (!key.startsWith(`${scope}:`)) continue;
+            const rest = key.slice(scope.length + 1);
+            const itemScoped = rest.includes(":");
+            if (action.itemId ? !rest.includes(`:${action.itemId}@`) : itemScoped) continue;
+            for (const id of w.artifactIds) {
+              const kind = kindOf(id);
+              if (kind) produced.push({ kind, id });
             }
           }
+          const judgeBudget = budgetFor(action.phase, action.gate === "skeptic-review" ? "skeptic" : "reviewer", action.itemId);
+          // The same gate's verdict from the previous attempt (previous phase entry, or previous item round).
+          let previousReview: GateContext["previousReview"];
+          {
+            const entry = state.entry!;
+            const prevKey = action.itemId !== undefined && action.round !== undefined && action.round > 0
+              ? `${scope}:${action.gate}:${action.itemId}@${action.round - 1}`
+              : action.itemId === undefined && entry.n > 1
+                ? `${scopeOf(entry.phase, entry.n - 1)}:${action.gate}`
+                : undefined;
+            const g = prevKey ? state.gates[prevKey] : undefined;
+            if (g) {
+              try {
+                const r = await store.readArtifact("gate-result", g.resultId);
+                previousReview = { verdict: r.meta.verdict, reasons: r.meta.reasons, minor: r.meta.minor };
+              } catch {
+                /* missing artifact: review without history */
+              }
+            }
+          }
+          const ctx: GateContext = {
+            gate: action.gate,
+            key: action.key,
+            phase: action.phase,
+            state,
+            store,
+            sandbox: await getSandbox(),
+            judge: makeJudge(opts.adapter, judgeBudget),
+            produced,
+            clock,
+            makeId: newId,
+            budgetCheck: () => {
+              const a = budgetFor(action.phase, "developer", action.itemId).allow("routine");
+              return { ok: a.ok, reason: a.reason };
+            },
+            ...(previousReview ? { previousReview } : {}),
+            ...(action.itemId !== undefined ? { itemId: action.itemId } : {}),
+            ...(action.round !== undefined ? { round: action.round } : {}),
+            ...(action.transitionTo !== undefined ? { transitionTo: action.transitionTo } : {}),
+            ...(action.itemId !== undefined && backlog.find((b) => b.id === action.itemId) ? { backlogItem: backlog.find((b) => b.id === action.itemId)! } : {}),
+          };
+          const r = await evaluate(ctx);
+          await saveLedger();
+          const extras: ArtifactRef[] = r.artifactIds.filter((id) => id !== r.resultId).map((id) => ({ kind: "test-report" as const, id }));
+          await appendAll(eventsFor(action, { type: "gate", verdict: r.verdict, resultId: r.resultId, artifacts: extras }));
+          if (r.verdict === "fail") log(`  gate ${action.gate} failed: ${r.reasons.join("; ")}`);
+          break;
         }
-        const ctx: GateContext = {
-          gate: action.gate,
-          key: action.key,
-          phase: action.phase,
-          state,
-          store,
-          sandbox: await getSandbox(),
-          judge: makeJudge(opts.adapter, judgeBudget),
-          produced,
-          clock,
-          makeId: newId,
-          budgetCheck: () => {
-            const a = budgetFor(action.phase, "developer", action.itemId).allow("routine");
-            return { ok: a.ok, reason: a.reason };
-          },
-          ...(previousReview ? { previousReview } : {}),
-          ...(action.itemId !== undefined ? { itemId: action.itemId } : {}),
-          ...(action.round !== undefined ? { round: action.round } : {}),
-          ...(action.transitionTo !== undefined ? { transitionTo: action.transitionTo } : {}),
-          ...(action.itemId !== undefined && backlog.find((b) => b.id === action.itemId) ? { backlogItem: backlog.find((b) => b.id === action.itemId)! } : {}),
-        };
-        const r = await evaluate(ctx);
-        await saveLedger();
-        const extras: ArtifactRef[] = r.artifactIds.filter((id) => id !== r.resultId).map((id) => ({ kind: "test-report" as const, id }));
-        await appendAll(eventsFor(action, { type: "gate", verdict: r.verdict, resultId: r.resultId, artifacts: extras }));
-        if (r.verdict === "fail") log(`  gate ${action.gate} failed: ${r.reasons.join("; ")}`);
-        break;
+        case "transition": {
+          const batch = opts.deploy && agentic && template.phases[action.to]?.terminal ? await promote() : [];
+          if (batch.some((e) => e.type === "project-stopped")) await appendAll(batch);
+          else await appendAll([...batch, ...eventsFor(action, { type: "none" })]);
+          break;
+        }
+        default:
+          await appendAll(eventsFor(action, { type: "none" }));
       }
-      default:
-        await appendAll(eventsFor(action, { type: "none" }));
+      await store.commit(`karigor: ${describeAction(action)}`);
+      if (action.type === "idle") break;
     }
-    await store.commit(`karigor: ${describeAction(action)}`);
-    if (action.type === "idle") break;
+  } finally {
+    // Previews do not outlive the run; production is served by `karigor serve` or the hosting target.
+    await opts.deploy?.stop();
   }
   if (state.status !== "finished" && state.status !== "stopped") throw new RunError(`run did not settle within ${maxSteps} steps`);
   return state;

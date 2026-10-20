@@ -21,9 +21,20 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
     case "finished": {
       const ids = state.artifacts.summary ?? [];
       const summary = ids.length ? await store.readArtifact("summary", ids[ids.length - 1]!) : undefined;
-      lines.push(`Status: finished. ${summary?.meta.headline ?? ""}`.trim());
+      lines.push(`Status: ${state.cycle > 0 ? `updated (fix round ${state.cycle})` : "finished"}. ${summary?.meta.headline ?? ""}`.trim());
       if (summary?.meta.url) lines.push(`Link: ${summary.meta.url}`);
       break;
+    }
+  }
+  if (state.cycle > 0 && state.status === "running") lines.push(`This is fix round ${state.cycle}: problems seen after release are being fixed.`);
+  const live = await liveRecord(store, state);
+  if (live && state.status !== "finished") lines.push(`Live version: ${live.version}${live.url ? ` at ${live.url}` : ""}.`);
+  const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done");
+  if (open.length) {
+    lines.push("", `Problems and requests waiting to be handled: ${open.length}.`);
+    for (const [id] of open.slice(0, 10)) {
+      const w = await store.readArtifact("work-item", id).catch(() => undefined);
+      if (w) lines.push(`  - ${w.meta.title ?? w.meta.description.split("\n")[0]}`);
     }
   }
   if (state.template) lines.push(`Process: ${state.template}; building a ${state.targetProfile ?? "?"}.`);
@@ -45,9 +56,21 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
   if (ledgerId) {
     const ledger = await store.readArtifact("ledger", ledgerId);
     lines.push("", "Decisions made on your behalf (tell us if any is wrong):");
-    for (const a of ledger.meta.assumptions) lines.push(`  - ${a.decision}`);
+    for (const a of ledger.meta.assumptions) lines.push(`  - ${a.id}: ${state.corrections[a.id] ? `${state.corrections[a.id]} (you corrected this)` : a.decision}`);
   }
   return lines.join("\n") + "\n";
+}
+
+/** The production release that is live now, if any. */
+export async function liveRecord(store: FsStore, state: ProjectState) {
+  const stack: { version: string; url?: string }[] = [];
+  for (const id of state.artifacts["deploy-record"] ?? []) {
+    const r = (await store.readArtifact("deploy-record", id).catch(() => undefined))?.meta;
+    if (!r || r.environment !== "production") continue;
+    if (r.status === "deployed") stack.push({ version: r.version, ...(r.url ? { url: r.url } : {}) });
+    else if (r.status === "rolled-back") stack.pop();
+  }
+  return stack.at(-1);
 }
 
 export async function renderCost(store: FsStore, state: ProjectState): Promise<string> {
@@ -107,6 +130,26 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
         lines.push(`${t} Finished.`);
         break;
       case "artifact-written":
+        if (e.kind === "deploy-record") {
+          try {
+            const r = (await store.readArtifact("deploy-record", e.id)).meta;
+            const where = r.environment === "preview" ? "a preview" : "production";
+            lines.push(`${t}   ${r.status === "deployed" ? `Put ${r.version} on ${where}${r.url ? ` at ${r.url}` : ""}` : r.status === "failed" ? `Could not put ${r.version} on ${where}` : `${r.version} failed after going live and was taken back`}.`);
+          } catch {
+            /* artifact missing */
+          }
+        }
+        break;
+      case "signal-received": {
+        const w = await store.readArtifact("work-item", e.workItemId).catch(() => undefined);
+        lines.push(`${t} ${e.source === "feedback" ? "Feedback received" : `Noticed a problem (${e.source}, ${e.severity})`}: ${w?.meta.title ?? w?.meta.description.split("\n")[0] ?? e.workItemId}.`);
+        break;
+      }
+      case "maintenance-started":
+        lines.push(`${t} Started fix round ${e.cycle} for ${e.workItemIds.length} problem${e.workItemIds.length === 1 ? "" : "s"} or request${e.workItemIds.length === 1 ? "" : "s"}.`);
+        break;
+      case "assumption-corrected":
+        lines.push(`${t} You corrected decision ${e.assumptionId}: ${e.correctedTo}.`);
         break;
     }
   }

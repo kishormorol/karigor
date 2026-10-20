@@ -35,6 +35,9 @@ importers:
       '@karigor/budget':
         specifier: workspace:*
         version: link:../budget
+      '@karigor/deploy':
+        specifier: workspace:*
+        version: link:../deploy
       '@karigor/gates':
         specifier: workspace:*
         version: link:../gates
