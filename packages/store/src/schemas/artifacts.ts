@@ -129,6 +129,12 @@ export const DeployRecordMeta = meta("deploy-record", {
   version: z.string().min(1),
   status: z.enum(["deployed", "failed", "rolled-back"]),
   rollbackVerified: z.boolean(),
+  /** Workspace commit that was deployed. */
+  commit: z.string().optional(),
+  /** The target's own id for the deployment (a release directory, a Vercel deployment id). */
+  releaseId: z.string().optional(),
+  /** What caused this record (the releaser's key, or `promote:<preview record>`), so a resumed run does not deploy twice. */
+  key: z.string().optional(),
 });
 
 // ---- cost ledger --------------------------------------------------------
@@ -167,11 +173,18 @@ export const SummaryMeta = meta("summary", {
 });
 
 // ---- work item (maintenance) -------------------------------------------
+export const WorkItemSourceSchema = z.enum(["error", "downtime", "dependency", "feedback", "manual"]);
+export const SeveritySchema = z.enum(["low", "medium", "high", "critical"]);
 export const WorkItemMeta = meta("work-item", {
-  source: z.enum(["error", "downtime", "dependency", "feedback", "manual"]),
-  severity: z.enum(["low", "medium", "high", "critical"]),
+  source: WorkItemSourceSchema,
+  severity: SeveritySchema,
+  /** One line, plain language. */
+  title: z.string().min(1).optional(),
   description: z.string().min(1),
+  /** Status when written. The live status is in the event log (`state.workItems`). */
   status: ItemStatusSchema.default("todo"),
+  /** Same fingerprint while open means the same problem; it is not filed twice. */
+  fingerprint: z.string().min(1).optional(),
 });
 
 // ---- change (what a developer produced for an item) --------------------

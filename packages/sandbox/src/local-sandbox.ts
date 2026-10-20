@@ -9,6 +9,11 @@ export interface LocalSandboxOptions {
   fetchImpl?: typeof fetch;
   /** Largest diff handed to reviewers, in characters. */
   maxDiffChars?: number;
+  /** The deploy target, when one is configured: it verifies rollbacks and may check URLs its own way. */
+  deploy?: {
+    verifyRollback(): Promise<CommandResult>;
+    checkUrl?(url: string): Promise<UrlCheck>;
+  };
 }
 
 /** Runs the profile's real commands in the workspace. */
@@ -59,24 +64,31 @@ export class LocalSandbox implements Sandbox {
   }
 
   async checkUrl(url: string): Promise<UrlCheck> {
-    const f = this.opts.fetchImpl ?? fetch;
-    try {
-      const res = await f(url, { method: "GET", redirect: "follow", signal: AbortSignal.timeout(15_000) });
-      const body = (await res.text()).slice(0, 300);
-      return { ok: res.status < 400, status: res.status, output: `${res.status} ${res.statusText}\n${body}` };
-    } catch (e) {
-      return { ok: false, status: 0, output: `request failed: ${(e as Error).message}` };
-    }
+    if (this.opts.deploy?.checkUrl) return this.opts.deploy.checkUrl(url);
+    return checkUrl(url, this.opts.fetchImpl);
   }
 
   async verifyRollback(): Promise<CommandResult> {
-    return { ok: false, output: "no deploy adapter is configured, so a rollback cannot be verified; deployment arrives in a later Karigor release" };
+    if (this.opts.deploy) return this.opts.deploy.verifyRollback();
+    return { ok: false, output: "no deploy target is configured, so a rollback cannot be verified" };
   }
 
   /** An item's own commits only; without an item, everything since the baseline. */
   async diff(itemId?: string): Promise<string> {
     const d = itemId ? await this.workspace.showCommits(await this.workspace.itemCommits(itemId)) : await this.workspace.diff(await this.workspace.baseline());
     return clip(d, this.opts.maxDiffChars ?? 200_000);
+  }
+}
+
+/** A plain GET with a timeout; any status below 400 is healthy. */
+export async function checkUrl(url: string, fetchImpl?: typeof fetch, timeoutMs = 15_000): Promise<UrlCheck> {
+  const f = fetchImpl ?? fetch;
+  try {
+    const res = await f(url, { method: "GET", redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+    const body = (await res.text()).slice(0, 300);
+    return { ok: res.status < 400, status: res.status, output: `${res.status} ${res.statusText}\n${body}` };
+  } catch (e) {
+    return { ok: false, status: 0, output: `request failed: ${(e as Error).message}` };
   }
 }
 

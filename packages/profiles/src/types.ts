@@ -16,6 +16,8 @@ export interface ProfileCommands {
   build?: string[];
   /** Dependency audit; prints JSON. Omit to skip. */
   audit?: string[];
+  /** Serve a built release. Run with `PORT` set; must keep running. Omit when the profile cannot be served. */
+  start?: string[];
 }
 
 export interface Profile {
@@ -27,4 +29,6 @@ export interface Profile {
   parseTests(stdout: string, stderr: string, exitCode: number | null): TestCounts;
   /** Markdown the architect and developer read: conventions, where things go, how to test. */
   stackGuide: string;
+  /** Path a running release answers with a 2xx when it is healthy. */
+  healthPath?: string;
 }

@@ -1,4 +1,4 @@
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import type { Profile } from "@karigor/profiles";
 import { run, type ExecResult } from "./exec.js";
 
@@ -58,6 +58,21 @@ export class Workspace {
 
   async baseline(): Promise<string> {
     return (await this.must(["rev-parse", `${BASELINE_TAG}^{commit}`], "baseline")).trim();
+  }
+
+  /** Name a commit (a release). Re-tagging the same name moves it. */
+  async tag(name: string, commit = "HEAD"): Promise<void> {
+    await this.must(["tag", "-f", name, commit], "git tag");
+  }
+
+  /** Write the tree of a commit into an empty directory, without git metadata. */
+  async exportTo(commit: string, dir: string): Promise<void> {
+    await mkdir(dir, { recursive: true });
+    const tar = `${dir}.tar`;
+    await this.must(["archive", "--format=tar", "-o", tar, commit], "git archive", 120_000);
+    const r = await run("tar", ["-xf", tar, "-C", dir], { cwd: this.dir, timeoutMs: 120_000 });
+    await rm(tar, { force: true });
+    if (r.code !== 0) throw new WorkspaceError(`could not unpack ${commit}: ${(r.stderr || r.stdout).trim()}`);
   }
 
   async isClean(): Promise<boolean> {

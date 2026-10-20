@@ -40,6 +40,49 @@ describe("replay", () => {
     expect(s.lastSeq).toBe(12);
   });
 
+  it("signals open work items; a maintenance cycle resets failure counters and closes its items on finish", () => {
+    n = 0;
+    const s = replay("p1", [
+      ev({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" }),
+      ev({ type: "template-selected", by: "selector", template: "iterative", targetProfile: "web-app" }),
+      ev({ type: "budget-chosen", by: "user", tier: "free", ledgerId: "cost-1" }),
+      ev({ type: "phase-entered", by: "system", phase: "build" }),
+      ev({ type: "gate-evaluated", by: "system", gate: "lint-clean", key: "build#1:lint-clean", verdict: "fail", resultId: "gate-1", artifacts: [] }),
+      ev({ type: "project-finished", by: "system" }),
+      ev({ type: "signal-received", by: "system", workItemId: "work-1", source: "feedback", severity: "medium", fingerprint: "feedback:a" }),
+      ev({ type: "signal-received", by: "system", workItemId: "work-2", source: "downtime", severity: "critical", fingerprint: "downtime" }),
+      ev({ type: "assumption-corrected", by: "user", assumptionId: "a2", correctedTo: "Bangla and English", ledgerId: "ledger-9" }),
+    ]);
+    expect(s.workItems["work-1"]).toEqual({ status: "todo", severity: "medium", fingerprint: "feedback:a" });
+    expect(s.corrections).toEqual({ a2: "Bangla and English" });
+    expect(s.artifacts.ledger).toEqual(["ledger-9"]);
+    const events: Event[] = [];
+    n = 0;
+    events.push(
+      ev({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" }),
+      ev({ type: "template-selected", by: "selector", template: "iterative", targetProfile: "web-app" }),
+      ev({ type: "budget-chosen", by: "user", tier: "free", ledgerId: "cost-1" }),
+      ev({ type: "phase-entered", by: "system", phase: "build" }),
+      ev({ type: "gate-evaluated", by: "system", gate: "lint-clean", key: "build#1:lint-clean", verdict: "fail", resultId: "gate-1", artifacts: [] }),
+      ev({ type: "project-finished", by: "system" }),
+      ev({ type: "signal-received", by: "system", workItemId: "work-1", source: "feedback", severity: "medium", fingerprint: "feedback:a" }),
+      ev({ type: "maintenance-started", by: "system", cycle: 1, template: "maintenance", workItemIds: ["work-1"] }),
+    );
+    const during = replay("p1", events);
+    expect(during).toMatchObject({ status: "running", template: "maintenance", cycle: 1, failures: 0, phaseFails: {} });
+    expect(during.entry).toBeUndefined();
+    expect(during.phaseEntries).toEqual({ build: 1 });
+    expect(during.workItems["work-1"]).toMatchObject({ status: "in-progress", cycle: 1 });
+    events.push(
+      ev({ type: "signal-received", by: "system", workItemId: "work-2", source: "error", severity: "medium", fingerprint: "error:x" }),
+      ev({ type: "phase-entered", by: "system", phase: "triage" }),
+      ev({ type: "project-finished", by: "system" }),
+    );
+    const after = replay("p1", events);
+    expect(after.workItems["work-1"]?.status).toBe("done");
+    expect(after.workItems["work-2"]?.status).toBe("todo");
+  });
+
   it("records a stop reason", () => {
     n = 0;
     const s = replay("p1", [

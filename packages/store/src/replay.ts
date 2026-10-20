@@ -37,6 +37,14 @@ export interface PhaseEntry {
   seq: number;
 }
 
+export interface WorkItemState {
+  status: ItemStatus;
+  severity: "low" | "medium" | "high" | "critical";
+  fingerprint: string;
+  /** Maintenance cycle that took it on, once one has. */
+  cycle?: number;
+}
+
 export interface ProjectState {
   projectId: string;
   status: ProjectStatus;
@@ -65,6 +73,12 @@ export interface ProjectState {
   artifacts: Partial<Record<ArtifactKind, string[]>>;
   lastSeq: number;
   stopReason?: string;
+  /** Production signals and feedback, keyed by work-item artifact id. */
+  workItems: Record<string, WorkItemState>;
+  /** 0 for the first build; n for the nth maintenance cycle. */
+  cycle: number;
+  /** Corrections from the person, keyed by assumption id. */
+  corrections: Record<string, string>;
 }
 
 export function emptyState(projectId: string): ProjectState {
@@ -81,6 +95,9 @@ export function emptyState(projectId: string): ProjectState {
     downgradedPhases: [],
     artifacts: {},
     lastSeq: -1,
+    workItems: {},
+    cycle: 0,
+    corrections: {},
   };
 }
 
@@ -174,6 +191,36 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       break;
     case "project-finished":
       s.status = "finished";
+      for (const w of Object.values(s.workItems)) if (w.cycle === s.cycle && w.status !== "done") w.status = "done";
+      break;
+    case "signal-received":
+      register(s, "work-item", e.workItemId);
+      s.workItems[e.workItemId] = { status: "todo", severity: e.severity, fingerprint: e.fingerprint };
+      break;
+    case "maintenance-started": {
+      s.cycle = e.cycle;
+      s.template = e.template;
+      s.status = "running";
+      delete s.stopReason;
+      delete s.entry;
+      delete s.phase;
+      delete s.sprint;
+      // A new cycle gets a fresh failure budget; scope keys stay unique because phase entry counts are kept.
+      s.failures = 0;
+      s.phaseFails = {};
+      s.downgradedPhases = [];
+      for (const id of e.workItemIds) {
+        const w = s.workItems[id];
+        if (w) {
+          w.status = "in-progress";
+          w.cycle = e.cycle;
+        }
+      }
+      break;
+    }
+    case "assumption-corrected":
+      s.corrections[e.assumptionId] = e.correctedTo;
+      register(s, "ledger", e.ledgerId);
       break;
   }
   return s;

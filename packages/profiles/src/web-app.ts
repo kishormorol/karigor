@@ -18,6 +18,7 @@ Where things go:
 Conventions:
 - Every backlog item adds or changes tests for its acceptance criteria; test pure logic directly and route handlers by calling the exported function with a \`Request\`.
 - Forms work without JavaScript first (server actions), then get enhanced.
+- \`app/api/health/route.ts\` is how deployments know the app is up. Keep it answering 200 and cheap; do not make it depend on the database.
 - Never hard-code secrets. Read configuration from \`process.env\` and document new variables in \`.env.example\`.
 - Mobile first: layouts must read well on a phone; use Tailwind's responsive classes.
 - Keep dependencies to what is already installed unless an item truly needs more; if you add one, say why in your summary.
@@ -36,7 +37,9 @@ export const webApp: Profile = {
     lint: ["pnpm", "lint"],
     build: ["pnpm", "build"],
     audit: ["pnpm", "audit", "--json", "--audit-level", "high"],
+    start: ["pnpm", "start"],
   },
+  healthPath: "/api/health",
   parseTests: parseVitestJson,
   stackGuide: WEB_APP_STACK_GUIDE,
 };

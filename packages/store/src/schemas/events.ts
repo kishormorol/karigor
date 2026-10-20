@@ -10,6 +10,7 @@ import {
   ModelTierSchema,
   RoleSchema,
 } from "./common.js";
+import { SeveritySchema, WorkItemSourceSchema } from "./artifacts.js";
 
 const ev = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
   z.object({
@@ -63,6 +64,21 @@ export const EventSchema = z.discriminatedUnion("type", [
   ev("item-status", { itemId: z.string().min(1), status: ItemStatusSchema, reason: z.string().optional() }),
   ev("budget-downgraded", { phase: z.string().min(1), from: ModelTierSchema, to: ModelTierSchema }),
   ev("project-stopped", { reason: z.string().min(1) }),
+  /** A production signal or the person's feedback became an open work item. */
+  ev("signal-received", {
+    workItemId: Id,
+    source: WorkItemSourceSchema,
+    severity: SeveritySchema,
+    fingerprint: z.string().min(1),
+  }),
+  /** A released project re-enters the kernel to fix open work items. */
+  ev("maintenance-started", {
+    cycle: z.number().int().positive(),
+    template: z.string().min(1),
+    workItemIds: z.array(Id).min(1),
+  }),
+  /** The person corrected a decision made on their behalf. */
+  ev("assumption-corrected", { assumptionId: z.string().min(1), correctedTo: z.string().min(1), ledgerId: Id }),
   ev("project-finished", {}),
 ]);
 export type Event = z.infer<typeof EventSchema>;
