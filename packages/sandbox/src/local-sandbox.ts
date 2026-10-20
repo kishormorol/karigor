@@ -95,8 +95,11 @@ export async function checkUrl(url: string, fetchImpl?: typeof fetch, timeoutMs 
 /** pnpm/npm audit JSON: either `advisories` (classic) or `vulnerabilities` (npm 7+). High and critical only. */
 export function parseAudit(stdout: string): SecurityFinding[] {
   const out: SecurityFinding[] = [];
-  const line = stdout.split("\n").find((l) => l.trim().startsWith("{"));
-  if (!line) return out;
+  // pnpm prints the report as indented JSON over many lines, sometimes after other output.
+  const start = stdout.indexOf("{");
+  const end = stdout.lastIndexOf("}");
+  if (start < 0 || end < start) return out;
+  const line = stdout.slice(start, end + 1);
   let j: { advisories?: Record<string, { severity?: string; title?: string; module_name?: string }>; vulnerabilities?: Record<string, { severity?: string; name?: string; via?: unknown[] }> };
   try {
     j = JSON.parse(line);

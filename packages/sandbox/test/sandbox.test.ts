@@ -112,6 +112,9 @@ describe("LocalSandbox", () => {
     const modern = JSON.stringify({ vulnerabilities: { minimist: { severity: "critical", name: "minimist" }, other: { severity: "moderate", name: "other" } } });
     expect(parseAudit(modern)).toEqual([{ severity: "critical", title: "minimist: vulnerable version", location: "package.json" }]);
     expect(parseAudit("not json")).toEqual([]);
+    // what pnpm really prints: indented JSON over many lines, sometimes after a warning
+    const real = "WARN some notice\n" + JSON.stringify({ actions: [], advisories: { 1116251: { severity: "high", title: "SQL injection via identifiers", module_name: "drizzle-orm", findings: [{ version: "0.44.7" }] } }, metadata: {} }, null, 2) + "\n";
+    expect(parseAudit(real)).toEqual([{ severity: "high", title: "drizzle-orm: SQL injection via identifiers", location: "package.json" }]);
   });
 
   it("secrets scan skips binaries, lockfiles and example env files", async () => {
