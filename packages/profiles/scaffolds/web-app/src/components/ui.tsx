@@ -92,17 +92,41 @@ export function Card({ title, actions, children, className, padded = true }: { t
   );
 }
 
-/** One row in a list inside a Card (padded = false): avatar, text, then whatever is on the right. */
-export function ListRow({ leading, title, detail, children }: { leading?: ReactNode; title: ReactNode; detail?: ReactNode; children?: ReactNode }) {
+/**
+ * One row in a list inside a Card (padded = false): avatar, name and detail, then a `status`
+ * (a Badge), an `amount` (an Amount) and an `action` (a button). On a phone, status and amount
+ * share one line under the name and the action sits below them; on wider screens it is one row
+ * with the amounts lined up. Anything else can go in `children`.
+ */
+export function ListRow({ leading, title, detail, status, amount, action, children }: { leading?: ReactNode; title: ReactNode; detail?: ReactNode; status?: ReactNode; amount?: ReactNode; action?: ReactNode; children?: ReactNode }) {
+  const indent = leading ? "pl-14 sm:pl-0" : undefined;
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-line/70 px-5 py-3.5 last:border-b-0">
-      {leading}
-      <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-0.5">
-        <span className="text-[15px] font-semibold">{title}</span>
-        {detail && <span className="text-[13px] text-muted">{detail}</span>}
+    <div className="flex flex-col gap-3 border-b border-line/70 px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        {leading}
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-[15px] font-semibold">{title}</span>
+          {detail && <span className="text-[13px] text-muted">{detail}</span>}
+        </div>
       </div>
-      {children}
+      {(status || amount) && (
+        <div className={cx("flex items-center justify-between gap-3 sm:justify-end", indent)}>
+          {status ?? <span />}
+          {amount && <span className="sm:w-24 sm:text-right">{amount}</span>}
+        </div>
+      )}
+      {action && <div className={cx("flex flex-wrap gap-2", indent)}>{action}</div>}
+      {children && <div className={cx("flex flex-wrap items-center gap-3", indent)}>{children}</div>}
     </div>
+  );
+}
+
+/** An amount of money, always shown the same way. `tone` colours it: owed red, paid green. */
+export function Amount({ value, tone = "neutral", size = "md" }: { value: number; tone?: "neutral" | "owed" | "paid" | "muted"; size?: "md" | "lg" }) {
+  return (
+    <span className={cx("font-bold tabular-nums", size === "lg" ? "text-[28px] tracking-tight" : "text-base", tone === "owed" && "text-owed", tone === "paid" && "text-paid", tone === "muted" && "text-muted")}>
+      {money(value)}
+    </span>
   );
 }
 
@@ -124,7 +148,7 @@ export function Stat({ label, value, hint, tone = "neutral", progress }: { label
   return (
     <div className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-5">
       <span className="text-[13px] font-medium text-muted">{label}</span>
-      <span className={cx("text-[28px] font-bold tracking-tight", tone === "owed" && "text-owed", tone === "paid" && "text-paid")}>{value}</span>
+      <span className={cx("text-[28px] font-bold tabular-nums tracking-tight", tone === "owed" && "text-owed", tone === "paid" && "text-paid")}>{value}</span>
       {progress !== undefined && <Progress value={progress} label={label} />}
       {hint && <span className="text-[13px] text-muted">{hint}</span>}
     </div>
