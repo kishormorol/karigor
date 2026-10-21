@@ -5,7 +5,7 @@ function register(s: ProjectState, kind: ArtifactKind, id: string): void {
   if (!ids.includes(id)) ids.push(id);
 }
 
-export type ProjectStatus = "created" | "running" | "stopped" | "finished";
+export type ProjectStatus = "created" | "running" | "waiting" | "stopped" | "finished";
 
 export interface ItemState {
   status: ItemStatus;
@@ -79,6 +79,8 @@ export interface ProjectState {
   cycle: number;
   /** Corrections from the person, keyed by assumption id. */
   corrections: Record<string, string>;
+  /** While waiting: the settings the person still has to give. */
+  waitingFor?: string[];
   /** Names of settings stored for the live app, by anyone. */
   settingsProvided: string[];
 }
@@ -221,6 +223,14 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       }
       break;
     }
+    case "project-waiting":
+      s.status = "waiting";
+      s.waitingFor = e.needs;
+      break;
+    case "project-resumed":
+      if (s.status === "waiting") s.status = "running";
+      delete s.waitingFor;
+      break;
     case "settings-provided":
       for (const n of e.names) if (!s.settingsProvided.includes(n)) s.settingsProvided.push(n);
       break;

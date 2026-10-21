@@ -76,43 +76,30 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     expect(JSON.stringify(rb.meta.evidence)).toMatch(/first release/);
   });
 
-  it("a live release that still needs settings says so plainly instead of claiming it is ready", async () => {
-    const { root, projectId } = await fresh();
-    const deploy = local(root, projectId);
-    const agent = devAgent((id) => (id === "b1" ? { ".env.example": "# The passcode the family types once on each phone\nFAMILY_PASSCODE=\n" } : {}));
-    const state = await runProject(opts(root, projectId, deploy, agent));
-    expect(state.status).toBe("finished");
-    const prod = (await records(root, projectId, state)).at(-1)!;
-    expect(prod.missingSettings).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types once on each phone", kind: "ask" }]);
-    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
-    expect((await store.readArtifact("summary", state.artifacts.summary!.at(-1)!)).body).toMatch(/## Before it can be used[\s\S]*FAMILY_PASSCODE/);
-    const { renderStatus } = await import("../src/index.js");
-    expect(await renderStatus(store, state)).toMatch(/cannot be used until these settings are added[\s\S]*FAMILY_PASSCODE: The passcode/);
-  });
-
-  it("secrets are made before the preview, the person's settings are taken afterwards, and no value enters the log", async () => {
+  it("a release that needs the person's own settings waits for them, then carries on; no value enters the log", async () => {
     const { root, projectId } = await fresh();
     const deploy = local(root, projectId);
     const env = "# Signs the remember-me cookie\n# karigor: generate\nSESSION_SECRET=\n# The passcode the family types once on each phone\n# karigor: ask\nFAMILY_PASSCODE=\n";
-    // the app will not even answer its health check without its signing secret
-    const agent = devAgent((id) => (id === "b1" ? { ".env.example": env, "needs-setting": "SESSION_SECRET" } : {}));
+    // the app cannot answer its health check without both
+    const agent = devAgent((id) => (id === "b1" ? { ".env.example": env, "needs-setting": "SESSION_SECRET FAMILY_PASSCODE" } : {}));
     const state = await runProject(opts(root, projectId, deploy, agent));
-    expect(state.status, state.stopReason).toBe("finished");
+    expect(state.status, state.stopReason).toBe("waiting");
+    expect(state.waitingFor).toEqual(["FAMILY_PASSCODE"]);
     expect(state.settingsProvided).toEqual(["SESSION_SECRET"]);
-    const prod = (await records(root, projectId, state)).at(-1)!;
-    expect(prod.missingSettings).toEqual([{ name: "FAMILY_PASSCODE", note: "The passcode the family types once on each phone", kind: "ask" }]);
-    const { provideSettings } = await import("../src/index.js");
+    expect(state.artifacts["deploy-record"]).toBeUndefined();
+    const { provideSettings, renderStatus, renderExplain } = await import("../src/index.js");
     const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    expect(await renderStatus(store, state)).toMatch(/waiting for you[\s\S]*FAMILY_PASSCODE[\s\S]*karigor setup/);
     await expect(provideSettings({ store, deploy, values: { NOT_A_SETTING: "x" } })).rejects.toThrow(/no setting called NOT_A_SETTING/);
     const r = await provideSettings({ store, deploy, values: { FAMILY_PASSCODE: "plum-tree-42" } });
-    expect(r).toMatchObject({ stored: ["FAMILY_PASSCODE"], stillMissing: [] });
-    const after = await store.replay();
+    expect(r).toMatchObject({ stored: ["FAMILY_PASSCODE"], stillMissing: [], resumed: true });
+    const after = await runProject(opts(root, projectId, deploy, agent));
+    expect(after.status, after.stopReason).toBe("finished");
     expect(after.settingsProvided).toEqual(["SESSION_SECRET", "FAMILY_PASSCODE"]);
-    expect((await records(root, projectId, after)).at(-1)).toMatchObject({ environment: "production", status: "deployed", version: prod.version });
-    expect((await records(root, projectId, after)).at(-1)!.missingSettings).toBeUndefined();
-    const { renderStatus, renderExplain } = await import("../src/index.js");
-    expect(await renderStatus(store, after)).not.toMatch(/cannot be used/);
-    expect(await renderExplain(store, await store.readEvents())).toMatch(/Made and stored the setting SESSION_SECRET[\s\S]*Stored the setting FAMILY_PASSCODE/);
+    const prod = (await records(root, projectId, after)).at(-1)!;
+    expect(prod).toMatchObject({ environment: "production", status: "deployed" });
+    expect(prod.missingSettings).toBeUndefined();
+    expect(await renderExplain(store, await store.readEvents())).toMatch(/Made and stored the setting SESSION_SECRET[\s\S]*Waiting for you to give: FAMILY_PASSCODE[\s\S]*Stored the setting FAMILY_PASSCODE[\s\S]*carrying on/);
     // values live only in the private settings file
     const saved = JSON.parse(await readFile(join(root, projectId, "run", "settings.json"), "utf8")) as Record<string, string>;
     expect(saved["FAMILY_PASSCODE"]).toBe("plum-tree-42");
@@ -132,6 +119,15 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     expect(recs.length).toBe(3);
     expect(await deploy.current()).toBeUndefined();
     expect(await readFile(join(root, projectId, "artifacts", "deploy-record", `${state.artifacts["deploy-record"]![0]}.md`), "utf8")).toMatch(/answered 500/);
+    // the failed release is work for a fix round
+    const [wid] = Object.keys(state.workItems);
+    expect(state.workItems[wid!]).toMatchObject({ status: "todo", severity: "high" });
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    const w = await store.readArtifact("work-item", wid!);
+    expect(w.meta).toMatchObject({ source: "error", fingerprint: `release:${recs[0]!.version}` });
+    expect(w.meta.description).toMatch(/preview-healthy[\s\S]*answered 500/);
+    const { canStartMaintenance } = await import("../src/index.js");
+    expect(canStartMaintenance(state)).toBe(true);
   });
 
   it("a promotion that fails goes back, files a critical work item, and stops plainly", async () => {

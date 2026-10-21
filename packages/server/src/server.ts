@@ -267,7 +267,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       await p.catch((e: Error) => {
         throw new HttpError(400, e.message);
       });
-      return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null });
+      if (result!.resumed) startRun(id, "run");
+      return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null, resumed: !!result!.resumed });
     }
     return send(res, 404, { error: "not found" });
   };

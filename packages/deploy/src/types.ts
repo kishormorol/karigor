@@ -50,6 +50,8 @@ export interface DeployAdapter {
   setSettings?(dir: string, values: Record<string, string>): Promise<CommandResult>;
   /** Make the live release pick up changed settings. */
   applySettings?(r: { dir: string; live: LiveRelease }): Promise<DeployResult>;
+  /** What a running preview printed, when the target can tell. */
+  logs?(id: string): string;
   /** Stop everything this adapter started. */
   stop(): Promise<void>;
 }

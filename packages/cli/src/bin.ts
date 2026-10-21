@@ -151,6 +151,12 @@ runFlags(program.command("setup").argument("<projectId>"))
       console.log(`Still needed: ${missing.map((m) => m.name).join(", ")}. This window cannot ask questions; run the same command in your own terminal to be asked privately, or pass --set NAME=value.`);
     }
     const r = await provideSettings({ store, deploy: opts.deploy, values, log: (l) => console.log(l) });
+    if (r.resumed) {
+      console.log(`Stored ${r.stored.join(", ")}. Carrying on with the release.`);
+      const state = await runProject(opts);
+      console.log(`\n${await renderStatus(store, state)}`);
+      return;
+    }
     console.log(r.stored.length ? `Stored ${r.stored.join(", ")}. ${r.output.split("\n").at(-1) ?? ""}` : "Nothing new to store.");
     console.log(r.stillMissing.length ? `Still needed before it can be used: ${r.stillMissing.map((m) => m.name).join(", ")}.` : `Everything it needs is in place${r.url ? `: ${r.url}` : ""}.`);
   });

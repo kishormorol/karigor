@@ -18,6 +18,12 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
     case "stopped":
       lines.push(`Status: stopped. ${state.stopReason ?? ""}`.trim());
       break;
+    case "waiting": {
+      lines.push("Status: waiting for you. It is built, and only needs a few things that only you can give:");
+      const all = state.waitingFor ?? [];
+      lines.push(...all.map((n) => `  - ${n}`), `Give them with: karigor setup ${state.projectId}`);
+      break;
+    }
     case "finished": {
       const ids = state.artifacts.summary ?? [];
       const summary = ids.length ? await store.readArtifact("summary", ids[ids.length - 1]!) : undefined;
@@ -152,6 +158,12 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
       }
       case "maintenance-started":
         lines.push(`${t} Started fix round ${e.cycle} for ${e.workItemIds.length} problem${e.workItemIds.length === 1 ? "" : "s"} or request${e.workItemIds.length === 1 ? "" : "s"}.`);
+        break;
+      case "project-waiting":
+        lines.push(`${t} Waiting for you to give: ${e.needs.join(", ")}.`);
+        break;
+      case "project-resumed":
+        lines.push(`${t} Got what it needed; carrying on.`);
         break;
       case "settings-provided":
         lines.push(`${t} ${e.by === "system" ? "Made and stored" : "Stored"} the setting${e.names.length === 1 ? "" : "s"} ${e.names.join(", ")} where the app reads ${e.names.length === 1 ? "it" : "them"}.`);

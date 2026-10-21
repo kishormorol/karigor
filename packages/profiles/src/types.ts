@@ -31,4 +31,6 @@ export interface Profile {
   stackGuide: string;
   /** Path a running release answers with a 2xx when it is healthy. */
   healthPath?: string;
+  /** Settings with a sensible value on this computer (a local database file); never asked for on the local target. */
+  localSettings?: Record<string, string>;
 }

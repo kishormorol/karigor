@@ -76,7 +76,7 @@ export function blockedItem(state: ProjectState, backlog: BacklogItem[]): { item
 /** Pure: given template, replayed state and backlog, decide the next action. */
 export function next(input: MachineInput): Action {
   const { template, state, backlog } = input;
-  if (state.status === "stopped" || state.status === "finished") return { type: "idle" };
+  if (state.status === "stopped" || state.status === "finished" || state.status === "waiting") return { type: "idle" };
   if (!state.template) return { type: "selectTemplate" };
   if (!state.budgetTier) return { type: "chooseBudget" };
   if (state.failures >= template.limits.projectFailures) {

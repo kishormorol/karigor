@@ -267,7 +267,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     if (view.decisions.length) main.append(decisionsCard());
     if (view.problem) main.append(el("div", { class: "card problem" }, el("h2", {}, "Something got in the way"), el("p", {}, view.problem), el("div", { class: "row" }, el("button", { class: "btn", onclick: resume }, "Try again"))));
     if (view.status === "finished" && view.summary) main.append(resultCard());
-    if (view.live && view.live.missingSettings && view.live.missingSettings.length) main.append(settingsCard(view.live.missingSettings));
+    if (view.waitingFor && view.waitingFor.length) main.append(settingsCard(view.waitingFor, true));
+    else if (view.live && view.live.missingSettings && view.live.missingSettings.length) main.append(settingsCard(view.live.missingSettings));
     main.append(statusCard());
     requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight }));
   }
@@ -299,10 +300,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   }
 
   /** The few things only the person can give: a choice (a passcode) or an outside service's details. Secrets nobody needs to know are made automatically. */
-  function settingsCard(missing) {
+  function settingsCard(missing, beforeRelease) {
     const needed = missing.filter((m) => m.kind !== "generate");
     const form = el("form", { class: "card problem", style: "gap:12px" },
-      el("h2", {}, "Online, but it needs a few things from you"),
+      el("h2", {}, beforeRelease ? "Built. It needs a few things from you before it goes online" : "Online, but it needs a few things from you"),
       el("p", {}, needed.length ? "Only you can choose or provide these. They are stored privately where the app runs, never shown again, and never saved by Karigor." : "It needs a couple of hidden settings. Karigor can make them for you."));
     const inputs = [];
     for (const m of needed) {

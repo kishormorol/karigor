@@ -126,6 +126,11 @@ export class LocalDeploy implements DeployAdapter {
     return { ok: true, url: s.server.url, id: r.version, output: `${prepared.output}\npreview running at ${s.server.url}; ${s.output}` };
   }
 
+  /** What the preview printed (its errors included), for a work item when it fails. */
+  logs(id: string): string {
+    return this.previews.get(id)?.output ?? "";
+  }
+
   async ensure(r: { url: string; id: string }): Promise<void> {
     if (this.previews.get(r.id)?.alive) return;
     if (!(await this.ready(r.id))) return;
@@ -185,8 +190,12 @@ export class LocalDeploy implements DeployAdapter {
     return join(this.o.projectDir, "run", "settings.json");
   }
 
-  /** Values saved with `setSettings`, passed to the app as its environment when it starts. */
+  /** The profile's local defaults under the values saved with `setSettings`: the app's environment when it starts. */
   async settingsEnv(): Promise<Record<string, string>> {
+    return { ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
+  }
+
+  private async storedSettings(): Promise<Record<string, string>> {
     try {
       return JSON.parse(await readFile(this.settingsFile, "utf8")) as Record<string, string>;
     } catch {
@@ -197,7 +206,7 @@ export class LocalDeploy implements DeployAdapter {
   async setSettings(_dir: string, values: Record<string, string>): Promise<CommandResult> {
     await this.ignoreReleasesInProjectGit();
     await mkdir(join(this.o.projectDir, "run"), { recursive: true, mode: 0o700 });
-    await writeFile(this.settingsFile, JSON.stringify({ ...(await this.settingsEnv()), ...values }, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+    await writeFile(this.settingsFile, JSON.stringify({ ...(await this.storedSettings()), ...values }, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
     await chmod(this.settingsFile, 0o600);
     return { ok: true, output: `saved on this computer: ${Object.keys(values).join(", ")}` };
   }

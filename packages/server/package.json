@@ -5,8 +5,15 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "bin": { "karigor-server": "./dist/bin.js" },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "karigor-server": "./dist/bin.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/bin.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -14,6 +21,7 @@
   "dependencies": {
     "@karigor/budget": "workspace:*",
     "@karigor/cli": "workspace:*",
-    "@karigor/store": "workspace:*"
+    "@karigor/store": "workspace:*",
+    "@karigor/profiles": "workspace:*"
   }
 }

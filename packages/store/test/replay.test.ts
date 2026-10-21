@@ -83,6 +83,19 @@ describe("replay", () => {
     expect(after.workItems["work-2"]?.status).toBe("todo");
   });
 
+  it("a project waits for the person and resumes when they give what it needs", () => {
+    n = 0;
+    const base = [
+      ev({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" }),
+      ev({ type: "phase-entered", by: "system", phase: "release" }),
+      ev({ type: "project-waiting", by: "system", needs: ["OWNER_SETUP_CODE"] }),
+    ];
+    expect(replay("p1", base)).toMatchObject({ status: "waiting", waitingFor: ["OWNER_SETUP_CODE"] });
+    const after = replay("p1", [...base, ev({ type: "project-resumed", by: "user" })]);
+    expect(after.status).toBe("running");
+    expect(after.waitingFor).toBeUndefined();
+  });
+
   it("records a stop reason", () => {
     n = 0;
     const s = replay("p1", [

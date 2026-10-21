@@ -360,7 +360,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
 
   try {
     for (let step = 0; step < maxSteps; step++) {
-      if (state.status === "finished" || state.status === "stopped") break;
+      if (state.status === "finished" || state.status === "stopped" || state.status === "waiting") break;
 
       // Before a template exists the machine cannot be consulted; the selector runs first.
       if (!template) {
@@ -413,6 +413,14 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
           if (action.role === "releaser" && opts.deploy) {
             if (!agentic) throw new RunError("a deploy target needs a real workspace (a profile and a developer agent)");
             await generateSettings();
+            // A preview without the person's own settings cannot work; wait for them instead of failing checks.
+            const needs = ((await opts.deploy.missingSettings?.((await getWorkspace()).dir).catch(() => [])) ?? []).filter((m) => m.kind !== "generate");
+            if (needs.length) {
+              log(`  waiting for you: ${needs.map((m) => m.name).join(", ")} (karigor setup ${state.projectId})`);
+              await append({ type: "project-waiting", by: "system", needs: needs.map((m) => m.name) });
+              await store.commit("karigor: waiting for the person's settings");
+              break;
+            }
             extra.deploy = await ensurePreview(action.key, action.phase);
             extra.deployTarget = opts.deploy.describe();
           }
@@ -513,6 +521,25 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
           else await appendAll([...batch, ...eventsFor(action, { type: "none" })]);
           break;
         }
+        case "stop": {
+          // A release that fails its checks becomes work for a fix round, with what the app itself printed.
+          const batch = eventsFor(action, { type: "none" });
+          if (opts.deploy && state.phase === "release") {
+            const preview = (await deployRecords()).filter((r) => r.meta.environment === "preview").at(-1);
+            if (preview) {
+              const logs = preview.meta.releaseId ? (opts.deploy.logs?.(preview.meta.releaseId) ?? "") : "";
+              const errors = logs.split("\n").filter((l) => /error|exception|failed/i.test(l)).slice(-20).join("\n");
+              const work: Artifact = {
+                meta: { id: newId("work-item"), kind: "work-item", createdAt: clock().toISOString(), createdBy: "system", source: "error", severity: "high", title: `Release ${preview.meta.version} did not pass its checks`, description: `${action.reason}.\n\nWhat the release reported:\n${clip(preview.body, 3_000)}${errors ? `\n\nWhat the app printed:\n${clip(errors, 4_000)}` : ""}`, status: "todo", fingerprint: `release:${preview.meta.version}` },
+                body: clip(logs || preview.body, 20_000),
+              };
+              await store.writeArtifact(work);
+              batch.unshift({ type: "signal-received", by: "system", workItemId: work.meta.id, source: "error", severity: "high", fingerprint: `release:${preview.meta.version}` });
+            }
+          }
+          await appendAll(batch);
+          break;
+        }
         default:
           await appendAll(eventsFor(action, { type: "none" }));
       }
@@ -523,7 +550,7 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     // Previews do not outlive the run; production is served by `karigor serve` or the hosting target.
     await opts.deploy?.stop();
   }
-  if (state.status !== "finished" && state.status !== "stopped") throw new RunError(`run did not settle within ${maxSteps} steps`);
+  if (state.status !== "finished" && state.status !== "stopped" && state.status !== "waiting") throw new RunError(`run did not settle within ${maxSteps} steps`);
   return state;
 }
 

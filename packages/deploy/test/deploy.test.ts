@@ -119,6 +119,16 @@ describe("LocalDeploy", { timeout: 60_000 }, () => {
     expect(p.ok, p.output).toBe(true);
   });
 
+  it("a profile's local defaults (a database file) are never asked for on this computer and reach the app", async () => {
+    const { projectDir, ws } = await setup();
+    const profile = { ...fixture, localSettings: { DATABASE_URL: "file:./data/app.db" } };
+    const d = new LocalDeploy({ projectDir, profile, healthTimeoutMs: 10_000 });
+    started.push(d);
+    const sha = await commit(ws, { ".env.example": "# karigor: service turso\nDATABASE_URL=\n", "needs-setting": "DATABASE_URL" });
+    expect(await d.missingSettings(ws.dir)).toEqual([]);
+    expect((await d.preview(req(ws, 1, sha))).ok).toBe(true);
+  });
+
   it("ensure brings a preview back on the same URL after it stopped", async () => {
     const { ws, deploy } = await setup();
     const sha = await commit(ws, { "src/a.js": "1" });

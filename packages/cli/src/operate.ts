@@ -300,6 +300,8 @@ export async function serveProject(o: ServeOptions): Promise<void> {
 
 export interface ProvideSettingsResult {
   stored: string[];
+  /** The project was waiting for these settings and can go on now (run it again). */
+  resumed?: boolean;
   /** What the live app still lacks afterwards. */
   stillMissing: MissingSetting[];
   /** The live address after the settings were applied, when something is live. */
@@ -329,7 +331,18 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
   const saved = await o.deploy.setSettings(dir, values);
   if (!saved.ok) throw new Error(saved.output);
   await o.store.appendEvent({ type: "settings-provided", by: o.by ?? "user", names });
-  const state = await o.store.replay();
+  let state = await o.store.replay();
+  if (state.status === "waiting") {
+    const still = (await o.deploy.missingSettings(dir)).filter((m) => m.kind !== "generate");
+    if (still.length) {
+      await o.store.commit(`karigor: settings stored (${names.join(", ")})`);
+      return { stored: names, stillMissing: still, output: saved.output };
+    }
+    await o.store.appendEvent({ type: "project-resumed", by: "user" });
+    await o.store.commit(`karigor: settings stored (${names.join(", ")}); the release can go on`);
+    return { stored: names, resumed: true, stillMissing: [], output: saved.output };
+  }
+  state = await o.store.replay();
   const live = await liveRecord(o.store, state);
   const stillMissing = await o.deploy.missingSettings(dir);
   if (!live || !o.deploy.applySettings) {

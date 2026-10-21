@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { FsStore, type BacklogItem, type ProjectState } from "@karigor/store";
 import { meter } from "@karigor/budget";
 import { liveRecord, renderExplain } from "@karigor/cli";
+import { readSettings } from "@karigor/profiles";
 
 /** Everything the chat page shows about one project, in plain language. */
 export interface ProjectView {
@@ -19,6 +20,8 @@ export interface ProjectView {
   cost?: { currency: string; spent: number; budget: number; tier: string; apiEquivalent: number };
   summary?: { headline: string; whatItDoes: string; howToUse: string; url?: string };
   live?: NonNullable<Awaited<ReturnType<typeof liveRecord>>>;
+  /** While waiting: the settings only the person can give, with the developer's plain description. */
+  waitingFor?: { name: string; note: string; kind: string; service?: string }[];
   workItems: { id: string; title: string; status: string; source: string }[];
   /** The event log as plain sentences, oldest first. */
   story: string[];
@@ -63,10 +66,13 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
       ? running ? "Starting." : "Waiting to start."
       : state.status === "running"
         ? `${running ? "Working" : "Paused"}: ${phase ?? "starting"}${state.cycle ? ` (fix round ${state.cycle})` : ""}.`
-        : state.status === "finished"
+        : state.status === "waiting"
+          ? "Built. Waiting for a few things only you can give."
+          : state.status === "finished"
           ? summary?.headline ?? "Finished."
           : `Stopped: ${state.stopReason ?? "no reason recorded"}`;
   const last = events.at(-1);
+  const waitingFor = state.status === "waiting" ? (await readSettings(join(store.dir, "workspace"))).filter((s) => state.waitingFor?.includes(s.name)).map((s) => ({ name: s.name, note: s.note, kind: s.kind, ...(s.service ? { service: s.service } : {}) })) : [];
   return {
     id: store.projectId,
     idea,
@@ -84,6 +90,7 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
     ...(m ? { cost: { currency: m.currency, spent: m.total, budget: m.budgetTotal, tier: m.tier, apiEquivalent: m.apiEquivalent } } : {}),
     ...(summary ? { summary: { headline: summary.headline, whatItDoes: summary.whatItDoes, howToUse: summary.howToUse, ...(summary.url ? { url: summary.url } : {}) } } : {}),
     ...(live ? { live } : {}),
+    ...(waitingFor.length ? { waitingFor } : {}),
     workItems,
     story: (await renderExplain(store, events)).split("\n").filter(Boolean),
     lastSeq: state.lastSeq,
