@@ -378,3 +378,33 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
   await o.store.commit(`karigor: settings applied to ${live.version}`);
   return { stored: names, stillMissing, ...(res.url ?? live.url ? { url: (res.url ?? live.url)! } : {}), output: `${saved.output}\n${res.output.split("\n").at(-1) ?? ""}` };
 }
+
+/**
+ * Bring an app built from an older template up to the current UI kit: copy `src/components/ui.tsx`
+ * and add the theme to `app/globals.css` when it has none. No page changes; a fix round restyles
+ * the screens. Returns what was added (empty when it was already there).
+ */
+export async function installUiKit(store: FsStore, profileName = "web-app"): Promise<string[]> {
+  const { SCAFFOLDS_DIR } = await import("@karigor/profiles");
+  const { readFile, writeFile, mkdir } = await import("node:fs/promises");
+  const from = join(SCAFFOLDS_DIR, profileName);
+  const dir = join(store.dir, "workspace");
+  const ws = await Workspace.open(dir);
+  const added: string[] = [];
+  const kitTarget = join(dir, "src", "components", "ui.tsx");
+  if (!(await stat(kitTarget).then(() => true, () => false))) {
+    await mkdir(join(dir, "src", "components"), { recursive: true });
+    await writeFile(kitTarget, await readFile(join(from, "src", "components", "ui.tsx"), "utf8"), "utf8");
+    added.push("src/components/ui.tsx");
+  }
+  const globalsPath = join(dir, "app", "globals.css");
+  const globals = await readFile(globalsPath, "utf8").catch(() => "");
+  if (!globals.includes("@theme")) {
+    const theme = (await readFile(join(from, "app", "globals.css"), "utf8")).replace(/^@import "tailwindcss";\n*/, "");
+    const rest = globals.replace(/^@import "tailwindcss";\n*/, "");
+    await writeFile(globalsPath, `@import "tailwindcss";\n\n${theme.trimEnd()}\n${rest ? `\n${rest}` : ""}`, "utf8");
+    added.push("app/globals.css (theme)");
+  }
+  if (added.length) await ws.commitAll(`karigor: add the Ledger UI kit from the template (${added.join(", ")})`);
+  return added;
+}

@@ -131,6 +131,28 @@ describe("serve: production on this computer", { timeout: 120_000 }, () => {
   });
 });
 
+describe("UI kit for older apps", () => {
+  it("adds the kit and theme once, as its own commit, keeping the app's own styles", async () => {
+    const root = await mkdtemp(join(tmpdir(), "karigor-kit-"));
+    const projectId = await createProject(root, "idea", { clock: NOW, committer: noopCommitter, projectId: "p1" });
+    const { Workspace, run } = await import("@karigor/sandbox");
+    const ws = await Workspace.create(join(root, projectId, "workspace"), fixture);
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    await mkdir(join(ws.dir, "app"), { recursive: true });
+    await writeFile(join(ws.dir, "app", "globals.css"), '@import "tailwindcss";\n\n@media print { nav { display: none; } }\n');
+    await ws.commitAll("app styles");
+    const { installUiKit } = await import("../src/index.js");
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx", "app/globals.css (theme)"]);
+    const css = await readFile(join(ws.dir, "app", "globals.css"), "utf8");
+    expect(css).toMatch(/^@import "tailwindcss";\n\n[\s\S]*@theme[\s\S]*--color-primary[\s\S]*@media print/);
+    expect((css.match(/@import "tailwindcss"/g) ?? []).length).toBe(1);
+    expect(await readFile(join(ws.dir, "src", "components", "ui.tsx"), "utf8")).toMatch(/export function AppShell/);
+    expect((await run("git", ["log", "-1", "--format=%s"], { cwd: ws.dir })).stdout).toMatch(/Ledger UI kit/);
+    expect(await installUiKit(store)).toEqual([]);
+  });
+});
+
 describe("signals", () => {
   it("normalises errors so repeats with different numbers are one problem, and repeats raise severity", () => {
     expect(normaliseError('[12:01:02] Error: user 4411 not found in "tools" at 2026-10-20T10:00:00Z')).toBe(normaliseError('Error: user 9 not found in "loans" at 2026-10-21T11:00:00Z'));
