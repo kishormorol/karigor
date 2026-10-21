@@ -11,5 +11,6 @@ export default defineConfig({
     include: ["packages/*/test/**/*.test.ts", "packages/*/src/**/*.test.ts"],
     environment: "node",
     testTimeout: 20_000,
+    globalSetup: ["./vitest.teardown.ts"],
   },
 });
