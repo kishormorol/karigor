@@ -1,7 +1,7 @@
 import { appendFile, chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { CommandResult } from "@karigor/gates";
-import { readSettings, requiredSettings, toMissing, type MissingSetting, type Profile } from "@karigor/profiles";
+import { TARGET_SETTINGS, readSettings, requiredSettings, toMissing, type MissingSetting, type Profile } from "@karigor/profiles";
 import { Workspace, clip, run } from "@karigor/sandbox";
 import { freePort, startServer, type RunningServer } from "./server.js";
 import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./types.js";
@@ -183,7 +183,7 @@ export class LocalDeploy implements DeployAdapter {
   /** On this computer a local database file is fine; settings with no default must be in the environment or the settings file. */
   async missingSettings(dir: string): Promise<MissingSetting[]> {
     const stored = await this.settingsEnv();
-    return requiredSettings(await readSettings(dir), false).filter((s) => !process.env[s.name] && !stored[s.name]).map(toMissing);
+    return requiredSettings(await readSettings(dir), false).filter((s) => !process.env[s.name] && !stored[s.name] && !(TARGET_SETTINGS as readonly string[]).includes(s.name)).map(toMissing);
   }
 
   /** `<project>/run/settings.json`, readable by this user only and ignored by the project's git. */
@@ -197,7 +197,7 @@ export class LocalDeploy implements DeployAdapter {
    * every release, so data survives an update and a rollback instead of staying behind in an old release.
    */
   async settingsEnv(): Promise<Record<string, string>> {
-    const env = { ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
+    const env: Record<string, string> = { SITE_URL: this.productionUrl, ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
     for (const [k, v] of Object.entries(env)) {
       if (!v.startsWith("file:./")) continue;
       const path = join(this.o.projectDir, v.slice("file:./".length));

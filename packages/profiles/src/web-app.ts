@@ -12,6 +12,7 @@ Where things go:
 - Pages and layouts: \`app/<route>/page.tsx\`. Server components by default; add \`"use client"\` only for interactivity.
 - Server endpoints: \`app/api/<name>/route.ts\` exporting \`GET\`/\`POST\`, or server actions in \`app/<route>/actions.ts\` with \`"use server"\`.
 - Database tables: \`src/db/schema.ts\` (one \`sqliteTable\` per kind of thing). Query with the \`db\` export from \`src/db\` in server code only. After changing the schema, run \`pnpm db:generate\` and keep the new file in \`drizzle/\`: \`pnpm build\` applies migrations first, which is how every release, on this computer or hosted, gets its tables. A fresh, empty database must work after \`pnpm build\` alone; never rely on tables created by hand or by tests.
+- The app's own public address is \`process.env.SITE_URL\` (for links in emails and receipts). Every deploy target sets it; never ask the person for it and never list it in \`.env.example\`.
 - \`DATABASE_URL\` keeps its local default (\`file:./data/app.db\`) in \`.env.example\`; a hosted address is a setting given at release, not a code change.
 - Pure logic (validation, formatting, rules): \`src/lib/*.ts\`. This is where most unit tests belong.
 - Tests: \`tests/*.test.ts\` or next to the code as \`*.test.ts\`, run with \`pnpm test\`.

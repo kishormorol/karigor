@@ -89,6 +89,9 @@ export function toMissing(s: Setting): MissingSetting {
   return { name: s.name, note: s.note, kind: s.kind, ...(s.service ? { service: s.service } : {}) };
 }
 
+/** Settings every deploy target provides itself; the person is never asked for them. */
+export const TARGET_SETTINGS = ["SITE_URL"] as const;
+
 /** A value for a `generate` setting: 32 random bytes, URL-safe. */
 export function generateSettingValue(): string {
   return randomBytes(32).toString("base64url");

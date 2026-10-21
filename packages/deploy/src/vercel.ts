@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import type { CommandResult, UrlCheck } from "@karigor/gates";
-import { readSettings, requiredSettings, toMissing, type MissingSetting } from "@karigor/profiles";
+import { TARGET_SETTINGS, readSettings, requiredSettings, toMissing, type MissingSetting } from "@karigor/profiles";
 import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./types.js";
 
 export type VercelExec = (file: string, args: string[], opts: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv; input?: string }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
@@ -72,7 +72,7 @@ export class VercelDeploy implements DeployAdapter {
   }
 
   async preview(r: DeployRequest): Promise<DeployResult> {
-    const envs = (this.o.envNames ?? DEFAULT_ENV_NAMES).flatMap((n) => (process.env[n] ? ["-e", `${n}=${process.env[n]}`] : []));
+    const envs = [...(this.o.envNames ?? DEFAULT_ENV_NAMES).flatMap((n) => (process.env[n] ? ["-e", `${n}=${process.env[n]}`] : [])), "-e", `SITE_URL=https://${this.o.project}.vercel.app`];
     // Explicitly a preview: the first deploy into a new project would otherwise go straight to production.
     const args = ["deploy", r.dir, "--yes", "--target", "preview", "--project", this.o.project, "-m", `karigorVersion=${r.version}`, ...envs];
     let res = await this.cli(args, r.dir);
@@ -152,7 +152,7 @@ export class VercelDeploy implements DeployAdapter {
       /* unknown: report everything as missing rather than claim it is set */
     }
     const passed = (this.o.envNames ?? DEFAULT_ENV_NAMES).filter((n) => process.env[n]);
-    return required.filter((s) => !names.includes(s.name) && !passed.includes(s.name)).map(toMissing);
+    return required.filter((s) => !names.includes(s.name) && !passed.includes(s.name) && !(TARGET_SETTINGS as readonly string[]).includes(s.name)).map(toMissing);
   }
 
   /** Each value becomes a sensitive environment variable for production and previews; it cannot be read back. */

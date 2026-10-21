@@ -137,6 +137,10 @@ describe("LocalDeploy", { timeout: 60_000 }, () => {
     const d = new LocalDeploy({ projectDir, profile, healthTimeoutMs: 10_000 });
     started.push(d);
     expect((await d.settingsEnv())["DATABASE_URL"]).toBe(`file:${join(projectDir, "data", "app.db")}`);
+    // the target tells the app its own address; nobody is asked for it
+    expect((await d.settingsEnv())["SITE_URL"]).toBe("http://localhost:3000");
+    await commit(ws, { ".env.example": "# Optional: the site's address\n# karigor: ask\nSITE_URL=\n# The teacher's email\nTEACHER_EMAIL=\n" });
+    expect((await d.missingSettings(ws.dir)).map((m) => m.name)).toEqual(["TEACHER_EMAIL"]);
     for (let n = 1; n <= 2; n++) {
       const sha = await commit(ws, { "src/a.js": String(n) });
       const r = req(ws, n, sha);
@@ -228,6 +232,7 @@ describe("VercelDeploy", () => {
     expect(p).toMatchObject({ ok: true, url: "https://toolshare-abc123-k2j3h4g5f-team.vercel.app" });
     expect(p.output).not.toMatch(/tok-SECRET|secret-db/);
     expect(calls[0]).toEqual(expect.arrayContaining(["deploy", "/w", "--yes", "--target", "preview", "--project", "toolshare-abc123", "-e", "DATABASE_URL=libsql://secret-db.turso.io", "--token", "tok-SECRET"]));
+    expect(calls[0]).toEqual(expect.arrayContaining(["-e", "SITE_URL=https://toolshare-abc123.vercel.app"]));
     const live = await d.promote({ ...r, preview: p });
     expect(live).toMatchObject({ ok: true, url: "https://toolshare-abc123.vercel.app", id: newId });
     expect(builds).toBe(3);
