@@ -167,8 +167,11 @@ program
   .description("add the current UI kit and theme to an app built from an older template (pages are restyled by a fix round)")
   .action(async (projectId: string) => {
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
-    const added = await installUiKit(store);
-    console.log(added.length ? `Added ${added.join(", ")}. Now ask for the restyle: karigor feedback ${projectId} "..." then karigor fix ${projectId}.` : "It already has the UI kit.");
+    const changes = await installUiKit(store);
+    const done = changes.filter((c) => !c.includes("left as it is"));
+    for (const c of changes.filter((c) => c.includes("left as it is"))) console.log(`Note: ${c}.`);
+    if (done.length) console.log(`Done: ${done.join(", ")}. To restyle the screens: karigor feedback ${projectId} "..." then karigor fix ${projectId}.`);
+    else if (!changes.length) console.log("It already has the current UI kit.");
   });
 
 runFlags(program.command("fix").argument("<projectId>"))

@@ -201,9 +201,9 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
   return <span className={cx("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold", toneClass[tone])}>{children}</span>;
 }
 
-/** A message after an action or a problem to fix. Errors are announced to screen readers. */
-export function Alert({ tone = "info", children }: { tone?: "success" | "error" | "info"; children: ReactNode }) {
-  const cls = tone === "success" ? "bg-paid-tint text-paid" : tone === "error" ? "bg-owed-tint text-owed" : "bg-primary-tint text-primary";
+/** A message after an action, a caution before one, or a problem to fix. Errors are announced to screen readers. */
+export function Alert({ tone = "info", children }: { tone?: "success" | "error" | "warning" | "info"; children: ReactNode }) {
+  const cls = tone === "success" ? "bg-paid-tint text-paid" : tone === "error" ? "bg-owed-tint text-owed" : tone === "warning" ? "bg-partial-tint text-partial" : "bg-primary-tint text-primary";
   return (
     <div role={tone === "error" ? "alert" : "status"} className={cx("rounded-[var(--radius-control)] px-3.5 py-3 text-sm font-medium", cls)}>
       {children}
