@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { quotaFrom } from "../quota.js";
 import type { ModelAdapter, ModelRequest, ModelResponse, Usage } from "./types.js";
 
 /** Runs a command and resolves with stdout even on a non-zero exit (the CLI reports errors in its JSON). */
@@ -139,7 +140,9 @@ export class ClaudeCodeAdapter implements ModelAdapter {
     if (parsed.is_error) {
       const text = parsed.result ?? "unknown error";
       if (/not logged in/i.test(text)) return { ok: false, error: "api", message: "Claude Code is not logged in: run `claude` once and sign in", retryable: false, usage, model, costUsd };
-      if (/rate limit|usage limit|overloaded|429|try again/i.test(text)) return { ok: false, error: "api", message: `claude: ${text}`, retryable: true, usage, model, costUsd };
+      const quota = quotaFrom(text);
+      if (quota) throw quota;
+      if (/rate limit|overloaded|429|try again/i.test(text)) return { ok: false, error: "api", message: `claude: ${text}`, retryable: true, usage, model, costUsd };
       if (/refus|declin|safety|policy/i.test(text)) return { ok: false, error: "refusal", message: text, retryable: false, usage, model, costUsd };
       return { ok: false, error: "api", message: `claude: ${text}`, retryable: false, usage, model, costUsd };
     }

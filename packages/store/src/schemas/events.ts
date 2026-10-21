@@ -79,8 +79,12 @@ export const EventSchema = z.discriminatedUnion("type", [
   }),
   /** The release cannot go on without something only the person can give (a passcode, a service account). */
   ev("project-waiting", { needs: z.array(z.string().min(1)).min(1) }),
-  /** What the project was waiting for has been given. */
+  /** What the project was waiting for has been given, or a pause is over. */
   ev("project-resumed", {}),
+  /** The model provider's allowance is used up: nothing failed; the work carries on later. */
+  ev("project-paused", { reason: z.string().min(1) }),
+  /** The person put a stopped project back to work: these items return with fresh retry counts. */
+  ev("project-reopened", { itemIds: z.array(z.string().min(1)) }),
   /** Settings the live app reads were stored where it reads them. Names only; values never enter the log. */
   ev("settings-provided", { names: z.array(z.string().min(1)).min(1) }),
   /** The person corrected a decision made on their behalf. */

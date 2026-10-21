@@ -1,6 +1,7 @@
 import type { ModelTier } from "@karigor/store";
 import { CLAUDE_CODE_DEFAULTS, execWithDeadline, type Exec } from "../adapters/claude-code.js";
 import type { Usage } from "../adapters/types.js";
+import { quotaFrom } from "../quota.js";
 import type { AgentAdapter, AgentRequest, AgentResponse } from "./types.js";
 
 /** Bash commands the developer may never run on the user's machine. Everything else in the workspace is allowed. */
@@ -176,7 +177,9 @@ export class ClaudeCodeAgent implements AgentAdapter {
     const text = parsed.result ?? "";
     if (parsed.is_error) {
       if (/not logged in/i.test(text)) return { ok: false, error: "api", message: "Claude Code is not logged in: run `claude` once and sign in", retryable: false, usage, model: `claude-code/${modelId}`, costUsd };
-      if (/rate limit|usage limit|overloaded|429|try again/i.test(text)) return { ok: false, error: "api", message: `claude: ${text}`, retryable: true, usage, model: `claude-code/${modelId}`, costUsd };
+      const quota = quotaFrom(text);
+      if (quota) throw quota;
+      if (/rate limit|overloaded|429|try again/i.test(text)) return { ok: false, error: "api", message: `claude: ${text}`, retryable: true, usage, model: `claude-code/${modelId}`, costUsd };
       if (/refus|declin|safety|policy/i.test(text)) return { ok: false, error: "refusal", message: text, retryable: false, usage, model: `claude-code/${modelId}`, costUsd };
       return { ok: false, error: "api", message: `claude: ${text}`, retryable: false, usage, model: `claude-code/${modelId}`, costUsd };
     }

@@ -25,7 +25,7 @@ import { join } from "node:path";
 import { stat } from "node:fs/promises";
 import { ROLE_PRIORS, check, costOf, estimate, isFlatRate, record, type CostLedgerMeta } from "@karigor/budget";
 import type { CostEntry } from "@karigor/store";
-import { isProducingRole, makeJudge, runAgentWorker, runWorker, summaryArtifact, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
+import { QuotaError, isProducingRole, makeJudge, runAgentWorker, runWorker, summaryArtifact, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
 
 export interface RunOptions {
   root: string;
@@ -357,6 +357,11 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
   let template: Template | undefined = state.template ? templates.find((t) => t.name === state.template) : undefined;
   await refreshBacklog();
   await loadLedger();
+  // A pause for the provider's allowance ends when someone runs the project again.
+  if (state.status === "waiting" && state.pausedReason) {
+    log("carrying on after the pause");
+    await append({ type: "project-resumed", by: "system" });
+  }
 
   try {
     for (let step = 0; step < maxSteps; step++) {
@@ -546,6 +551,14 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
       await store.commit(`karigor: ${describeAction(action)}`);
       if (action.type === "idle") break;
     }
+  } catch (e) {
+    // The provider's allowance ran out mid-step: nothing failed, so nothing is counted against the work.
+    if (!(e instanceof QuotaError)) throw e;
+    const reason = `the model's usage allowance is used up${e.resets ? ` (it resets ${e.resets})` : ""}; nothing failed, and the work carries on with karigor resume after that`;
+    log(`  paused: ${reason}`);
+    await saveLedger();
+    await append({ type: "project-paused", by: "system", reason });
+    await store.commit("karigor: paused (usage allowance used up)");
   } finally {
     // Previews do not outlive the run; production is served by `karigor serve` or the hosting target.
     await opts.deploy?.stop();

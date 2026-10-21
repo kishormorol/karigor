@@ -1,5 +1,6 @@
 import Anthropic, { APIConnectionError, AuthenticationError, RateLimitError, APIError } from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { quotaFrom } from "../quota.js";
 import type { ModelAdapter, ModelRequest, ModelResponse, Usage } from "./types.js";
 
 export interface ClaudeAdapterOptions {
@@ -78,6 +79,11 @@ export class ClaudeAdapter implements ModelAdapter {
       }
       return { ok: true, output, usage, model: message.model };
     } catch (e) {
+      // An account out of credit is not a failure of the work: the project pauses.
+      if (e instanceof APIError && !(e instanceof RateLimitError)) {
+        const quota = quotaFrom(e.message);
+        if (quota) throw quota;
+      }
       return { ok: false, error: "api", message: describe(e), retryable: isRetryable(e), usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }, model };
     }
   }

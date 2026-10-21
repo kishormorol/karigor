@@ -49,7 +49,8 @@ describe("ClaudeCodeAdapter (offline, scripted CLI)", () => {
     expect(r1.ok === false && r1.error).toBe("api");
     expect(r1.ok === false && r1.retryable).toBe(false);
     expect(r1.ok === false && r1.message).toMatch(/not logged in/i);
-    const r2 = await new ClaudeCodeAdapter({ exec: cli({ is_error: true, result: "You've hit your usage limit, try again at 9pm" }) }).complete(req);
+    await expect(new ClaudeCodeAdapter({ exec: cli({ is_error: true, result: "You've hit your usage limit, try again at 9pm" }) }).complete(req)).rejects.toMatchObject({ name: "QuotaError" });
+    const r2 = await new ClaudeCodeAdapter({ exec: cli({ is_error: true, result: "Overloaded, try again" }) }).complete(req);
     expect(r2.ok === false && r2.retryable).toBe(true);
   });
 

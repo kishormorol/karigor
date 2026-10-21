@@ -99,13 +99,57 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     const prod = (await records(root, projectId, after)).at(-1)!;
     expect(prod).toMatchObject({ environment: "production", status: "deployed" });
     expect(prod.missingSettings).toBeUndefined();
-    expect(await renderExplain(store, await store.readEvents())).toMatch(/Made and stored the setting SESSION_SECRET[\s\S]*Waiting for you to give: FAMILY_PASSCODE[\s\S]*Stored the setting FAMILY_PASSCODE[\s\S]*carrying on/);
+    expect(await renderExplain(store, await store.readEvents())).toMatch(/Made and stored the setting SESSION_SECRET[\s\S]*Waiting for you to give: FAMILY_PASSCODE[\s\S]*Stored the setting FAMILY_PASSCODE[\s\S]*Carrying on/);
     // values live only in the private settings file
     const saved = JSON.parse(await readFile(join(root, projectId, "run", "settings.json"), "utf8")) as Record<string, string>;
     expect(saved["FAMILY_PASSCODE"]).toBe("plum-tree-42");
     const { run: sh } = await import("@karigor/sandbox");
     const grep = await sh("grep", ["-rl", "--exclude-dir=run", "--exclude-dir=releases", "--exclude-dir=workspace", "-e", "plum-tree-42", "-e", saved["SESSION_SECRET"]!, "."], { cwd: join(root, projectId) });
     expect(grep.stdout).toBe("");
+  });
+
+  it("when the model's allowance runs out mid-build the project pauses, counts nothing as failed, and finishes on resume", async () => {
+    const { QuotaError } = await import("@karigor/runtime");
+    const { root, projectId } = await fresh();
+    let limited = true;
+    const agent = new MockAgent((req: AgentRequest) => {
+      const itemId = /"id": "([a-z0-9-]+)"/.exec(req.user)?.[1] ?? "x";
+      if (itemId === "b2" && limited) throw new QuotaError("You've hit your weekly limit · resets Oct 26 at 1pm", "Oct 26 at 1pm");
+      return { files: { [`src/${itemId}.js`]: `export const v = "${itemId}";\n`, "tests.json": JSON.stringify({ passed: 2, failed: 0, skipped: 0 }) }, summary: `Implemented ${itemId}.` };
+    });
+    const paused = await runProject(opts(root, projectId, new FakeDeploy(), agent));
+    expect(paused.status).toBe("waiting");
+    expect(paused.pausedReason).toMatch(/usage allowance is used up \(it resets Oct 26 at 1pm\)/);
+    expect(paused.failures).toBe(0);
+    expect(Object.values(paused.items).some((i) => i.status === "parked")).toBe(false);
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    const { renderStatus } = await import("../src/index.js");
+    expect(await renderStatus(store, paused)).toMatch(/Status: paused\. The model's usage allowance is used up/);
+    limited = false;
+    const done = await runProject(opts(root, projectId, new FakeDeploy(), agent));
+    expect(done.status, done.stopReason).toBe("finished");
+    for (const id of ["b1", "b2", "b3"]) expect(done.items[id]?.status).toBe("done");
+  });
+
+  it("reopen puts a stopped project's parked work back, with fresh retries, and it carries on to release", async () => {
+    const { root, projectId } = await fresh();
+    // b3 never changes anything, so it is shrunk and its replacement parked; then going live fails, so the project stops
+    const stuck = new MockAgent((req: AgentRequest) => {
+      const itemId = /"id": "([a-z0-9-]+)"/.exec(req.user)?.[1] ?? "x";
+      if (itemId.startsWith("b3")) return { summary: "Nothing to do." };
+      return { files: { [`src/${itemId}.js`]: `export const v = "${itemId}";\n`, "tests.json": JSON.stringify({ passed: 2, failed: 0, skipped: 0 }) }, summary: `Implemented ${itemId}.` };
+    });
+    const noShrink: Parameters<typeof scriptedAdapter>[0] = { override: (req) => (req.role === "planner" && req.user.includes("SHRINK this item") ? { items: [], notes: "" } : undefined) };
+    const stopped = await runProject({ ...opts(root, projectId, new FakeDeploy({ promote: () => ({ ok: false, output: "502" }) }), stuck), adapter: scriptedAdapter(noShrink) });
+    expect(stopped.status).toBe("stopped");
+    expect(stopped.items["b3"]?.status).toBe("parked");
+    const { reopenProject } = await import("../src/index.js");
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    expect(await reopenProject(store)).toEqual(["b3"]);
+    const again = await runProject(opts(root, projectId, new FakeDeploy(), devAgent()));
+    expect(again.status, again.stopReason).toBe("finished");
+    expect(again.items["b3"]).toMatchObject({ status: "done" });
+    await expect(reopenProject(store)).rejects.toThrow(/only a stopped project/);
   });
 
   it("a release whose health check fails is never promoted; the ladder retries and stops with the reason", async () => {

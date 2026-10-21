@@ -81,6 +81,8 @@ export interface ProjectState {
   corrections: Record<string, string>;
   /** While waiting: the settings the person still has to give. */
   waitingFor?: string[];
+  /** While waiting: paused because the model provider's allowance is used up (plain words). */
+  pausedReason?: string;
   /** Names of settings stored for the live app, by anyone. */
   settingsProvided: string[];
 }
@@ -230,6 +232,19 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
     case "project-resumed":
       if (s.status === "waiting") s.status = "running";
       delete s.waitingFor;
+      delete s.pausedReason;
+      break;
+    case "project-paused":
+      s.status = "waiting";
+      s.pausedReason = e.reason;
+      break;
+    case "project-reopened":
+      s.status = "running";
+      delete s.stopReason;
+      delete s.pausedReason;
+      s.failures = 0;
+      s.phaseFails = {};
+      for (const id of e.itemIds) s.items[id] = { status: "todo", failCount: 0 };
       break;
     case "settings-provided":
       for (const n of e.names) if (!s.settingsProvided.includes(n)) s.settingsProvided.push(n);

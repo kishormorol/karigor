@@ -19,6 +19,10 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
       lines.push(`Status: stopped. ${state.stopReason ?? ""}`.trim());
       break;
     case "waiting": {
+      if (state.pausedReason) {
+        lines.push(`Status: paused. ${state.pausedReason.charAt(0).toUpperCase()}${state.pausedReason.slice(1)}.`);
+        break;
+      }
       lines.push("Status: waiting for you. It is built, and only needs a few things that only you can give:");
       const all = state.waitingFor ?? [];
       lines.push(...all.map((n) => `  - ${n}`), `Give them with: karigor setup ${state.projectId}`);
@@ -163,7 +167,13 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
         lines.push(`${t} Waiting for you to give: ${e.needs.join(", ")}.`);
         break;
       case "project-resumed":
-        lines.push(`${t} Got what it needed; carrying on.`);
+        lines.push(`${t} Carrying on.`);
+        break;
+      case "project-paused":
+        lines.push(`${t} Paused: ${e.reason}.`);
+        break;
+      case "project-reopened":
+        lines.push(`${t} Put back to work${e.itemIds.length ? ` with ${e.itemIds.length} item${e.itemIds.length === 1 ? "" : "s"} back on the list` : ""}.`);
         break;
       case "settings-provided":
         lines.push(`${t} ${e.by === "system" ? "Made and stored" : "Stored"} the setting${e.names.length === 1 ? "" : "s"} ${e.names.join(", ")} where the app reads ${e.names.length === 1 ? "it" : "them"}.`);

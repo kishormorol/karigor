@@ -47,7 +47,9 @@ describe("ClaudeCodeAgent (offline)", () => {
     const mk = (body: Record<string, unknown>): Exec => async () => ({ stdout: JSON.stringify(body), stderr: "", code: 0 });
     const r1 = await new ClaudeCodeAgent({ exec: mk({ is_error: true, result: "Not logged in" }) }).act(req);
     expect(r1.ok === false && r1.retryable).toBe(false);
-    const r2 = await new ClaudeCodeAgent({ exec: mk({ is_error: true, result: "usage limit reached" }) }).act(req);
+    // a used-up allowance pauses the project rather than spending retries that cannot succeed
+    await expect(new ClaudeCodeAgent({ exec: mk({ is_error: true, result: "usage limit reached" }) }).act(req)).rejects.toMatchObject({ name: "QuotaError" });
+    const r2 = await new ClaudeCodeAgent({ exec: mk({ is_error: true, result: "rate limited, try again in a minute" }) }).act(req);
     expect(r2.ok === false && r2.retryable).toBe(true);
     const r3 = await new ClaudeCodeAgent({ exec: async () => ({ stdout: "", stderr: "timed out after 60 minutes", code: null }) }).act(req);
     expect(r3.ok === false && r3.retryable).toBe(true);
@@ -65,4 +67,23 @@ describe.runIf(process.env["KARIGOR_REAL_MODEL"] === "1")("ClaudeCodeAgent (live
     // shell commands from the allow-list must actually run, not be denied
     expect(await readFile(join(ws.dir, "ran.txt"), "utf8")).toBe("ok");
   }, 300_000);
+});
+
+describe("usage allowance used up", () => {
+  it("recognises the provider's limit messages, and only those", async () => {
+    const { quotaFrom } = await import("../src/index.js");
+    const weekly = quotaFrom("You've hit your weekly limit · resets Oct 26 at 1pm (America/New_York)");
+    expect(weekly?.name).toBe("QuotaError");
+    expect(weekly?.resets).toBe("Oct 26 at 1pm");
+    expect(quotaFrom("Claude AI usage limit reached|1792700000")).toBeDefined();
+    expect(quotaFrom("Your credit balance is too low to access the Anthropic API.")).toBeDefined();
+    for (const t of ["rate limited", "Overloaded", "Not logged in", "429 Too Many Requests, try again", "the test failed"]) expect(quotaFrom(t), t).toBeUndefined();
+  });
+
+  it("the developer agent throws a QuotaError instead of reporting a failed attempt", async () => {
+    const { ClaudeCodeAgent, QuotaError } = await import("../src/index.js");
+    const exec = async () => ({ stdout: JSON.stringify({ is_error: true, result: "You've hit your weekly limit · resets Oct 26 at 1pm (America/New_York)" }), stderr: "", code: 1 });
+    const agent = new ClaudeCodeAgent({ exec });
+    await expect(agent.act({ tier: "routine", system: "s", user: "u", cwd: "/tmp", key: "k", role: "developer" })).rejects.toBeInstanceOf(QuotaError);
+  });
 });

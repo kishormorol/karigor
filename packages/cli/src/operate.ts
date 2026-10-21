@@ -189,6 +189,13 @@ export async function operateOnce(o: OperateOptions): Promise<OperateResult> {
   const recorded = await recordSignals(store, signals, clock);
   for (const id of recorded) log(`new work item ${id}`);
   let state = await store.replay();
+  // A project paused for the provider's allowance carries on at the next pass.
+  if (!o.recordOnly && state.status === "waiting" && state.pausedReason) {
+    const { healthUrl: _h, healthCheck: _c, audit: _a, signals: _s, recordOnly: _r, ...run } = o;
+    log("carrying on after the pause");
+    state = await runProject(run);
+    return { recorded, state };
+  }
   if (o.recordOnly || !canStartMaintenance(state)) return { recorded, state };
   const cycle = await startMaintenance(store, { adapter: o.adapter, ...(o.templatesDir ? { templatesDir: o.templatesDir } : {}), clock });
   if (cycle === undefined) return { recorded, state };
@@ -429,4 +436,28 @@ export async function installUiKit(store: FsStore, profileName = "web-app"): Pro
   }
   if (added.some((a) => !a.includes("left as it is"))) await ws.commitAll(`karigor: the Ledger UI kit from the template (${added.join(", ")})`);
   return added;
+}
+
+/**
+ * Put a stopped project back to work: every parked item returns with a fresh retry count and the
+ * project goes back to building them, then on to release. For a project that stopped because of
+ * something outside the work (an allowance that ran out before pausing existed, a broken machine).
+ * Returns the items put back.
+ */
+export async function reopenProject(store: FsStore, o: { templatesDir?: string } = {}): Promise<string[]> {
+  const state = await store.replay();
+  if (state.status !== "stopped") throw new Error(`only a stopped project can be reopened (this one is ${state.status})`);
+  if (!state.template) throw new Error("the project never chose a process, so there is nothing to reopen");
+  const template = await loadTemplate(state.template, o.templatesDir);
+  const loopPhase = Object.entries(template.phases).find(([, p]) => p.loop)?.[0];
+  const backlogId = state.artifacts.backlog?.at(-1);
+  const items = backlogId ? (await store.readArtifact("backlog", backlogId)).meta.items : [];
+  const parked = items.filter((b) => (state.items[b.id]?.status ?? b.status) === "parked").map((b) => b.id);
+  const events: NewEvent[] = [{ type: "project-reopened", by: "user", itemIds: parked }];
+  if (parked.length && loopPhase && state.phase && state.phase !== loopPhase) {
+    events.push({ type: "transition", by: "user", from: state.phase, to: loopPhase }, { type: "phase-entered", by: "user", phase: loopPhase });
+  }
+  await store.appendEvents(events);
+  await store.commit(`karigor: reopened with ${parked.length} item(s) back on the list`);
+  return parked;
 }
