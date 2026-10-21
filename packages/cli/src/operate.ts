@@ -419,6 +419,14 @@ export async function installUiKit(store: FsStore, profileName = "web-app"): Pro
     await writeFile(globalsPath, `@import "tailwindcss";\n\n${theme.trimEnd()}\n${rest ? `\n${rest}` : ""}`, "utf8");
     added.push("app/globals.css (theme)");
   }
+  // The first template wrapped every page in a narrow box; the kit's frames bring their own width.
+  const layoutPath = join(dir, "app", "layout.tsx");
+  const layout = await readFile(layoutPath, "utf8").catch(() => "");
+  const oldWrapper = '<main className="mx-auto max-w-2xl px-4 py-8">{children}</main>';
+  if (layout.includes(oldWrapper)) {
+    await writeFile(layoutPath, layout.replace(oldWrapper, "{children}").replace('className="min-h-screen bg-white text-gray-900 antialiased"', 'className="min-h-screen bg-ground font-sans text-ink antialiased"'), "utf8");
+    added.push("app/layout.tsx (the old narrow page box removed)");
+  }
   if (added.some((a) => !a.includes("left as it is"))) await ws.commitAll(`karigor: the Ledger UI kit from the template (${added.join(", ")})`);
   return added;
 }

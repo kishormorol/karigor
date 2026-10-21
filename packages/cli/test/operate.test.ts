@@ -140,10 +140,12 @@ describe("UI kit for older apps", () => {
     const { mkdir, writeFile } = await import("node:fs/promises");
     await mkdir(join(ws.dir, "app"), { recursive: true });
     await writeFile(join(ws.dir, "app", "globals.css"), '@import "tailwindcss";\n\n@media print { nav { display: none; } }\n');
+    await writeFile(join(ws.dir, "app", "layout.tsx"), '<body className="min-h-screen bg-white text-gray-900 antialiased">\n  <main className="mx-auto max-w-2xl px-4 py-8">{children}</main>\n</body>\n');
     await ws.commitAll("app styles");
     const { installUiKit } = await import("../src/index.js");
     const store = await FsStore.open(root, projectId, { committer: noopCommitter });
-    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx", "app/globals.css (theme)"]);
+    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx", "app/globals.css (theme)", "app/layout.tsx (the old narrow page box removed)"]);
+    expect(await readFile(join(ws.dir, "app", "layout.tsx"), "utf8")).toBe('<body className="min-h-screen bg-ground font-sans text-ink antialiased">\n  {children}\n</body>\n');
     const css = await readFile(join(ws.dir, "app", "globals.css"), "utf8");
     expect(css).toMatch(/^@import "tailwindcss";\n\n[\s\S]*@theme[\s\S]*--color-primary[\s\S]*@media print/);
     expect((css.match(/@import "tailwindcss"/g) ?? []).length).toBe(1);
