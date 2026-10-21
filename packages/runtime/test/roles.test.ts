@@ -141,7 +141,7 @@ describe("role definitions", () => {
     state.cycle = 1;
     state.items = { b1: { status: "done", failCount: 0 }, b2: { status: "done", failCount: 0 } };
     let prompt = "";
-    const ctx = await roleContext(store, state, { phase: "triage" });
+    const ctx = await roleContext(store, state, { phase: "triage", backlog: [{ id: "b1", title: "Old built item", description: "d", acceptance: ["a"], priority: "must", estimate: "S", status: "todo", dependsOn: [] }] });
     const sub = (id: string, dependsOn: string[] = []) => ({ id, title: id, description: "d", acceptance: ["a"], priority: "must", estimate: "S", dependsOn });
     const adapter = new MockAdapter((req) => {
       prompt = req.user;
@@ -149,6 +149,8 @@ describe("role definitions", () => {
     });
     const r = await runWorker({ role: "planner", key: "k", ctx, adapter, budget: openBudget() });
     expect(prompt).toMatch(/Please add Bangla/);
+    expect(prompt).not.toMatch(/Existing backlog/);
+    expect(prompt).toMatch(/Already built in earlier releases[\s\S]*Old built item/);
     expect(prompt).not.toMatch(/feedback:old/);
     const bl = r.artifacts[0]!;
     expect(bl.meta.kind === "backlog" && bl.meta.items.map((i) => `${i.id}<${i.dependsOn.join(",")}`)).toEqual(["m1-b1<", "b3<m1-b1", "m1-b2<m1-b1"]);

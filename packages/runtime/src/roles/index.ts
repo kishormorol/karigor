@@ -171,6 +171,9 @@ export const planner: RoleDefinition<PlannerOutput> = {
       const item = ctx.backlog.find((b) => b.id === ctx.itemId);
       parts.push(section("SHRINK this item", "```json\n" + JSON.stringify(item, null, 2) + "\n```\nIt failed repeatedly. Replace it with smaller items. Use ids prefixed with its id."));
       parts.push(section("Existing item ids (do not reuse)", ctx.backlog.map((b) => b.id).join(", ")));
+    } else if (ctx.backlog.length && ctx.state.cycle > 0) {
+      // A fix round plans only for its work items; what earlier releases built is context, not work.
+      parts.push(section("Already built in earlier releases (context only; do not plan these again)", ctx.backlog.map((b) => `- ${b.title}`).join("\n")));
     } else if (ctx.backlog.length) {
       parts.push(section("Existing backlog", "```json\n" + JSON.stringify(ctx.backlog, null, 2) + "\n```"));
     }
