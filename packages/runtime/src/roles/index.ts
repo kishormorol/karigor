@@ -226,6 +226,9 @@ export function openWorkItems(ctx: Pick<RoleContext, "state">): string[] {
  * "b1" would look finished. Colliding ids get the cycle as a prefix; dependencies follow.
  */
 function uniqueIds(items: BacklogItem[], ctx: RoleContext): BacklogItem[] {
+  // In the first build, a re-plan that keeps an item's id means the same item (finished work stays finished).
+  // In a maintenance cycle, a reused id would be mistaken for an item from an earlier release.
+  if (ctx.state.cycle === 0) return items;
   const taken = new Set(Object.keys(ctx.state.items));
   if (!items.some((i) => taken.has(i.id))) return items;
   const prefix = `m${ctx.state.cycle || 1}-`;

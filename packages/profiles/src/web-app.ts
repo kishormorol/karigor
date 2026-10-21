@@ -36,7 +36,8 @@ export const webApp: Profile = {
     test: ["pnpm", "test"],
     lint: ["pnpm", "lint"],
     build: ["pnpm", "build"],
-    audit: ["pnpm", "audit", "--json", "--audit-level", "high"],
+    // What ships to users: build-time tooling (linters, test runners) never runs in the live app.
+    audit: ["pnpm", "audit", "--prod", "--json", "--audit-level", "high"],
     start: ["pnpm", "start"],
   },
   healthPath: "/api/health",

@@ -118,6 +118,18 @@ describe("role definitions", () => {
     expect(r.artifacts[0]!.meta.kind === "summary" && r.artifacts[0]!.meta.url).toBe("http://127.0.0.1:4100");
   });
 
+  it("planner sent back in the first build keeps finished items' ids, so they are not rebuilt", async () => {
+    const store = await freshStore();
+    const state = emptyState("p1");
+    await seed(store, state, [idea]);
+    state.items = { b1: { status: "done", failCount: 0 }, b2: { status: "done", failCount: 0 } };
+    const ctx = await roleContext(store, state, { phase: "plan" });
+    const sub = (id: string) => ({ id, title: id, description: "d", acceptance: ["a"], priority: "must", estimate: "S", dependsOn: [] });
+    const r = await runWorker({ role: "planner", key: "k", ctx, adapter: new MockAdapter(() => ({ items: [sub("b1"), sub("b2"), sub("fix-vulnerable-deps")], notes: "adds a fix" })), budget: openBudget() });
+    const bl = r.artifacts[0]!;
+    expect(bl.meta.kind === "backlog" && bl.meta.items.map((i) => i.id)).toEqual(["b1", "b2", "fix-vulnerable-deps"]);
+  });
+
   it("planner in maintenance sees open work items from state and never reuses a settled id", async () => {
     const store = await freshStore();
     const state = emptyState("p1");
