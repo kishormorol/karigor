@@ -17,6 +17,12 @@ Where things go:
 - Pure logic (validation, formatting, rules): \`src/lib/*.ts\`. This is where most unit tests belong.
 - Tests: \`tests/*.test.ts\` or next to the code as \`*.test.ts\`, run with \`pnpm test\`.
 
+How it looks (the "Ledger" look, designed in Claude Design; the person will judge the app by it):
+- Build every screen from \`src/components/ui.tsx\`: \`AppShell\` (signed-in screens, with the main navigation) or \`PublicShell\` (public pages), then \`PageHeader\`, \`Card\`, \`ListRow\`, \`Stat\`/\`StatGrid\`, \`Badge\`, \`Alert\`, \`EmptyState\`, and \`FormStack\` with \`Field\` + \`Input\`/\`Select\`/\`Textarea\` and \`Button\`/\`ButtonLink\`. Do not hand-style raw buttons, inputs or page frames; add a component to \`ui.tsx\` when one is missing, in the same style.
+- Colours come from the theme in \`app/globals.css\` (\`bg-primary\`, \`text-muted\`, \`text-owed\`, \`bg-paid-tint\`, ...), never raw hex or Tailwind's default palette. One primary action per screen; red and green only for money and status (owed, paid), with words as well as colour.
+- Money is shown with \`money()\` (৳1,500). Every list has an \`EmptyState\`; every form shows success or errors with \`Alert\` and per-field \`error\`s.
+- Mobile first: check that each page reads well at phone width; touch targets stay at least 44px (the components do this).
+
 Conventions:
 - Every backlog item adds or changes tests for its acceptance criteria; test pure logic directly and route handlers by calling the exported function with a \`Request\`.
 - Forms work without JavaScript first (server actions), then get enhanced.

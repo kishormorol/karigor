@@ -1,8 +1,12 @@
+import { Card, EmptyState, PageHeader, PublicShell } from "@/components/ui";
+
 export default function HomePage() {
   return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-semibold">It works</h1>
-      <p className="text-gray-600">This page is the scaffold. The first backlog item replaces it.</p>
-    </section>
+    <PublicShell>
+      <PageHeader eyebrow="Getting started" title="It works" description="This page is the scaffold. The first backlog item replaces it." />
+      <Card>
+        <EmptyState title="Nothing here yet">Pages are built from the components in src/components/ui.tsx.</EmptyState>
+      </Card>
+    </PublicShell>
   );
 }

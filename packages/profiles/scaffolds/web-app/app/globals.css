@@ -1,1 +1,44 @@
 @import "tailwindcss";
+
+/*
+ * Ledger: the look every Karigor web app starts with (designed in Claude Design).
+ * Calm and trustworthy, phone-first: one action colour; red and green only for money and status.
+ * Use the components in src/components/ui.tsx rather than styling pages from scratch.
+ */
+@theme {
+  --font-sans: "Inter", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #0e5e55;
+  --color-primary-hover: #0a4740;
+  --color-primary-tint: #e6f0ee;
+  --color-ink: #18211f;
+  --color-ink-soft: #3a4642;
+  --color-muted: #5b6762;
+  --color-ground: #f5f6f4;
+  --color-surface: #ffffff;
+  --color-line: #e4e7e3;
+  --color-line-strong: #d5dad6;
+  --color-owed: #b42318;
+  --color-owed-tint: #feeceb;
+  --color-partial: #8a4b00;
+  --color-partial-tint: #fdf1dc;
+  --color-paid: #067647;
+  --color-paid-tint: #e7f6ec;
+
+  --radius-control: 12px;
+  --radius-card: 16px;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+    outline-offset: 2px;
+  }
+}
