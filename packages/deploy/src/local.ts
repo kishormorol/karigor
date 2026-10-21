@@ -1,5 +1,5 @@
 import { appendFile, chmod, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { CommandResult } from "@karigor/gates";
 import { readSettings, requiredSettings, toMissing, type MissingSetting, type Profile } from "@karigor/profiles";
 import { Workspace, clip, run } from "@karigor/sandbox";
@@ -97,7 +97,8 @@ export class LocalDeploy implements DeployAdapter {
       if (!argv?.length) continue;
       this.o.log?.(`  ${what} for release ${r.version}`);
       const [c, ...args] = argv;
-      const res = await run(c!, args, { cwd: dir, timeoutMs: 15 * 60 * 1000 });
+      // The build applies migrations, so it must see the same database the release will use.
+      const res = await run(c!, args, { cwd: dir, timeoutMs: 15 * 60 * 1000, env: await this.settingsEnv() });
       out.push(clip(`$ ${argv.join(" ")}\n${res.stdout}${res.stderr ? `\n${res.stderr}` : ""}`, 6_000));
       if (res.code !== 0) return { ok: false, output: out.join("\n") };
     }
@@ -190,9 +191,20 @@ export class LocalDeploy implements DeployAdapter {
     return join(this.o.projectDir, "run", "settings.json");
   }
 
-  /** The profile's local defaults under the values saved with `setSettings`: the app's environment when it starts. */
+  /**
+   * The profile's local defaults under the values saved with `setSettings`: the app's environment.
+   * A local file path (`file:./data/app.db`) points into the project's own `data/` folder, shared by
+   * every release, so data survives an update and a rollback instead of staying behind in an old release.
+   */
   async settingsEnv(): Promise<Record<string, string>> {
-    return { ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
+    const env = { ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
+    for (const [k, v] of Object.entries(env)) {
+      if (!v.startsWith("file:./")) continue;
+      const path = join(this.o.projectDir, v.slice("file:./".length));
+      await mkdir(dirname(path), { recursive: true });
+      env[k] = `file:${path}`;
+    }
+    return env;
   }
 
   private async storedSettings(): Promise<Record<string, string>> {
@@ -238,7 +250,7 @@ export class LocalDeploy implements DeployAdapter {
   private async ignoreReleasesInProjectGit(): Promise<void> {
     const f = join(this.o.projectDir, ".gitignore");
     const text = await readFile(f, "utf8").catch(() => "");
-    const missing = ["releases/", "run/"].filter((l) => !text.split("\n").includes(l));
+    const missing = ["releases/", "run/", "data/"].filter((l) => !text.split("\n").includes(l));
     if (missing.length) await appendFile(f, (text && !text.endsWith("\n") ? "\n" : "") + missing.join("\n") + "\n", "utf8");
   }
 }

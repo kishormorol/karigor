@@ -129,6 +129,25 @@ describe("LocalDeploy", { timeout: 60_000 }, () => {
     expect((await d.preview(req(ws, 1, sha))).ok).toBe(true);
   });
 
+  it("every release uses the project's one database, so an update keeps the data (and the build migrates it)", async () => {
+    const { projectDir, ws } = await setup();
+    // the "build" appends to the database file the release will use, like a migration
+    const build = ["node", "-e", "const f=process.env.DATABASE_URL.slice(5);require('fs').appendFileSync(f,'migrated\\n')"];
+    const profile = { ...fixture, commands: { ...fixture.commands, build }, localSettings: { DATABASE_URL: "file:./data/app.db" } };
+    const d = new LocalDeploy({ projectDir, profile, healthTimeoutMs: 10_000 });
+    started.push(d);
+    expect((await d.settingsEnv())["DATABASE_URL"]).toBe(`file:${join(projectDir, "data", "app.db")}`);
+    for (let n = 1; n <= 2; n++) {
+      const sha = await commit(ws, { "src/a.js": String(n) });
+      const r = req(ws, n, sha);
+      const p = await d.preview(r);
+      expect(p.ok, p.output).toBe(true);
+      await d.promote({ ...r, preview: p });
+    }
+    expect(await readFile(join(projectDir, "data", "app.db"), "utf8")).toBe("migrated\nmigrated\n");
+    expect(await readFile(join(projectDir, ".gitignore"), "utf8")).toMatch(/^data\/$/m);
+  });
+
   it("ensure brings a preview back on the same URL after it stopped", async () => {
     const { ws, deploy } = await setup();
     const sha = await commit(ws, { "src/a.js": "1" });
