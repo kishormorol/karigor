@@ -4,20 +4,35 @@ import type { ModelAdapter, ModelRequest, ModelResponse, Usage } from "./types.j
 /** Runs a command and resolves with stdout even on a non-zero exit (the CLI reports errors in its JSON). */
 export type Exec = (file: string, args: string[], input: string, opts: { timeoutMs: number; env: NodeJS.ProcessEnv; cwd?: string }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
 
-const defaultExec: Exec = (file, args, input, { timeoutMs, env, cwd }) =>
+/**
+ * Run a CLI with a hard deadline. At the deadline it is asked to stop (SIGTERM); a process that
+ * ignores that is killed (SIGKILL) a few seconds later, so a hung call can never hang the kernel.
+ * A killed call produced no result and is safe to retry.
+ */
+export const execWithDeadline: Exec = (file, args, input, { timeoutMs, env, cwd }) =>
   new Promise((resolve) => {
-    const child = execFile(file, args, { env, cwd, timeout: timeoutMs, killSignal: "SIGTERM", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
-      const e = err as (Error & { code?: unknown; killed?: boolean; signal?: string }) | null;
-      if (e?.killed || e?.signal) {
-        // Killed by our timeout: no result was produced, so the call is safe to retry.
+    let timedOut = false;
+    const child = execFile(file, args, { env, cwd, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
+      clearTimeout(term);
+      clearTimeout(kill);
+      if (timedOut) {
         resolve({ stdout: "", stderr: `timed out after ${Math.round(timeoutMs / 60000)} minutes`, code: null });
         return;
       }
+      const e = err as (Error & { code?: unknown }) | null;
       const code = e && typeof e.code === "number" ? e.code : e ? null : 0;
       resolve({ stdout: String(stdout), stderr: String(stderr), code });
     });
+    let kill: NodeJS.Timeout | undefined;
+    const term = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      kill = setTimeout(() => child.kill("SIGKILL"), 10_000);
+    }, timeoutMs);
     child.stdin?.end(input);
   });
+
+const defaultExec: Exec = execWithDeadline;
 
 export interface ClaudeCodeAdapterOptions {
   /** Model alias or id for decisions and reviews. */

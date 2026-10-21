@@ -98,3 +98,14 @@ describe.runIf(process.env["KARIGOR_REAL_MODEL"] === "1")("ClaudeCodeAdapter (li
     }
   }, 180_000);
 });
+
+describe("execWithDeadline", () => {
+  it("kills a process that ignores the polite stop signal, and reports a retryable timeout", async () => {
+    const { execWithDeadline } = await import("../src/index.js");
+    const started = Date.now();
+    const r = await execWithDeadline(process.execPath, ["-e", "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], "", { timeoutMs: 200, env: process.env });
+    expect(r.code).toBeNull();
+    expect(r.stderr).toMatch(/timed out/);
+    expect(Date.now() - started).toBeLessThan(15_000);
+  }, 20_000);
+});

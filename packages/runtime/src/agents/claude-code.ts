@@ -1,6 +1,5 @@
 import type { ModelTier } from "@karigor/store";
-import { CLAUDE_CODE_DEFAULTS, type Exec } from "../adapters/claude-code.js";
-import { execFile } from "node:child_process";
+import { CLAUDE_CODE_DEFAULTS, execWithDeadline, type Exec } from "../adapters/claude-code.js";
 import type { Usage } from "../adapters/types.js";
 import type { AgentAdapter, AgentRequest, AgentResponse } from "./types.js";
 
@@ -88,19 +87,7 @@ export interface ClaudeCodeAgentOptions {
   exec?: Exec;
 }
 
-const defaultExec: Exec = (file, args, input, { timeoutMs, env, cwd }) =>
-  new Promise((resolve) => {
-    const child = execFile(file, args, { env, cwd, timeout: timeoutMs, killSignal: "SIGTERM", maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
-      const e = err as (Error & { code?: unknown; killed?: boolean; signal?: string }) | null;
-      if (e?.killed || e?.signal) {
-        resolve({ stdout: "", stderr: `timed out after ${Math.round(timeoutMs / 60000)} minutes`, code: null });
-        return;
-      }
-      const code = e && typeof e.code === "number" ? e.code : e ? null : 0;
-      resolve({ stdout: String(stdout), stderr: String(stderr), code });
-    });
-    child.stdin?.end(input);
-  });
+const defaultExec: Exec = execWithDeadline;
 
 interface CliResult {
   is_error?: boolean;
