@@ -379,10 +379,14 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
   return { stored: names, stillMissing, ...(res.url ?? live.url ? { url: (res.url ?? live.url)! } : {}), output: `${saved.output}\n${res.output.split("\n").at(-1) ?? ""}` };
 }
 
+/** sha256 (first 16 hex) of every UI kit the template has shipped, so an untouched copy can be upgraded. */
+export const UI_KIT_HISTORY = ["7e71e280ccaa32d8"];
+
 /**
  * Bring an app built from an older template up to the current UI kit: copy `src/components/ui.tsx`
- * and add the theme to `app/globals.css` when it has none. No page changes; a fix round restyles
- * the screens. Returns what was added (empty when it was already there).
+ * (or upgrade it, when it is an earlier template version nobody has edited) and add the theme to
+ * `app/globals.css` when it has none. No page changes; a fix round restyles the screens.
+ * Returns what changed (empty when nothing needed to); an edited kit is reported, never overwritten.
  */
 export async function installUiKit(store: FsStore, profileName = "web-app"): Promise<string[]> {
   const { SCAFFOLDS_DIR } = await import("@karigor/profiles");
@@ -392,10 +396,20 @@ export async function installUiKit(store: FsStore, profileName = "web-app"): Pro
   const ws = await Workspace.open(dir);
   const added: string[] = [];
   const kitTarget = join(dir, "src", "components", "ui.tsx");
-  if (!(await stat(kitTarget).then(() => true, () => false))) {
+  const kit = await readFile(join(from, "src", "components", "ui.tsx"), "utf8");
+  const current = await readFile(kitTarget, "utf8").catch(() => undefined);
+  const hash = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
+  if (current === undefined) {
     await mkdir(join(dir, "src", "components"), { recursive: true });
-    await writeFile(kitTarget, await readFile(join(from, "src", "components", "ui.tsx"), "utf8"), "utf8");
+    await writeFile(kitTarget, kit, "utf8");
     added.push("src/components/ui.tsx");
+  } else if (current !== kit) {
+    if (UI_KIT_HISTORY.includes(hash(current))) {
+      await writeFile(kitTarget, kit, "utf8");
+      added.push("src/components/ui.tsx (upgraded)");
+    } else {
+      added.push("src/components/ui.tsx was changed in this app, so it was left as it is");
+    }
   }
   const globalsPath = join(dir, "app", "globals.css");
   const globals = await readFile(globalsPath, "utf8").catch(() => "");
@@ -405,6 +419,6 @@ export async function installUiKit(store: FsStore, profileName = "web-app"): Pro
     await writeFile(globalsPath, `@import "tailwindcss";\n\n${theme.trimEnd()}\n${rest ? `\n${rest}` : ""}`, "utf8");
     added.push("app/globals.css (theme)");
   }
-  if (added.length) await ws.commitAll(`karigor: add the Ledger UI kit from the template (${added.join(", ")})`);
+  if (added.some((a) => !a.includes("left as it is"))) await ws.commitAll(`karigor: the Ledger UI kit from the template (${added.join(", ")})`);
   return added;
 }

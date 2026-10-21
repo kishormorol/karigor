@@ -150,6 +150,19 @@ describe("UI kit for older apps", () => {
     expect(await readFile(join(ws.dir, "src", "components", "ui.tsx"), "utf8")).toMatch(/export function AppShell/);
     expect((await run("git", ["log", "-1", "--format=%s"], { cwd: ws.dir })).stdout).toMatch(/Ledger UI kit/);
     expect(await installUiKit(store)).toEqual([]);
+    // an untouched earlier kit is upgraded; an edited one is left alone and reported
+    const { UI_KIT_HISTORY } = await import("../src/index.js");
+    expect(UI_KIT_HISTORY.length).toBeGreaterThan(0);
+    await writeFile(join(ws.dir, "src", "components", "ui.tsx"), "export const mine = 1;\n");
+    await ws.commitAll("edited kit");
+    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx was changed in this app, so it was left as it is"]);
+    expect(await readFile(join(ws.dir, "src", "components", "ui.tsx"), "utf8")).toBe("export const mine = 1;\n");
+    // pretend that file was an earlier template version: now it is upgraded
+    const { createHash } = await import("node:crypto");
+    UI_KIT_HISTORY.push(createHash("sha256").update("export const mine = 1;\n").digest("hex").slice(0, 16));
+    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx (upgraded)"]);
+    expect(await readFile(join(ws.dir, "src", "components", "ui.tsx"), "utf8")).toMatch(/export function Amount/);
+    UI_KIT_HISTORY.pop();
   });
 });
 
