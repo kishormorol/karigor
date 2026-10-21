@@ -15,36 +15,39 @@ export interface NavItem {
   label: string;
 }
 
-/** The frame of every signed-in screen: brand bar with navigation, then the page. */
+/**
+ * The frame of every signed-in screen: brand bar, the main navigation, then the page.
+ * On a phone the navigation is one row you can swipe sideways, so the header stays two lines tall.
+ */
 export function AppShell({ brand, subtitle, nav = [], active, actions, children }: { brand: string; subtitle?: string; nav?: NavItem[]; active?: string; actions?: ReactNode; children: ReactNode }) {
   return (
     <div className="min-h-screen bg-ground">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-7 gap-y-3 px-4 py-3 sm:px-6">
-          <div className="flex grow items-center gap-2.5">
-            <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-[10px] bg-primary text-base font-bold text-white">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-7 gap-y-2 px-4 pt-3 sm:flex-nowrap sm:px-6 sm:py-3">
+          <div className="flex min-w-0 grow items-center gap-2.5">
+            <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary text-base font-bold text-white">
               {brand.trim().charAt(0).toUpperCase()}
             </span>
-            <span className="flex flex-col">
-              <span className="text-base font-bold tracking-tight">{brand}</span>
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-base font-bold tracking-tight">{brand}</span>
               {subtitle && <span className="text-xs text-muted">{subtitle}</span>}
             </span>
           </div>
+          {actions && <div className="flex shrink-0 items-center gap-2 sm:order-last">{actions}</div>}
           {nav.length > 0 && (
-            <nav aria-label="Main" className="flex flex-wrap gap-1">
+            <nav aria-label="Main" className="-mx-4 flex w-[calc(100%+2rem)] gap-1 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:w-auto sm:overflow-visible sm:p-0">
               {nav.map((n) => (
                 <Link
                   key={n.href}
                   href={n.href}
                   aria-current={active === n.href ? "page" : undefined}
-                  className={cx("rounded-full px-3.5 py-2.5 text-sm no-underline", active === n.href ? "bg-primary-tint font-semibold text-primary" : "font-medium text-ink-soft hover:bg-primary-tint/60")}
+                  className={cx("shrink-0 whitespace-nowrap rounded-full px-3.5 py-2.5 text-sm no-underline", active === n.href ? "bg-primary-tint font-semibold text-primary" : "font-medium text-ink-soft hover:bg-primary-tint/60")}
                 >
                   {n.label}
                 </Link>
               ))}
             </nav>
           )}
-          {actions}
         </div>
       </header>
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 pb-16 pt-8 sm:px-6">{children}</main>

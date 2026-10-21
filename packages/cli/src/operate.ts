@@ -380,7 +380,7 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
 }
 
 /** sha256 (first 16 hex) of every UI kit the template has shipped, so an untouched copy can be upgraded. */
-export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca"];
+export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248dbf5f92f9"];
 
 /**
  * Bring an app built from an older template up to the current UI kit: copy `src/components/ui.tsx`
