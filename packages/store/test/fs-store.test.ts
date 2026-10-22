@@ -104,3 +104,33 @@ describe("FsStore", () => {
     expect(id).toMatch(/^spec-[a-z0-9]+-[a-f0-9]{6}$/);
   });
 });
+
+describe("run lock and inbox", () => {
+  it("one process at a time; re-entrant within a process; a dead process's lock is stale; the inbox drains once", async () => {
+    const { mkdtemp, writeFile, readFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const { acquireRunLock, assertIdle, drainInbox, queueInbox, runningPid } = await import("../src/index.js");
+    const dir = await mkdtemp(join(tmpdir(), "karigor-lock-"));
+    const outer = await acquireRunLock(dir);
+    const inner = await acquireRunLock(dir);
+    await inner();
+    expect(await readFile(join(dir, "run.lock"), "utf8")).toBe(`${process.pid}\n`);
+    await outer();
+    await expect(readFile(join(dir, "run.lock"))).rejects.toThrow();
+    // another live process holds it (the parent of this test runner is alive)
+    await writeFile(join(dir, "run.lock"), `${process.ppid}\n`);
+    expect(await runningPid(dir)).toBe(process.ppid);
+    await expect(acquireRunLock(dir)).rejects.toThrow(/already working on this project/);
+    await expect(assertIdle(dir, "a correction")).rejects.toThrow(/a correction has to wait/);
+    // a process that no longer exists leaves a stale lock
+    await writeFile(join(dir, "run.lock"), "999999\n");
+    expect(await runningPid(dir)).toBeUndefined();
+    await (await acquireRunLock(dir))();
+    await queueInbox(dir, { kind: "feedback", text: "one" });
+    await queueInbox(dir, { kind: "feedback", text: "two" });
+    expect((await drainInbox<{ text: string }>(dir)).map((x) => x.text).sort()).toEqual(["one", "two"]);
+    expect(await drainInbox(dir)).toEqual([]);
+    expect(await readFile(join(dir, ".gitignore"), "utf8")).toMatch(/^run\.lock$[\s\S]*^inbox\/$/m);
+  });
+});

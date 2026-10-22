@@ -3,7 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FsStore } from "@karigor/store";
+import { FsStore, queueInbox, runningPid } from "@karigor/store";
 import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, operateOnce, provideSettings, recordSignals, runOptions, runProject } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 
@@ -229,12 +229,18 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       const store = await FsStore.open(o.root, id).catch(() => {
         throw new HttpError(404, "no such project");
       });
+      if (runs.has(id) || (await runningPid(store.dir))) {
+        // A build is working on it (here, or in karigor serve or a CLI run): the message waits in the inbox.
+        await queueInbox(store.dir, { kind: "feedback", text: said });
+        return send(res, 202, { workItemId: null, fixing: false, queued: true });
+      }
       const [workItemId] = await recordSignals(store, [feedbackSignal(said)]);
       const fixing = !runs.has(id) && canStartMaintenance(await store.replay()) ? startRun(id, "fix", optionalKey(b)) : false;
       return send(res, 202, { workItemId: workItemId ?? null, fixing });
     }
     if (method === "POST" && action === "corrections") {
       const b = await body(req);
+      if (runs.has(id)) throw new HttpError(409, "it is being worked on right now; try again when this round finishes");
       const store = await FsStore.open(o.root, id).catch(() => {
         throw new HttpError(404, "no such project");
       });

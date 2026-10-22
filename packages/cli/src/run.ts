@@ -1,6 +1,8 @@
 import {
   FsStore,
+  acquireRunLock,
   applyEvent,
+  drainInbox,
   makeId,
   makeProjectId,
   type Artifact,
@@ -72,8 +74,31 @@ export async function createProject(root: string, ideaText: string, opts: { cloc
   return projectId;
 }
 
-/** Drive a project until the machine goes idle (finished or stopped). Safe to call again after a crash. */
+/**
+ * Drive a project until the machine goes idle (finished, stopped, waiting or paused). Safe to call
+ * again after a crash. Holds the project's run lock, so no other process changes its log meanwhile;
+ * feedback left during the run is read when it ends.
+ */
 export async function runProject(opts: RunOptions): Promise<ProjectState> {
+  const dir = join(opts.root, opts.projectId);
+  const release = await acquireRunLock(dir);
+  try {
+    return await runProjectLocked(opts);
+  } finally {
+    try {
+      const queued = await drainInbox<{ kind: string; text: string }>(dir);
+      if (queued.length) {
+        const { feedbackSignal, recordSignals } = await import("./operate.js");
+        const store = await FsStore.open(opts.root, opts.projectId, { ...(opts.clock ? { clock: opts.clock } : {}), ...(opts.committer ? { committer: opts.committer } : {}) });
+        await recordSignals(store, queued.filter((q) => q.kind === "feedback").map((q) => feedbackSignal(q.text)), opts.clock);
+      }
+    } finally {
+      await release();
+    }
+  }
+}
+
+async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
   const clock = opts.clock ?? (() => new Date());
   const log = opts.log ?? (() => {});
   const store = await FsStore.open(opts.root, opts.projectId, { clock, ...(opts.committer ? { committer: opts.committer } : {}) });

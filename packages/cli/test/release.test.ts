@@ -171,6 +171,19 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     await expect(dismissWorkItem(store, "work-item-nope", "x")).rejects.toThrow(/no work item/);
   });
 
+  it("feedback left while a build is busy waits in the inbox and is recorded when the build ends", async () => {
+    const { root, projectId } = await fresh();
+    const { queueInbox } = await import("@karigor/store");
+    await queueInbox(join(root, projectId), { kind: "feedback", text: "Please add a dark mode" });
+    const state = await runProject(opts(root, projectId, new FakeDeploy()));
+    expect(state.status).toBe("finished");
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    const after = await store.replay();
+    const items = await Promise.all(Object.keys(after.workItems).map((id) => store.readArtifact("work-item", id)));
+    expect(items.map((w) => w.meta.description)).toEqual(["Please add a dark mode"]);
+    await expect(readFile(join(root, projectId, "run.lock"))).rejects.toThrow();
+  });
+
   it("a release whose health check fails is never promoted; the ladder retries and stops with the reason", async () => {
     const { root, projectId } = await fresh();
     const deploy = local(root, projectId);

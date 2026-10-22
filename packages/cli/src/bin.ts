@@ -2,7 +2,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
-import { FsStore } from "@karigor/store";
+import { FsStore, queueInbox, runningPid } from "@karigor/store";
 import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
@@ -63,6 +63,11 @@ program
   .description("tell Karigor about a problem or a wish; it becomes work for the next fix round")
   .action(async (projectId: string, text: string) => {
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
+    if (await runningPid(store.dir)) {
+      await queueInbox(store.dir, { kind: "feedback", text });
+      console.log("Thanks. Karigor is working on this project right now, so your message is saved and will be read as soon as this round finishes.");
+      return;
+    }
     const [id] = await recordSignals(store, [feedbackSignal(text)]);
     console.log(id ? `Thanks. Noted as ${id}. Run karigor fix ${projectId} to handle it now, or leave karigor serve / watch running and it will be picked up.` : "That is already on the list.");
   });

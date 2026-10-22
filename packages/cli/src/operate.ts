@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { stat } from "node:fs/promises";
-import { FsStore, makeId, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState } from "@karigor/store";
+import { FsStore, acquireRunLock, assertIdle, makeId, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState } from "@karigor/store";
 import { loadTemplate } from "@karigor/process";
 import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
@@ -94,6 +94,7 @@ export async function healthSignal(url: string, o: { tries?: number; gapMs?: num
 
 /** Write a work item per new fingerprint. A fingerprint that is already open is not filed again. */
 export async function recordSignals(store: FsStore, signals: Signal[], clock: () => Date = () => new Date()): Promise<string[]> {
+  await assertIdle(store.dir, "recording this");
   const state = await store.replay();
   const open = new Set(Object.values(state.workItems).filter((w) => w.status !== "done").map((w) => w.fingerprint));
   const events: NewEvent[] = [];
@@ -129,6 +130,7 @@ export function canStartMaintenance(state: ProjectState): boolean {
  * project to the `maintenance` template. Returns the cycle number, or undefined when there is nothing to do.
  */
 export async function startMaintenance(store: FsStore, o: { adapter: ModelAdapter; templatesDir?: string; clock?: () => Date }): Promise<number | undefined> {
+  await assertIdle(store.dir, "a fix round");
   const state = await store.replay();
   if (!canStartMaintenance(state)) return undefined;
   const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done").map(([id]) => id);
@@ -170,6 +172,15 @@ export interface OperateResult {
 
 /** One pass of operating a project: gather signals, file work items, and run a fix round when needed. */
 export async function operateOnce(o: OperateOptions): Promise<OperateResult> {
+  const release = await acquireRunLock(join(o.root, o.projectId));
+  try {
+    return await operateOnceLocked(o);
+  } finally {
+    await release();
+  }
+}
+
+async function operateOnceLocked(o: OperateOptions): Promise<OperateResult> {
   const clock = o.clock ?? (() => new Date());
   const log = o.log ?? (() => {});
   const storeOpts = { clock, ...(o.committer ? { committer: o.committer as Committer } : {}) };
@@ -222,6 +233,7 @@ export function fixRoundCostNote(adapter: ModelAdapter): string {
  * (roles read it from then on), and a released project gets a work item so a fix round applies it.
  */
 export async function correctAssumption(store: FsStore, assumptionId: string, correctedTo: string, clock: () => Date = () => new Date()): Promise<{ ledgerId: string; workItemId?: string }> {
+  await assertIdle(store.dir, "a correction");
   const state = await store.replay();
   const prevId = state.artifacts.ledger?.at(-1);
   if (!prevId) throw new Error("no decisions have been recorded yet");
@@ -323,6 +335,7 @@ export interface ProvideSettingsResult {
  */
 export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter; values: Record<string, string>; by?: "user" | "system"; clock?: () => Date; log?: (line: string) => void }): Promise<ProvideSettingsResult> {
   const clock = o.clock ?? (() => new Date());
+  await assertIdle(o.store.dir, "changing settings");
   const dir = join(o.store.dir, "workspace");
   if (!o.deploy.setSettings || !o.deploy.missingSettings) throw new Error(`the ${o.deploy.name} target cannot store settings`);
   const known = new Set((await readSettings(dir)).map((s) => s.name));
@@ -396,6 +409,7 @@ export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248d
  * Returns what changed (empty when nothing needed to); an edited kit is reported, never overwritten.
  */
 export async function installUiKit(store: FsStore, profileName = "web-app"): Promise<string[]> {
+  await assertIdle(store.dir, "changing the UI kit");
   const { SCAFFOLDS_DIR } = await import("@karigor/profiles");
   const { readFile, writeFile, mkdir } = await import("node:fs/promises");
   const from = join(SCAFFOLDS_DIR, profileName);
@@ -445,6 +459,7 @@ export async function installUiKit(store: FsStore, profileName = "web-app"): Pro
  * Returns the items put back.
  */
 export async function reopenProject(store: FsStore, o: { templatesDir?: string } = {}): Promise<string[]> {
+  await assertIdle(store.dir, "reopening");
   const state = await store.replay();
   if (state.status !== "stopped") throw new Error(`only a stopped project can be reopened (this one is ${state.status})`);
   if (!state.template) throw new Error("the project never chose a process, so there is nothing to reopen");
@@ -468,6 +483,7 @@ export async function reopenProject(store: FsStore, o: { templatesDir?: string }
 
 /** Close a work item that no longer needs doing, with the reason. */
 export async function dismissWorkItem(store: FsStore, workItemId: string, reason: string): Promise<void> {
+  await assertIdle(store.dir, "closing a work item");
   const state = await store.replay();
   const w = state.workItems[workItemId];
   if (!w) throw new Error(`no work item ${workItemId} (open ones: ${Object.entries(state.workItems).filter(([, x]) => x.status !== "done").map(([id]) => id).join(", ") || "none"})`);
