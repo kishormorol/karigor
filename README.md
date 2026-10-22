@@ -32,6 +32,8 @@ The packages:
 | `@karigor/cli` | `karigor new`, `run`, `resume`, `status`, `cost`, `explain`, `park`, `unpark`, plus `feedback`, `correct`, `fix`, `watch` and `serve` for life after release. Plain language throughout. |
 | `@karigor/server` | The chat UI: a phone-first page where an idea is the first message, progress arrives as plain sentences, every decision can be corrected, and messages after release become fixes. No framework, no build step. |
 
+**New here?** [Building an app with Karigor](docs/guide.md) walks through it step by step: describing your idea, the build, settings, using the app, asking for changes, and putting it online.
+
 ## Try it in two minutes, free
 
 ```sh
