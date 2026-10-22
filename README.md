@@ -17,15 +17,17 @@ On 20 October 2026 a real run on a Claude Code login took "a page where my famil
 
 The Docker image builds and serves the UI; it refuses to listen beyond localhost without a token.
 
+On 22 October 2026 Karigor learned to build systems, not just small apps: the product owner plans the whole product and splits it into stages, `karigor grow` builds each next stage on top of what is live, the architecture names the system's roles and modules and is revised every stage, every web app starts with tested sign-in for many people with roles and permissions, and a release needs browser journeys (each kind of user's main jobs, at phone and desktop size) to pass on a brand-new database. See [the design](docs/superpowers/specs/2026-10-22-karigor-growing-systems-design.md).
+
 The packages:
 
 | Package | What it does |
 |---|---|
 | `@karigor/store` | Typed artifacts (spec, backlog, test reports, gate results, deploy records, work items, cost ledger...) and an append-only event log that is the single source of truth. Crash anywhere; `resume` replays to the exact state. |
-| `@karigor/process` | Declarative process templates (`iterative`, `linear`, `spike-then-build`, `maintenance`) and a pure state machine with failure ladders: retry, send back, shrink, park, stop. |
-| `@karigor/gates` | Mechanical gates (tests, lint, build, security scan, preview health, rollback) and judged gates (reviewer and skeptic with rubrics). A judged verdict with no citations is a fail. |
+| `@karigor/process` | Declarative process templates (`iterative`, `linear`, `spike-then-build`, `maintenance`, `stage`) and a pure state machine with failure ladders: retry, send back, shrink, park, stop. |
+| `@karigor/gates` | Mechanical gates (tests, lint, build, security scan, browser journeys, preview health, rollback) and judged gates (reviewer and skeptic with rubrics). A judged verdict with no citations is a fail. |
 | `@karigor/runtime` | Role prompts and output schemas, a worker runner (schema rejection, retry with the error quoted, tier escalation), and two kinds of adapter. Model adapters: Claude Code headless (no key), the Anthropic API, Ollama (local, free) and a mock. Agent adapters act inside a workspace: Claude Code with tools, `ModelAgent` (any model writing whole files), and a scripted mock. |
-| `@karigor/profiles` | Target profiles: what kind of software gets built and how it is served. `web-app` is Next.js + TypeScript + Tailwind + Drizzle (SQLite locally, libsql/Turso-ready) + Vitest, scaffolded so tests, lint and build pass before the first item. |
+| `@karigor/profiles` | Target profiles: what kind of software gets built and how it is served. `web-app` is Next.js + TypeScript + Tailwind + Drizzle (SQLite locally, libsql/Turso-ready) + Vitest + Playwright, scaffolded with sign-in for many people with roles, an activity log, the Ledger UI kit (sidebar, data tables, charts, dialogs) and browser journeys, so tests, lint, build and journeys pass before the first item. |
 | `@karigor/sandbox` | The project's real workspace: a git repository where every backlog item lands as a commit, and a sandbox that runs the profile's real tests, lint, build, dependency audit and secrets scan. Dropped or parked work is reverted so it never ships. |
 | `@karigor/deploy` | Where releases go. `local` (this computer, no account): each release is built into its own directory, previewed on a spare port, health-checked, then promoted; rollback is a pointer move, and verifying it starts the live release on a spare port. `vercel` (free hobby tier, `VERCEL_TOKEN`): deploy, promote and rollback through the Vercel CLI. |
 | `@karigor/budget` | Prices, a three-tier estimate (free, cheap, best), a running meter, and the overspend ladder: downgrade the model, then park optional work, then stop. Fix rounds get their own budget slice. |
@@ -92,6 +94,8 @@ The web-app stores data in SQLite on your computer. On Vercel, give it a free [T
 - `karigor correct <id> a3 "..."`: change a decision made on your behalf (ids are in `karigor status`).
 - `karigor setup <id>`: give the live app what it still needs (a passcode, a database), in plain words.
 - `karigor fix <id>`: start a fix round now. `serve` and `watch` start them on their own.
+- `karigor grow <id>` (or `--all`): build the next stage of the plan on top of what is live.
+- `karigor admin-link <id> you@example.com "Your name"`: your first way in; open the link it prints to choose a password, then add your team from People.
 
 Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
 
@@ -144,7 +148,9 @@ Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (k
 5. ~~Maintenance loop: production signals and feedback become work items and fix rounds~~
 6. ~~Phone-friendly chat UI, Docker self-host, local models through Ollama~~
 
-Next: a full recorded idea-to-production run on a real model, more target profiles (static site, API, mobile), Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
+7. ~~Growing systems: stages, people and roles, browser journeys, a kit for systems~~
+
+Next: file uploads and scheduled jobs in the web-app profile, a full recorded idea-to-production run on a real model, more target profiles (static site, API, mobile), Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
 
 ## Development
 

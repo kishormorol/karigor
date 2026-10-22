@@ -144,7 +144,8 @@ describe("UI kit for older apps", () => {
     await ws.commitAll("app styles");
     const { installUiKit } = await import("../src/index.js");
     const store = await FsStore.open(root, projectId, { committer: noopCommitter });
-    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx", "app/globals.css (theme)", "app/layout.tsx (the old narrow page box removed)"]);
+    expect(await installUiKit(store)).toEqual(["src/components/ui.tsx", "src/components/ui-client.tsx", "app/globals.css (theme)", "app/layout.tsx (the old narrow page box removed)"]);
+    expect(await readFile(join(ws.dir, "src", "components", "ui-client.tsx"), "utf8")).toMatch(/export function DataTable/);
     expect(await readFile(join(ws.dir, "app", "layout.tsx"), "utf8")).toBe('<body className="min-h-screen bg-ground font-sans text-ink antialiased">\n  {children}\n</body>\n');
     const css = await readFile(join(ws.dir, "app", "globals.css"), "utf8");
     expect(css).toMatch(/^@import "tailwindcss";\n\n[\s\S]*@theme[\s\S]*--color-primary[\s\S]*@media print/);
@@ -152,6 +153,11 @@ describe("UI kit for older apps", () => {
     expect(await readFile(join(ws.dir, "src", "components", "ui.tsx"), "utf8")).toMatch(/export function AppShell/);
     expect((await run("git", ["log", "-1", "--format=%s"], { cwd: ws.dir })).stdout).toMatch(/Ledger UI kit/);
     expect(await installUiKit(store)).toEqual([]);
+    // a theme from before charts gets their colours, inside its own @theme block
+    await writeFile(join(ws.dir, "app", "globals.css"), '@import "tailwindcss";\n\n@theme {\n  --color-primary: #0e5e55;\n}\n');
+    await ws.commitAll("older theme");
+    expect(await installUiKit(store)).toEqual(["app/globals.css (chart colours)"]);
+    expect(await readFile(join(ws.dir, "app", "globals.css"), "utf8")).toMatch(/@theme \{\n\s*\/\* Chart series[^\n]*\n\s*--color-chart-1: #0e5e55;[\s\S]*--color-chart-5: [^\n]*\n\s*--color-primary: #0e5e55;\n\}/);
     // an untouched earlier kit is upgraded; an edited one is left alone and reported
     const { UI_KIT_HISTORY } = await import("../src/index.js");
     expect(UI_KIT_HISTORY.length).toBeGreaterThan(0);

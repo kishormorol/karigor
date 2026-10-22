@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FsStore, type BacklogItem, type ProjectState } from "@karigor/store";
 import { meter } from "@karigor/budget";
-import { liveRecord, renderExplain } from "@karigor/cli";
+import { liveRecord, renderExplain, stagePlan } from "@karigor/cli";
 import { readSettings } from "@karigor/profiles";
 
 /** Everything the chat page shows about one project, in plain language. */
@@ -23,6 +23,9 @@ export interface ProjectView {
   /** While waiting: the settings only the person can give, with the developer's plain description. */
   waitingFor?: { name: string; note: string; kind: string; service?: string }[];
   workItems: { id: string; title: string; status: string; source: string }[];
+  /** The plan's stages when there is more than one, and the next one to build. */
+  stages?: { name: string; goal: string; state: "built" | "building" | "later" }[];
+  nextStage?: { name: string; goal: string };
   /** The event log as plain sentences, oldest first. */
   story: string[];
   lastSeq: number;
@@ -61,11 +64,13 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
     }),
   );
   const phase = state.phase ? PHASE_WORDS[state.phase] ?? state.phase : undefined;
+  const plan = await stagePlan(store, state);
+  const stages = plan.stages.length > 1 ? plan.stages.map((s) => ({ name: s.name, goal: s.goal, state: plan.built.has(s.id) ? ("built" as const) : s.id === plan.current?.id ? ("building" as const) : ("later" as const) })) : undefined;
   const headline =
     state.status === "created"
       ? running ? "Starting." : "Waiting to start."
       : state.status === "running"
-        ? `${running ? "Working" : "Paused"}: ${phase ?? "starting"}${state.cycle ? ` (fix round ${state.cycle})` : ""}.`
+        ? `${running ? "Working" : "Paused"}: ${phase ?? "starting"}${state.stage ? ` (adding ${plan.current?.name ?? "the next part"})` : state.cycle ? ` (fix round ${state.cycle})` : ""}.`
         : state.status === "waiting"
           ? "Built. Waiting for a few things only you can give."
           : state.status === "finished"
@@ -92,6 +97,8 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
     ...(live ? { live } : {}),
     ...(waitingFor.length ? { waitingFor } : {}),
     workItems,
+    ...(stages ? { stages } : {}),
+    ...(state.status === "finished" && plan.next && plan.stages.length > 1 ? { nextStage: { name: plan.next.name, goal: plan.next.goal } } : {}),
     story: (await renderExplain(store, events)).split("\n").filter(Boolean),
     lastSeq: state.lastSeq,
     updatedAt: last?.at ?? new Date(0).toISOString(),

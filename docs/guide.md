@@ -37,7 +37,17 @@ and the stock goes down. A home page shows today's total, split into cash and bK
 products running low. I can cancel a sale I entered by mistake, and the stock goes back.
 ```
 
-Karigor builds the **first version** first: the smallest app that does the whole job from start to finish, about 15 pieces of work. Anything else it notes for later. So put the jobs that matter most into the idea; extras are easy to add afterwards (step 6).
+For a bigger system, name every kind of person and what each may and may not do:
+
+```
+A system for my small clinic in Mirpur. The receptionist registers patients and books visits with
+our three doctors. Each doctor sees their own visits for the day and writes notes and prescriptions;
+the receptionist must not read the notes. The accountant takes payments in cash or bKash, prints a
+receipt, and sees what is still owed. I, the owner, see each day's visits and takings by doctor,
+with a chart for the month, and I add or remove staff.
+```
+
+Karigor plans the whole product, then splits it into **stages** in the order they are built. Stage 1 is the smallest version someone can use end to end (for the clinic: register a patient and book a visit). Each later stage adds one area you would recognise ("Billing", "The owner's dashboard"). The first build makes stage 1; you add the rest with `karigor grow` (step 6). A small idea is just one stage.
 
 ## 3. Start the build
 
@@ -49,12 +59,13 @@ karigor new "your idea here" --run --port 3300
 
 What happens next, with no input from you:
 
-1. It writes a specification, with every assumption it made recorded.
-2. It designs the app and splits the work into small pieces.
-3. A developer builds each piece in a real code repository, with tests. A reviewer and a skeptic check it, and nothing goes forward unless the tests, lint, build and security scan pass.
-4. It releases: builds the app, starts a preview, checks it works, checks it can roll back, and only then makes it live.
+1. It writes a specification and splits it into stages, with every assumption it made recorded.
+2. It designs the system: the kinds of people who use it, what each may do, and its parts.
+3. It splits stage 1 into small pieces (at most 15).
+4. A developer builds each piece in a real code repository, with tests and browser journeys (a person's job, done in a real browser at phone and desktop size). A reviewer and a skeptic check it, and nothing goes forward unless the tests, lint, build and security scan pass.
+5. Before release, every journey runs again on a brand-new database. Then it starts a preview, checks it works, checks it can roll back, and only then makes it live.
 
-A first version usually takes a few hours. You can close nothing and leave it running; to see where it is from another terminal:
+A stage usually takes a few hours. You can close nothing and leave it running; to see where it is from another terminal:
 
 ```sh
 karigor status <id>       # where it stands, in plain words
@@ -87,19 +98,34 @@ It hides what you type, stores values only where the app runs, never in the proj
 karigor serve <id> --port 3300
 ```
 
-Then open http://localhost:3300. Leave `serve` running: it keeps the app up and fixes problems on its own (step 7).
+Then open http://localhost:3300. Leave `serve` running: it keeps the app up and fixes problems on its own (step 8). It remembers the port the app went live on, so after the first time `karigor serve <id>` is enough.
 
-Your data stays on your computer, in `~/.karigor/projects/<id>/data/`, and survives every new release. If the app has an owner sign-in, set the password with the login page's "set or reset password" link, which emails you. If email is not set up yet, make a one-time link from the terminal instead:
+Your data stays on your computer, in `~/.karigor/projects/<id>/data/`, and survives every new release.
+
+**Signing in the first time.** Make yourself the first admin:
 
 ```sh
-cd ~/.karigor/projects/<id>/releases/<live version> && pnpm owner:reset-link
+karigor admin-link <id> you@example.com "Your name"
 ```
 
-(The live version is in `~/.karigor/projects/<id>/releases/current.json`. Not every app has this script; the app's `README.md` says what it has.)
+Open the link it prints and choose your password. Then open **People** in the app to add the people who work with you, each with their role; the app gives you a one-time link to send each of them (by WhatsApp, SMS or email). Nobody needs an email service. Run `admin-link` again any time you need a new link for yourself.
+
+(Apps built before 22 October 2026 have their own sign-in instead; their `README.md` says how it works.)
 
 **Try everything.** Use it as you would on a busy day, on your phone too: enter real-looking data, make mistakes on purpose, undo things. Write down whatever is wrong, confusing or missing.
 
-## 6. Change it
+## 6. Build the next part
+
+When you have tried stage 1, build the next stage on top of the live app:
+
+```sh
+karigor grow <id>          # the next stage, then it stops so you can try it
+karigor grow <id> --all    # every remaining stage, one after another
+```
+
+`karigor status <id>` lists the stages: built, being built, later. Each stage revises the design, plans its own pieces, builds and checks them, and releases a new version; your data stays. Feedback you sent since the last release is taken on by the stage too. In the chat UI the same thing is the **Build the next part** button. `serve` never starts a stage by itself: stages are your call.
+
+## 7. Change it
 
 Tell Karigor in your own words, one thing per message:
 
@@ -122,11 +148,11 @@ Other tools:
 - `karigor park <id> <itemId>` sets a piece of work aside; `karigor unpark` puts it back.
 - `karigor kit <id>` gives an app built on an older template the current look (a fix round then restyles its pages).
 
-## 7. Keep it running
+## 8. Keep it running
 
 `karigor serve <id> --port <n>` is the whole of operations on your computer. It runs the live app, watches its output and health, checks its libraries for security problems each day, and turns anything wrong into a fix round with a new release. It stops when you close it or restart the computer; run it again to continue.
 
-## 8. Put it online
+## 9. Put it online
 
 For a public address, use Vercel's free tier. You need a free Vercel account and, so the data survives on the internet, a free [Turso](https://turso.tech) database:
 
@@ -138,15 +164,15 @@ karigor watch <id> --every 15                  # checks the live site and fixes 
 
 Karigor uses the Vercel CLI's own login (`vercel login`), or a token in `VERCEL_TOKEN`.
 
-## 9. What to expect
+## 10. What to expect
 
-Karigor builds web apps that work on phones and computers: sign-in, forms, lists, records with money and stock, simple dashboards with totals, and email. The first version is deliberately small, about 15 pieces of work, and is complete and tested end to end. Bigger systems grow from there one request at a time through `feedback`.
+Karigor builds web apps that work on phones and computers, from a single-person tool to a system with several roles: sign-in for many people with roles and permissions, invitations by link, an activity log, forms, searchable and sortable lists, records with money and stock, dashboards with charts, and CSV export for spreadsheets. Each stage is at most 15 pieces of work, complete and tested end to end, including in a real browser for each kind of user.
 
-Not yet well supported: many user roles with different permissions, big multi-module systems (a full school or hospital management system), charts and large data tables, file uploads, and scheduled jobs. Karigor will attempt them, but a first version will cover only part of such an idea. For now:
+Not yet supported: file uploads (photos, documents), scheduled jobs (a reminder every morning), SMS, and one installation serving several separate organisations. Karigor will work around them or leave them out and say so. Tips:
 
-- Start with the core job and one or two kinds of user; add modules one feedback at a time.
-- Name each kind of user and what they may do in your idea, so the design plans for them from the start.
-- Test each change before asking for the next.
+- Name each kind of person and what they may and may not see; the design plans for them from the start.
+- Try each stage before building the next; your feedback goes into the next stage.
+- Keep extras for feedback after the stages are built.
 
 ## Command summary
 
@@ -159,6 +185,8 @@ Not yet well supported: many user roles with different permissions, big multi-mo
 | `karigor serve <id> --port <n>` | Run it on this computer and keep it healthy |
 | `karigor feedback <id> "<text>"` | Ask for a change or report a problem |
 | `karigor fix <id>` | Start a fix round now |
+| `karigor grow <id> [--all]` | Build the next stage (or every remaining one) |
+| `karigor admin-link <id> <email> ["name"]` | A one-time link to set your admin password |
 | `karigor correct <id> <decisionId> "<text>"` | Change a decision made for you |
 | `karigor reopen <id>` | Bring parked work back after a stop |
 | `karigor dismiss <id> <workItemId>` | Close a request you no longer want |

@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, operateOnce, provideSettings, recordSignals, runOptions, runProject } from "@karigor/cli";
+import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, operateOnce, provideSettings, recordSignals, runOptions, runProject } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -107,14 +107,17 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
   const log = o.log ?? (() => {});
   const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}) };
 
-  const startRun = (id: string, kind: "run" | "fix", apiKey?: string): boolean => {
+  const startRun = (id: string, kind: "run" | "fix" | "grow", apiKey?: string): boolean => {
     if (runs.has(id)) return false;
     if (runs.size >= (o.maxRuns ?? 2)) throw new HttpError(429, "Karigor is busy with other projects; try again in a few minutes");
     problems.delete(id);
     const p = (async () => {
       const opts = await runOptions(o.root, id, flags, { ...(apiKey ? { apiKey } : {}), log: (l) => log(`[${id}] ${l}`) });
       if (kind === "fix") await operateOnce(opts);
-      else await runProject(opts);
+      else if (kind === "grow") {
+        const r = await growOnce(opts);
+        if (!r.stage && r.why) problems.set(id, r.why);
+      } else await runProject(opts);
     })()
       .catch((e: Error) => {
         // Kept for the page to show; a resume tries again.
@@ -222,6 +225,12 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       await view(id);
       const started = startRun(id, "run", optionalKey(b));
       return send(res, 202, { started });
+    }
+    if (method === "POST" && action === "grow") {
+      const b = await body(req);
+      const v = await view(id);
+      if (!v.nextStage) throw new HttpError(409, v.status === "finished" ? "every part of the plan is built" : "it is not finished yet");
+      return send(res, 202, { started: startRun(id, "grow", optionalKey(b)), stage: v.nextStage.name });
     }
     if (method === "POST" && action === "feedback") {
       const b = await body(req);

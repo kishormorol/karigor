@@ -25,6 +25,13 @@
   --color-paid: #067647;
   --color-paid-tint: #e7f6ec;
 
+  /* Chart series, in order: the action colour, then four hues that stay distinct for most colour vision. */
+  --color-chart-1: #0e5e55;
+  --color-chart-2: #c27a0e;
+  --color-chart-3: #3a6db3;
+  --color-chart-4: #8656b5;
+  --color-chart-5: #6b7a75;
+
   --radius-control: 12px;
   --radius-card: 16px;
 }

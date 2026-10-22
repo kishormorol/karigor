@@ -74,6 +74,17 @@ describe("server", { timeout: 180_000 }, () => {
     expect((await call(`/api/projects/${id}/corrections`, { method: "POST", body: JSON.stringify({ decisionId: "a99", text: "x" }) })).status).toBe(400);
   });
 
+  it("offers the next part only when the plan has one left", async () => {
+    const { k, call } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    const v = (await call(`/api/projects/${id}`)).json;
+    expect(v["nextStage"]).toBeUndefined();
+    const grow = await call(`/api/projects/${id}/grow`, { method: "POST", body: "{}" });
+    expect(grow.status).toBe(409);
+    expect(grow.json["error"]).toMatch(/every part of the plan is built/);
+  });
+
   it("streams the project as it changes", async () => {
     const { k, call, base } = await start();
     const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;

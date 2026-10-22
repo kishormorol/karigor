@@ -357,4 +357,15 @@ describe.runIf(process.env["KARIGOR_REAL_DEPLOY"] === "1")("LocalDeploy (live, w
     expect((await deploy.promote({ ...r, preview: p })).ok).toBe(true);
     expect((await deploy.verifyRollback({ dir: ws.dir })).ok).toBe(true);
   }, 900_000);
+
+  it("runs the template's browser journeys on a fresh database, at desktop and phone size", async () => {
+    const { webApp } = await import("@karigor/profiles");
+    const { LocalSandbox } = await import("@karigor/sandbox");
+    const projectDir = await mkdtemp(join(tmpdir(), "karigor-live-journeys-"));
+    const ws = await Workspace.create(join(projectDir, "workspace"), webApp);
+    const j = await new LocalSandbox(ws, webApp).journeys();
+    expect(j.available).toBe(true);
+    expect(j.failures, j.output.slice(-3000)).toEqual([]);
+    expect(j.passed).toBeGreaterThanOrEqual(6);
+  }, 900_000);
 });

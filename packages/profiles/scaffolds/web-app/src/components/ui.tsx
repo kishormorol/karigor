@@ -4,7 +4,7 @@
  * Server components: no "use client" needed. Pass `className` to adjust spacing only.
  */
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import { cloneElement, isValidElement, useId, type ComponentProps, type ReactElement, type ReactNode } from "react";
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
 
@@ -224,9 +224,16 @@ export function EmptyState({ title, children, action }: { title: string; childre
   );
 }
 
-/** Format an amount of Taka the same way everywhere: ৳1,500. */
+/** Format an amount of Taka the same way everywhere: ৳1,500, or ৳62.50 when there are paisa. */
 export function money(amount: number): string {
-  return `৳${Math.round(amount).toLocaleString("en-IN")}`;
+  const whole = Math.abs(amount - Math.round(amount)) < 0.005;
+  const text = Math.abs(amount).toLocaleString("en-IN", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+  return `${amount < -0.004 ? "-" : ""}৳${text}`;
+}
+
+/** Format a count or measure the same way everywhere: 1,250 or 2.5. */
+export function number(value: number): string {
+  return value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 
 // ---- forms ----------------------------------------------------------------
@@ -234,14 +241,26 @@ export function money(amount: number): string {
 const controlClass = (invalid?: boolean) =>
   cx("min-h-11 w-full rounded-[var(--radius-control)] bg-surface px-3.5 text-[15px] text-ink placeholder:text-muted/70", invalid ? "border-2 border-owed" : "border border-line-strong focus:border-primary");
 
-/** A labelled control with an optional hint or error underneath. Put one Input/Select/Textarea inside. */
+/**
+ * A labelled control with an optional hint or error underneath. Put one Input/Select/Textarea inside.
+ * The label points at the control by id, so its accessible name is the label alone (not the options).
+ */
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: ReactNode }) {
+  const auto = useId();
+  const child = isValidElement(children) ? (children as ReactElement<{ id?: string; "aria-describedby"?: string }>) : undefined;
+  const id = child?.props.id ?? `f${auto.replace(/:/g, "")}`;
+  const noteId = `${id}-note`;
+  const note = error ?? hint;
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium">
-      {label}
-      {children}
-      {error ? <span className="text-[13px] font-normal text-owed">{error}</span> : hint ? <span className="text-[13px] font-normal text-muted">{hint}</span> : null}
-    </label>
+    <div className="flex flex-col gap-1.5 text-sm font-medium">
+      <label htmlFor={id}>{label}</label>
+      {child ? cloneElement(child, { id, ...(note ? { "aria-describedby": noteId } : {}) }) : children}
+      {note && (
+        <span id={noteId} className={cx("text-[13px] font-normal", error ? "text-owed" : "text-muted")}>
+          {note}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -263,5 +282,301 @@ export function FormStack({ children, ...props }: ComponentProps<"form">) {
     <form {...props} className={cx("flex flex-col gap-4", props.className)}>
       {children}
     </form>
+  );
+}
+
+// ---- systems: many sections, many roles -------------------------------------
+
+export interface NavGroup {
+  /** Optional heading above the group ("Front desk", "Money"). */
+  label?: string;
+  items: NavItem[];
+}
+
+/**
+ * The frame for a system with many sections or more than one role: a sidebar on wide screens, a top bar
+ * with a Menu button on phones (no JavaScript needed). Pass only the sections this person may use.
+ * `user` shows who is signed in; `signOut` is a form with a button (see app/(app)/layout.tsx).
+ */
+export function SidebarShell({ brand, subtitle, groups, active, user, signOut, children }: { brand: string; subtitle?: string; groups: NavGroup[]; active?: string; user?: { name: string; role: string }; signOut?: ReactNode; children: ReactNode }) {
+  const isActive = (href: string) => active === href || (href !== "/" && !!active?.startsWith(`${href}/`));
+  const links = (
+    <nav aria-label="Main" className="flex flex-col gap-5">
+      {groups.map((g, i) => (
+        <div key={g.label ?? i} className="flex flex-col gap-1">
+          {g.label && <span className="px-3 pb-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-muted">{g.label}</span>}
+          {g.items.map((n) => (
+            <Link
+              key={n.href}
+              href={n.href}
+              aria-current={isActive(n.href) ? "page" : undefined}
+              className={cx("flex min-h-11 items-center rounded-[var(--radius-control)] px-3 text-sm no-underline", isActive(n.href) ? "bg-primary-tint font-semibold text-primary" : "font-medium text-ink-soft hover:bg-primary-tint/60")}
+            >
+              {n.label}
+            </Link>
+          ))}
+        </div>
+      ))}
+    </nav>
+  );
+  const who = user && (
+    <div className="flex items-center gap-3">
+      <Avatar name={user.name} />
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-semibold">{user.name}</span>
+        <span className="text-xs text-muted">{user.role}</span>
+      </span>
+    </div>
+  );
+  const mark = (
+    <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-primary text-base font-bold text-white">
+      {brand.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+  return (
+    <div className="min-h-screen bg-ground lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col gap-6 border-r border-line bg-surface px-3 py-5 lg:sticky lg:top-0 lg:flex lg:h-screen lg:overflow-y-auto">
+        <div className="flex items-center gap-2.5 px-3">
+          {mark}
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-base font-bold tracking-tight">{brand}</span>
+            {subtitle && <span className="text-xs text-muted">{subtitle}</span>}
+          </span>
+        </div>
+        <div className="flex-1">{links}</div>
+        {(who || signOut) && (
+          <div className="flex flex-col gap-3 border-t border-line px-3 pt-4">
+            {who}
+            {signOut}
+          </div>
+        )}
+      </aside>
+      <header className="sticky top-0 z-10 border-b border-line bg-surface lg:hidden">
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            {mark}
+            <span className="min-w-0 grow truncate text-base font-bold tracking-tight">{brand}</span>
+            <span className="inline-flex min-h-11 items-center rounded-[var(--radius-control)] border border-line-strong px-3.5 text-sm font-medium">
+              <span className="group-open:hidden">Menu</span>
+              <span className="hidden group-open:inline">Close</span>
+            </span>
+          </summary>
+          <div className="flex max-h-[75vh] flex-col gap-5 overflow-y-auto border-t border-line px-3 py-4">
+            {links}
+            {(who || signOut) && (
+              <div className="flex flex-col gap-3 border-t border-line px-3 pt-4">
+                {who}
+                {signOut}
+              </div>
+            )}
+          </div>
+        </details>
+      </header>
+      <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-6 px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pt-8">{children}</main>
+    </div>
+  );
+}
+
+/** Tabs as links (they work without JavaScript): one per view of the same thing. */
+export function Tabs({ tabs, active }: { tabs: NavItem[]; active: string }) {
+  return (
+    <nav aria-label="Views" className="-mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
+      {tabs.map((t) => (
+        <Link
+          key={t.href}
+          href={t.href}
+          aria-current={active === t.href ? "page" : undefined}
+          className={cx("-mb-px shrink-0 whitespace-nowrap border-b-2 px-3.5 py-3 text-sm no-underline", active === t.href ? "border-primary font-semibold text-primary" : "border-transparent font-medium text-ink-soft hover:text-ink")}
+        >
+          {t.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+/** "From" and "To" dates for a report or a filter; submits as `from` and `to` (YYYY-MM-DD). */
+export function DateRangeFields({ from, to, fromLabel = "From", toLabel = "To" }: { from?: string; to?: string; fromLabel?: string; toLabel?: string }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Field label={fromLabel}>
+        <Input type="date" name="from" defaultValue={from} />
+      </Field>
+      <Field label={toLabel}>
+        <Input type="date" name="to" defaultValue={to} />
+      </Field>
+    </div>
+  );
+}
+
+/** A small read-only table (for a detail page or a print-out). For long lists people search and sort, use DataTable. */
+export function SimpleTable({ columns, rows }: { columns: { key: string; label: string; align?: "left" | "right" }[]; rows: Record<string, ReactNode>[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr>
+            {columns.map((c) => (
+              <th key={c.key} scope="col" className={cx("border-b border-line px-4 py-2.5 text-[13px] font-semibold text-muted", c.align === "right" ? "text-right" : "text-left")}>
+                {c.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-line/70 last:border-b-0">
+              {columns.map((c) => (
+                <td key={c.key} className={cx("px-4 py-3 align-top", c.align === "right" && "text-right tabular-nums")}>
+                  {r[c.key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ---- charts (plain SVG, theme colours, a table for screen readers) -------------
+
+/** Series colours in order. Use at most five; group the rest as "Other". */
+export const CHART_COLOURS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
+type Unit = "money" | "number";
+const fmt = (v: number, unit: Unit = "number") => (unit === "money" ? money(v) : number(v));
+
+function ChartTable({ caption, head, rows }: { caption: string; head: string[]; rows: (string | number)[][] }) {
+  return (
+    <table className="sr-only">
+      <caption>{caption}</caption>
+      <thead>
+        <tr>{head.map((h) => <th key={h} scope="col">{h}</th>)}</tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>{r.map((c, j) => (j === 0 ? <th key={j} scope="row">{c}</th> : <td key={j}>{c}</td>))}</tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Compare amounts across a few named things (takings per doctor, visits per day of the week). Reads well on a phone. */
+export function BarChart({ title, data, unit = "number" }: { title: string; data: { label: string; value: number }[]; unit?: Unit }) {
+  const max = Math.max(0, ...data.map((d) => d.value));
+  return (
+    <figure className="m-0 flex flex-col gap-3">
+      <figcaption className="text-sm font-semibold">{title}</figcaption>
+      {data.length === 0 ? (
+        <p className="m-0 text-sm text-muted">Nothing to show yet.</p>
+      ) : (
+        <div aria-hidden="true" className="flex flex-col gap-2.5">
+          {data.map((d) => (
+            <div key={d.label} className="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-3 text-sm sm:grid-cols-[minmax(0,10rem)_1fr_auto]">
+              <span className="truncate text-ink-soft">{d.label}</span>
+              <span className="h-3 overflow-hidden rounded-full bg-ground">
+                <span className="block h-3 rounded-full" style={{ width: `${max > 0 ? Math.max(2, (d.value / max) * 100) : 0}%`, background: CHART_COLOURS[0] }} />
+              </span>
+              <span className="text-right font-semibold tabular-nums">{fmt(d.value, unit)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <ChartTable caption={title} head={["", "Value"]} rows={data.map((d) => [d.label, fmt(d.value, unit)])} />
+    </figure>
+  );
+}
+
+/** How something changed over time (takings per day). One to five series sharing the same labels. */
+export function LineChart({ title, labels, series, unit = "number" }: { title: string; labels: string[]; series: { name: string; values: number[] }[]; unit?: Unit }) {
+  const W = 640;
+  const H = 220;
+  const pad = { l: 8, r: 8, t: 12, b: 28 };
+  const all = series.flatMap((s) => s.values);
+  const max = Math.max(1, ...all);
+  const x = (i: number) => pad.l + (labels.length <= 1 ? (W - pad.l - pad.r) / 2 : (i * (W - pad.l - pad.r)) / (labels.length - 1));
+  const y = (v: number) => pad.t + (1 - v / max) * (H - pad.t - pad.b);
+  const every = Math.max(1, Math.ceil(labels.length / 7));
+  return (
+    <figure className="m-0 flex flex-col gap-3">
+      <figcaption className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
+        {title}
+        {series.length > 1 && (
+          <span className="flex flex-wrap gap-3 text-xs font-medium text-ink-soft">
+            {series.map((s, i) => (
+              <span key={s.name} className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full" style={{ background: CHART_COLOURS[i % 5] }} />
+                {s.name}
+              </span>
+            ))}
+          </span>
+        )}
+      </figcaption>
+      {labels.length === 0 ? (
+        <p className="m-0 text-sm text-muted">Nothing to show yet.</p>
+      ) : (
+        <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" aria-hidden="true">
+          {[0, 0.5, 1].map((f) => (
+            <line key={f} x1={pad.l} x2={W - pad.r} y1={y(max * f)} y2={y(max * f)} stroke="var(--color-line)" strokeWidth={1} />
+          ))}
+          {series.map((s, si) => (
+            <g key={s.name}>
+              <polyline fill="none" stroke={CHART_COLOURS[si % 5]} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" points={s.values.map((v, i) => `${x(i)},${y(v)}`).join(" ")} />
+              {s.values.map((v, i) => (
+                <circle key={i} cx={x(i)} cy={y(v)} r={3} fill={CHART_COLOURS[si % 5]} />
+              ))}
+            </g>
+          ))}
+          {labels.map((l, i) =>
+            i % every === 0 || i === labels.length - 1 ? (
+              <text key={i} x={x(i)} y={H - 8} textAnchor={i === 0 ? "start" : i === labels.length - 1 ? "end" : "middle"} fontSize={12} fill="var(--color-muted)">
+                {l}
+              </text>
+            ) : null,
+          )}
+        </svg>
+      )}
+      <ChartTable caption={title} head={["", ...series.map((s) => s.name)]} rows={labels.map((l, i) => [l, ...series.map((s) => fmt(s.values[i] ?? 0, unit))])} />
+    </figure>
+  );
+}
+
+/** Parts of a whole (payments by method, patients by doctor). Five parts at most; the legend carries the numbers. */
+export function DonutChart({ title, parts, unit = "number" }: { title: string; parts: { label: string; value: number }[]; unit?: Unit }) {
+  const total = parts.reduce((t, p) => t + Math.max(0, p.value), 0);
+  const R = 52;
+  const C = 2 * Math.PI * R;
+  let offset = 0;
+  return (
+    <figure className="m-0 flex flex-col gap-3">
+      <figcaption className="text-sm font-semibold">{title}</figcaption>
+      {total === 0 ? (
+        <p className="m-0 text-sm text-muted">Nothing to show yet.</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-6">
+          <svg viewBox="0 0 140 140" className="size-36 shrink-0 -rotate-90" aria-hidden="true">
+            <circle cx={70} cy={70} r={R} fill="none" stroke="var(--color-ground)" strokeWidth={18} />
+            {parts.map((p, i) => {
+              const len = (Math.max(0, p.value) / total) * C;
+              const el = <circle key={p.label} cx={70} cy={70} r={R} fill="none" stroke={CHART_COLOURS[i % 5]} strokeWidth={18} strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-offset} />;
+              offset += len;
+              return el;
+            })}
+          </svg>
+          <ul aria-hidden="true" className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
+            {parts.map((p, i) => (
+              <li key={p.label} className="flex items-center gap-2">
+                <span className="size-2.5 shrink-0 rounded-full" style={{ background: CHART_COLOURS[i % 5] }} />
+                <span className="text-ink-soft">{p.label}</span>
+                <span className="font-semibold tabular-nums">{fmt(p.value, unit)}</span>
+                <span className="text-muted">({Math.round((Math.max(0, p.value) / total) * 100)}%)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <ChartTable caption={title} head={["", "Value", "Share"]} rows={parts.map((p) => [p.label, fmt(p.value, unit), `${total ? Math.round((p.value / total) * 100) : 0}%`])} />
+    </figure>
   );
 }

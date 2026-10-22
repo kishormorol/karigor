@@ -24,7 +24,7 @@ describe("profiles", () => {
   it("web-app scaffold has the files the stack guide promises", async () => {
     const dir = await mkdtemp(join(tmpdir(), "karigor-webapp-"));
     await webApp.scaffold(dir);
-    for (const f of ["package.json", ".gitignore", ".env.example", "app/page.tsx", "app/api/health/route.ts", "src/db/schema.ts", "src/lib/health.ts", "tests/health.test.ts", "vitest.config.ts", "eslint.config.mjs"]) {
+    for (const f of ["package.json", ".gitignore", ".env.example", "app/(app)/page.tsx", "app/(app)/layout.tsx", "app/login/page.tsx", "app/welcome/[token]/page.tsx", "app/api/health/route.ts", "src/db/schema.ts", "src/lib/access.ts", "src/server/people.ts", "src/server/auth.ts", "src/components/ui-client.tsx", "playwright.config.ts", "tests/e2e/helpers.ts", "scripts/admin-link.ts", "src/lib/health.ts", "tests/health.test.ts", "vitest.config.ts", "eslint.config.mjs"]) {
       await expect(readFile(join(dir, f), "utf8"), f).resolves.toBeTruthy();
     }
     const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));

@@ -10,7 +10,7 @@ import { loadTemplate } from "@karigor/process";
 import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
 import type { ModelAdapter } from "@karigor/runtime";
-import { LocalSandbox, Workspace, checkUrl } from "@karigor/sandbox";
+import { LocalSandbox, Workspace, checkUrl, run as runCommand } from "@karigor/sandbox";
 import { LocalDeploy, startServer, type DeployAdapter, type RunningServer } from "@karigor/deploy";
 import { generateSettingValue, readSettings, type MissingSetting } from "@karigor/profiles";
 import { liveRecord } from "./render.js";
@@ -291,6 +291,25 @@ export async function growOnce(o: Omit<RunOptions, "root" | "projectId"> & { roo
   return { stage: started.stage, cycle: started.cycle, state: after };
 }
 
+/**
+ * The first admin's way in: run the live release's own `admin:link` script with the app's settings,
+ * which adds the admin (or finds them) and prints a one-time link to choose a password.
+ * Only for an app that lives on this computer; a hosted app's database settings are not kept here.
+ */
+export async function adminLink(deploy: DeployAdapter | undefined, email: string, name = ""): Promise<{ ok: boolean; output: string }> {
+  if (!(deploy instanceof LocalDeploy)) {
+    return { ok: false, output: "Admin links are made here for apps that live on this computer. For a hosted app, run `pnpm admin:link <email>` in the project's workspace with DATABASE_URL and DATABASE_AUTH_TOKEN set to its database." };
+  }
+  const live = await deploy.current();
+  if (!live) return { ok: false, output: "Nothing is live yet. Build it first (karigor run or resume)." };
+  const dir = deploy.releaseDir(live.version);
+  const { readFile } = await import("node:fs/promises");
+  const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> };
+  if (!pkg.scripts?.["admin:link"]) return { ok: false, output: "This app was made from an older template and has its own way to sign in; its README says how." };
+  const r = await runCommand("pnpm", ["-s", "admin:link", email, ...(name.trim() ? [name.trim()] : [])], { cwd: dir, env: await deploy.settingsEnv(), timeoutMs: 120_000 });
+  return { ok: r.code === 0, output: (r.stdout + (r.code === 0 ? "" : `\n${r.stderr}`)).trim() };
+}
+
 /** The production URL to watch for a hosted target (a local target is watched by `serve`). */
 export async function hostedHealthUrl(store: FsStore, state: ProjectState, healthPath = "/"): Promise<string | undefined> {
   const live = await liveRecord(store, state);
@@ -475,7 +494,7 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
 }
 
 /** sha256 (first 16 hex) of every UI kit the template has shipped, so an untouched copy can be upgraded. */
-export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248dbf5f92f9"];
+export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248dbf5f92f9", "20952f55754c07f0"];
 
 /**
  * Bring an app built from an older template up to the current UI kit: copy `src/components/ui.tsx`
@@ -507,13 +526,27 @@ export async function installUiKit(store: FsStore, profileName = "web-app"): Pro
       added.push("src/components/ui.tsx was changed in this app, so it was left as it is");
     }
   }
+  // The interactive half of the kit (data tables, dialogs) arrived later; add it when the app has none.
+  const clientTarget = join(dir, "src", "components", "ui-client.tsx");
+  if ((await readFile(clientTarget, "utf8").catch(() => undefined)) === undefined && (await readFile(kitTarget, "utf8")) === kit) {
+    await writeFile(clientTarget, await readFile(join(from, "src", "components", "ui-client.tsx"), "utf8"), "utf8");
+    added.push("src/components/ui-client.tsx");
+  }
   const globalsPath = join(dir, "app", "globals.css");
   const globals = await readFile(globalsPath, "utf8").catch(() => "");
+  const template = await readFile(join(from, "app", "globals.css"), "utf8");
   if (!globals.includes("@theme")) {
-    const theme = (await readFile(join(from, "app", "globals.css"), "utf8")).replace(/^@import "tailwindcss";\n*/, "");
+    const theme = template.replace(/^@import "tailwindcss";\n*/, "");
     const rest = globals.replace(/^@import "tailwindcss";\n*/, "");
     await writeFile(globalsPath, `@import "tailwindcss";\n\n${theme.trimEnd()}\n${rest ? `\n${rest}` : ""}`, "utf8");
     added.push("app/globals.css (theme)");
+  } else if (!globals.includes("--color-chart-1")) {
+    // Charts came after the first theme: add their colours to the app's own theme block.
+    const charts = template.match(/\n\s*\/\* Chart series[^\n]*\n(?:\s*--color-chart-\d:[^\n]*\n)+/)?.[0];
+    if (charts) {
+      await writeFile(globalsPath, globals.replace(/@theme\s*\{/, (m) => `${m}${charts.replace(/^\n/, "\n")}`), "utf8");
+      added.push("app/globals.css (chart colours)");
+    }
   }
   // The first template wrapped every page in a narrow box; the kit's frames bring their own width.
   const layoutPath = join(dir, "app", "layout.tsx");

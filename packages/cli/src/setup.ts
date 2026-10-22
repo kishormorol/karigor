@@ -67,7 +67,22 @@ export interface RunFlags {
   tier?: string;
   profile: string;
   deploy?: string;
-  port: string;
+  /** Unset: the port the project last went live on (local target), else 3000. */
+  port?: string;
+}
+
+/** The port given, else the one the project's local release last went live on, else 3000. */
+export async function projectPort(root: string, projectId: string, given?: string): Promise<number> {
+  if (given) return Number(given);
+  const store = await FsStore.open(root, projectId);
+  const state = await store.replay();
+  for (const id of [...(state.artifacts["deploy-record"] ?? [])].reverse()) {
+    const r = (await store.readArtifact("deploy-record", id)).meta;
+    if (r.target !== "local" || r.environment !== "production" || !r.url) continue;
+    const port = Number(new URL(r.url).port);
+    if (port) return port;
+  }
+  return 3000;
 }
 
 export async function runOptions(root: string, projectId: string, o: RunFlags, extra: { apiKey?: string; log?: (line: string) => void } = {}): Promise<RunOptions> {
@@ -79,6 +94,6 @@ export async function runOptions(root: string, projectId: string, o: RunFlags, e
   if (!agent) return { ...base, sandbox: new FakeSandbox() };
   const profile = profileFor(o.profile);
   const store = await FsStore.open(root, projectId);
-  const deploy = await deployFor(o.deploy, store, profile, Number(o.port), extra.log);
+  const deploy = await deployFor(o.deploy, store, profile, await projectPort(root, projectId, o.port), extra.log);
   return { ...base, profile, agent, ...(deploy ? { deploy } : {}) };
 }

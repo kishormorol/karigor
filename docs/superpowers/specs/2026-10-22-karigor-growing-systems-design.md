@@ -1,7 +1,7 @@
 # Karigor — Growing systems: stages, people and roles, journeys, a bigger kit
 
 Date: 2026-10-22
-Status: approved by the person ("yes", after the proposal in chat); details decided without questions, in the spirit of the assumption ledger
+Status: implemented; approved by the person ("yes", after the proposal in chat); details decided without questions, in the spirit of the assumption ledger
 Depends on: kernel (1), build crew (3), deploy and operate (4–6)
 
 ## 1. Goal

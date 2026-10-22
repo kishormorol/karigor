@@ -24,7 +24,7 @@ import { generateSettingValue, type Profile } from "@karigor/profiles";
 import { LocalSandbox, Workspace, clip } from "@karigor/sandbox";
 import { releaseVersion, type DeployAdapter, type LiveRelease } from "@karigor/deploy";
 import { join } from "node:path";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { ROLE_PRIORS, check, costOf, estimate, isFlatRate, record, type CostLedgerMeta } from "@karigor/budget";
 import type { CostEntry } from "@karigor/store";
 import { QuotaError, isProducingRole, makeJudge, runAgentWorker, runWorker, summaryArtifact, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
@@ -284,6 +284,13 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
         const s = (await store.readArtifact("summary", lastSummary)).meta;
         const fresh = summaryArtifact(s, { id: newId("summary"), createdAt: clock().toISOString(), createdBy: "system", phase: "release" }, res.url);
         fresh.body += `\nIt lives on ${opts.deploy!.describe()}.\n`;
+        // The first release of an app with people and roles: the person's own way in.
+        const firstRelease = (await productionCount()) === 0;
+        const pkg = JSON.parse(await readFile(join(ws.dir, "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> };
+        if (firstRelease && pkg.scripts?.["admin:link"]) {
+          fresh.body += `\n## Signing in the first time\n\nRun \`karigor admin-link ${state.projectId} you@example.com "Your name"\` and open the link it prints to choose your password. Then add the people who work with you from People; each gets their own link.\n`;
+          log(`  to sign in the first time: karigor admin-link ${state.projectId} <your email> "<your name>"`);
+        }
         if (missing.length) fresh.body += `\n## Before it can be used\n\nIt is online, but it needs these settings on ${opts.deploy!.describe()} before it can do its job:\n\n${missing.map((m) => `- \`${m.name}\`${m.note ? `: ${m.note}` : ""}`).join("\n")}\n`;
         await store.writeArtifact(fresh);
         events.push({ type: "artifact-written", by: "system", kind: "summary", id: fresh.meta.id });

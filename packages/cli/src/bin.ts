@@ -3,11 +3,11 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject } from "./run.js";
-import { runOptions as setupRun, type RunFlags } from "./setup.js";
+import { projectPort, runOptions as setupRun, type RunFlags } from "./setup.js";
 
 const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: (l) => console.log(l) });
 
@@ -23,7 +23,7 @@ const runFlags = (c: Command) =>
     .option("--tier <tier>", "free, cheap or best (asked once; default best for claude-code and ollama, which cost nothing per call; free for demo; cheap for claude)")
     .option("--profile <name>", "target profile for real builds", "web-app")
     .option("--deploy <target>", "where releases go: local (this computer, free), vercel (VERCEL_TOKEN) or none; default: the project's last target, else local")
-    .option("--port <n>", "port for the live app on the local target", "3000");
+    .option("--port <n>", "port for the live app on the local target (default: the port it last went live on, else 3000)");
 
 runFlags(
   program
@@ -239,6 +239,16 @@ runFlags(program.command("grow").argument("<projectId>"))
     }
   });
 
+runFlags(program.command("admin-link").argument("<projectId>").argument("<email>").argument("[name]"))
+  .description("make the first admin (or a new link for an existing one): prints a one-time link to choose a password")
+  .action(async (projectId: string, email: string, name: string | undefined, o: RunFlags) => {
+    const root = program.opts<{ root: string }>().root;
+    const opts = await runOptions(root, projectId, o);
+    const r = await adminLink(opts.deploy, email, name);
+    console.log(r.output);
+    if (!r.ok) process.exitCode = 1;
+  });
+
 runFlags(program.command("watch").argument("<projectId>"))
   .option("--every <minutes>", "keep watching, checking this often")
   .option("--url <url>", "the address to check (default: the live app, for hosted targets)")
@@ -268,7 +278,7 @@ runFlags(program.command("serve").argument("<projectId>"))
     process.once("SIGINT", () => ac.abort());
     process.once("SIGTERM", () => ac.abort());
     const { deploy: _d, ...rest } = opts;
-    await serveProject({ ...rest, profile: opts.profile, port: Number(o.port), everyMs: Number(o.every) * 60_000, signal: ac.signal });
+    await serveProject({ ...rest, profile: opts.profile, port: await projectPort(root, projectId, o.port), everyMs: Number(o.every) * 60_000, signal: ac.signal });
   });
 
 program

@@ -295,8 +295,15 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       el("p", {}, s.whatItDoes),
       el("p", {}, el("strong", {}, "How to use it: "), s.howToUse),
       url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, "Open it"), el("span", { class: "meta" }, url)) : null,
+      view.stages ? el("details", { class: "more", open: true }, el("summary", {}, "The plan, part by part"), el("ul", {}, view.stages.map((p) => el("li", {}, `${p.state === "built" ? "Built" : p.state === "building" ? "Being built" : "Later"}: ${p.name}. ${p.goal}`)))) : null,
+      view.nextStage && !view.running ? el("div", { class: "row" }, el("button", { class: "btn", onclick: growNext }, `Build the next part: ${view.nextStage.name}`), el("span", { class: "meta" }, "Try what is there first; you can still send fixes.")) : null,
       el("p", { class: "meta" }, "Something not right, or something to add? Write it below and a fix round starts on its own."),
     );
+  }
+
+  async function growNext() {
+    try { const r = await api(`/api/projects/${current}/grow`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = `Building the next part: ${r.stage}.`; }
+    catch (err) { hint.textContent = err.message; }
   }
 
   /** The few things only the person can give: a choice (a passcode) or an outside service's details. Secrets nobody needs to know are made automatically. */

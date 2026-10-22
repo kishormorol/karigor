@@ -1,4 +1,5 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CommandResult, JourneyRun, Sandbox, ScanResult, SecurityFinding, TestRun, UrlCheck } from "@karigor/gates";
@@ -77,7 +78,8 @@ export class LocalSandbox implements Sandbox {
       if (!i.ok) return { available: true, passed: 0, failed: 1, failures: ["the browser for the journeys could not be installed on this computer"], output: i.output };
     }
     const fresh = await mkdtemp(join(tmpdir(), "karigor-e2e-"));
-    const env: NodeJS.ProcessEnv = { PLAYWRIGHT_JSON_OUTPUT_NAME: join(fresh, "report.json"), CI: "1" };
+    // A spare port, so the journeys never meet an app already running on this computer.
+    const env: NodeJS.ProcessEnv = { PLAYWRIGHT_JSON_OUTPUT_NAME: join(fresh, "report.json"), CI: "1", E2E_PORT: String(await sparePort()) };
     for (const [k, v] of Object.entries(this.profile.localSettings ?? {})) if (v.startsWith("file:")) env[k] = `file:${join(fresh, `${k.toLowerCase()}.db`)}`;
     try {
       const b = await this.cmd(this.profile.commands.build, "build", env);
@@ -124,6 +126,18 @@ export class LocalSandbox implements Sandbox {
     const d = itemId ? await this.workspace.showCommits(await this.workspace.itemCommits(itemId)) : await this.workspace.diff(await this.workspace.baseline());
     return clip(d, this.opts.maxDiffChars ?? 200_000);
   }
+}
+
+function sparePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.unref();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const port = (srv.address() as { port: number }).port;
+      srv.close(() => resolve(port));
+    });
+  });
 }
 
 /** A plain GET with a timeout; any status below 400 is healthy. */
