@@ -152,6 +152,25 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     await expect(reopenProject(store)).rejects.toThrow(/only a stopped project/);
   });
 
+  it("a failed release's report is closed by reopening, and any report can be dismissed with a reason", async () => {
+    const { root, projectId } = await fresh();
+    const deploy = local(root, projectId);
+    // the release cannot pass its health check, so the project stops and files a report
+    const stopped = await runProject(opts(root, projectId, deploy, devAgent((id) => (id === "b2" ? { "health-fail": "" } : {}))));
+    expect(stopped.status).toBe("stopped");
+    const [releaseReport] = Object.keys(stopped.workItems);
+    expect(stopped.workItems[releaseReport!]?.fingerprint).toMatch(/^release:/);
+    const { reopenProject, dismissWorkItem, feedbackSignal, recordSignals } = await import("../src/index.js");
+    const store = await FsStore.open(root, projectId, { committer: noopCommitter });
+    await reopenProject(store);
+    expect((await store.replay()).workItems[releaseReport!]?.status).toBe("done");
+    const [fb] = await recordSignals(store, [feedbackSignal("Make the buttons bigger")]);
+    await dismissWorkItem(store, fb!, "already done in the last release");
+    expect((await store.replay()).workItems[fb!]?.status).toBe("done");
+    await expect(dismissWorkItem(store, fb!, "x")).rejects.toThrow(/already closed/);
+    await expect(dismissWorkItem(store, "work-item-nope", "x")).rejects.toThrow(/no work item/);
+  });
+
   it("a release whose health check fails is never promoted; the ladder retries and stops with the reason", async () => {
     const { root, projectId } = await fresh();
     const deploy = local(root, projectId);

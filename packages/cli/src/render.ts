@@ -172,6 +172,9 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
       case "project-paused":
         lines.push(`${t} Paused: ${e.reason}.`);
         break;
+      case "work-item-dismissed":
+        lines.push(`${t} Closed a work item: ${e.reason}.`);
+        break;
       case "project-reopened":
         lines.push(`${t} Put back to work${e.itemIds.length ? ` with ${e.itemIds.length} item${e.itemIds.length === 1 ? "" : "s"} back on the list` : ""}.`);
         break;

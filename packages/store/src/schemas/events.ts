@@ -83,6 +83,8 @@ export const EventSchema = z.discriminatedUnion("type", [
   ev("project-resumed", {}),
   /** The model provider's allowance is used up: nothing failed; the work carries on later. */
   ev("project-paused", { reason: z.string().min(1) }),
+  /** A work item that no longer needs doing (stale, or a duplicate), closed with the reason. */
+  ev("work-item-dismissed", { workItemId: Id, reason: z.string().min(1) }),
   /** The person put a stopped project back to work: these items return with fresh retry counts. */
   ev("project-reopened", { itemIds: z.array(z.string().min(1)) }),
   /** Settings the live app reads were stored where it reads them. Names only; values never enter the log. */

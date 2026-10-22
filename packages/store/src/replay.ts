@@ -238,6 +238,11 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       s.status = "waiting";
       s.pausedReason = e.reason;
       break;
+    case "work-item-dismissed": {
+      const w = s.workItems[e.workItemId];
+      if (w) w.status = "done";
+      break;
+    }
     case "project-reopened":
       s.status = "running";
       delete s.stopReason;

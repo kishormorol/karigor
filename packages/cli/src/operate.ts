@@ -454,10 +454,24 @@ export async function reopenProject(store: FsStore, o: { templatesDir?: string }
   const items = backlogId ? (await store.readArtifact("backlog", backlogId)).meta.items : [];
   const parked = items.filter((b) => (state.items[b.id]?.status ?? b.status) === "parked").map((b) => b.id);
   const events: NewEvent[] = [{ type: "project-reopened", by: "user", itemIds: parked }];
+  // A failed release's report is answered by reopening: the release is tried again.
+  for (const [id, w] of Object.entries(state.workItems)) {
+    if (w.status !== "done" && w.fingerprint.startsWith("release:")) events.push({ type: "work-item-dismissed", by: "user", workItemId: id, reason: "the project was reopened, so the release is tried again" });
+  }
   if (parked.length && loopPhase && state.phase && state.phase !== loopPhase) {
     events.push({ type: "transition", by: "user", from: state.phase, to: loopPhase }, { type: "phase-entered", by: "user", phase: loopPhase });
   }
   await store.appendEvents(events);
   await store.commit(`karigor: reopened with ${parked.length} item(s) back on the list`);
   return parked;
+}
+
+/** Close a work item that no longer needs doing, with the reason. */
+export async function dismissWorkItem(store: FsStore, workItemId: string, reason: string): Promise<void> {
+  const state = await store.replay();
+  const w = state.workItems[workItemId];
+  if (!w) throw new Error(`no work item ${workItemId} (open ones: ${Object.entries(state.workItems).filter(([, x]) => x.status !== "done").map(([id]) => id).join(", ") || "none"})`);
+  if (w.status === "done") throw new Error(`${workItemId} is already closed`);
+  await store.appendEvent({ type: "work-item-dismissed", by: "user", workItemId, reason });
+  await store.commit(`karigor: dismissed ${workItemId}`);
 }

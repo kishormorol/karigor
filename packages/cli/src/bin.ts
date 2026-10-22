@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject } from "./run.js";
@@ -159,6 +159,18 @@ runFlags(program.command("setup").argument("<projectId>"))
     }
     console.log(r.stored.length ? `Stored ${r.stored.join(", ")}. ${r.output.split("\n").at(-1) ?? ""}` : "Nothing new to store.");
     console.log(r.stillMissing.length ? `Still needed before it can be used: ${r.stillMissing.map((m) => m.name).join(", ")}.` : `Everything it needs is in place${r.url ? `: ${r.url}` : ""}.`);
+  });
+
+program
+  .command("dismiss")
+  .argument("<projectId>")
+  .argument("<workItemId>", "from karigor status")
+  .option("--reason <text>", "why it no longer needs doing", "no longer needed")
+  .description("close a reported problem or request that no longer needs doing")
+  .action(async (projectId: string, workItemId: string, o: { reason: string }) => {
+    const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
+    await dismissWorkItem(store, workItemId, o.reason);
+    console.log(`Closed ${workItemId}.`);
   });
 
 program
