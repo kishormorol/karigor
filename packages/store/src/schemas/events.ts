@@ -77,6 +77,13 @@ export const EventSchema = z.discriminatedUnion("type", [
     template: z.string().min(1),
     workItemIds: z.array(Id).min(1),
   }),
+  /** A finished project builds the next stage of its spec on top of what is live. */
+  ev("stage-started", {
+    cycle: z.number().int().positive(),
+    stageId: z.string().min(1),
+    template: z.string().min(1),
+    workItemIds: z.array(Id).default([]),
+  }),
   /** The release cannot go on without something only the person can give (a passcode, a service account). */
   ev("project-waiting", { needs: z.array(z.string().min(1)).min(1) }),
   /** What the project was waiting for has been given, or a pause is over. */

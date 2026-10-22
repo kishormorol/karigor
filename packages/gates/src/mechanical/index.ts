@@ -78,6 +78,14 @@ export const mechanical = {
     };
   },
 
+  async "journeys-pass"(ctx: GateContext): Promise<GateOutcome> {
+    const r = await ctx.sandbox.journeys();
+    if (!r.available) return { verdict: "pass", evidence: [text(r.output)], citations: [], reasons: [] };
+    const reasons = r.failures.length ? r.failures.map((f) => `journey failed: ${f}`) : r.failed > 0 ? [`${r.failed} journey(s) failed`] : [];
+    if (r.passed + r.failed === 0) reasons.push("no browser journeys ran; each kind of user's main job needs one in tests/e2e");
+    return { verdict: reasons.length ? "fail" : "pass", evidence: [text(`${r.passed} passed, ${r.failed} failed\n${r.output}`)], citations: [], reasons };
+  },
+
   async "preview-healthy"(ctx: GateContext): Promise<GateOutcome> {
     const id = latest(ctx, "deploy-record");
     if (!id) return { verdict: "fail", evidence: [text("no deploy record")], citations: [], reasons: ["nothing has been deployed to a preview"] };

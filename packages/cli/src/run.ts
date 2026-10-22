@@ -55,6 +55,9 @@ export interface RunOptions {
   log?: (line: string) => void;
 }
 
+/** Templates a released project re-enters with; never chosen for a new idea. */
+const CONTINUATION_TEMPLATES = new Set(["maintenance", "stage"]);
+
 export class RunError extends Error {
   override name = "RunError";
 }
@@ -401,7 +404,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
         let profile = "web-app";
         if (result.outcome === "ok" && "output" in result) {
           const out = SelectorOutput.safeParse(result.output);
-          if (out.success && templates.some((t) => t.name === out.data.template && t.name !== "maintenance")) {
+          if (out.success && templates.some((t) => t.name === out.data.template && !CONTINUATION_TEMPLATES.has(t.name))) {
             chosen = out.data.template;
             profile = out.data.targetProfile;
           }

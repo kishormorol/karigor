@@ -1,7 +1,9 @@
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { copyScaffold } from "./copy.js";
 import { SCAFFOLDS_DIR } from "./fixture.js";
 import type { Profile } from "./types.js";
+import { parsePlaywrightJson } from "./playwright.js";
 import { parseVitestJson } from "./vitest.js";
 
 export const WEB_APP_STACK_GUIDE = `# Stack guide: web-app
@@ -47,7 +49,15 @@ export const webApp: Profile = {
     // What ships to users: build-time tooling (linters, test runners) never runs in the live app.
     audit: ["pnpm", "audit", "--prod", "--json", "--audit-level", "high"],
     start: ["pnpm", "start"],
+    e2e: ["pnpm", "e2e"],
+    e2eInstall: ["pnpm", "exec", "playwright", "install", "chromium"],
   },
+  // Apps built from a template before journeys existed have no e2e script; their gate passes saying so.
+  hasJourneys: async (dir) => {
+    const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> };
+    return Boolean(pkg.scripts?.e2e);
+  },
+  parseJourneys: parsePlaywrightJson,
   healthPath: "/api/health",
   localSettings: { DATABASE_URL: "file:./data/app.db" },
   parseTests: parseVitestJson,

@@ -85,6 +85,12 @@ export interface ProjectState {
   pausedReason?: string;
   /** Names of settings stored for the live app, by anyone. */
   settingsProvided: string[];
+  /** The spec stage the current cycle builds, when it is a stage (not the first build, not a fix round). */
+  stage?: string;
+  /** True once the first build has finished: the spec's first stage is live. */
+  firstBuilt: boolean;
+  /** Later stages that have finished, in order. */
+  stagesBuilt: string[];
 }
 
 export function emptyState(projectId: string): ProjectState {
@@ -105,6 +111,8 @@ export function emptyState(projectId: string): ProjectState {
     cycle: 0,
     corrections: {},
     settingsProvided: [],
+    firstBuilt: false,
+    stagesBuilt: [],
   };
 }
 
@@ -198,16 +206,21 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       break;
     case "project-finished":
       s.status = "finished";
+      if (s.cycle === 0) s.firstBuilt = true;
+      if (s.stage && !s.stagesBuilt.includes(s.stage)) s.stagesBuilt.push(s.stage);
       for (const w of Object.values(s.workItems)) if (w.cycle === s.cycle && w.status !== "done") w.status = "done";
       break;
     case "signal-received":
       register(s, "work-item", e.workItemId);
       s.workItems[e.workItemId] = { status: "todo", severity: e.severity, fingerprint: e.fingerprint };
       break;
-    case "maintenance-started": {
+    case "maintenance-started":
+    case "stage-started": {
       s.cycle = e.cycle;
       s.template = e.template;
       s.status = "running";
+      if (e.type === "stage-started") s.stage = e.stageId;
+      else delete s.stage;
       delete s.stopReason;
       delete s.entry;
       delete s.phase;

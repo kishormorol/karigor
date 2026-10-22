@@ -1,7 +1,7 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CommandResult, Sandbox, ScanResult, SecurityFinding, TestRun, UrlCheck } from "@karigor/gates";
+import type { CommandResult, JourneyRun, Sandbox, ScanResult, SecurityFinding, TestRun, UrlCheck } from "@karigor/gates";
 import type { Profile } from "@karigor/profiles";
 import { clip, run } from "./exec.js";
 import { scanSecrets } from "./secrets.js";
@@ -57,6 +57,37 @@ export class LocalSandbox implements Sandbox {
     try {
       const r = await this.cmd(this.profile.commands.build, "build", env);
       return { ok: r.ok, output: Object.keys(env).length ? `(on a fresh, empty database)\n${r.output}` : r.output };
+    } finally {
+      await rm(fresh, { recursive: true, force: true });
+    }
+  }
+
+  /**
+   * Browser journeys, the way a person meets the app: built on a brand-new database, started for real,
+   * and driven in a browser. The browser is installed here (once per computer), outside the developer's sandbox.
+   */
+  async journeys(): Promise<JourneyRun> {
+    const c = this.profile.commands;
+    const has = c.e2e?.length ? await (this.profile.hasJourneys?.(this.workspace.dir) ?? Promise.resolve(true)) : false;
+    if (!c.e2e?.length || !this.profile.parseJourneys) return { available: false, passed: 0, failed: 0, failures: [], output: `no browser journeys for the ${this.profile.name} profile` };
+    if (!has) return { available: false, passed: 0, failed: 0, failures: [], output: "this app was made from a template without browser journeys; nothing to run" };
+    const out: string[] = [];
+    if (c.e2eInstall?.length) {
+      const i = await this.cmd(c.e2eInstall, "browser install");
+      if (!i.ok) return { available: true, passed: 0, failed: 1, failures: ["the browser for the journeys could not be installed on this computer"], output: i.output };
+    }
+    const fresh = await mkdtemp(join(tmpdir(), "karigor-e2e-"));
+    const env: NodeJS.ProcessEnv = { PLAYWRIGHT_JSON_OUTPUT_NAME: join(fresh, "report.json"), CI: "1" };
+    for (const [k, v] of Object.entries(this.profile.localSettings ?? {})) if (v.startsWith("file:")) env[k] = `file:${join(fresh, `${k.toLowerCase()}.db`)}`;
+    try {
+      const b = await this.cmd(this.profile.commands.build, "build", env);
+      if (!b.ok) return { available: true, passed: 0, failed: 1, failures: ["the app did not build, so no journey could run"], output: b.output };
+      out.push("built on a fresh, empty database");
+      const r = await this.cmd(c.e2e, "journeys", env);
+      const report = await readFile(join(fresh, "report.json"), "utf8").catch(() => "");
+      const counts = this.profile.parseJourneys(report);
+      if (!report && !r.ok) counts.failures.push("the journeys did not run; see the output");
+      return { available: true, ...counts, failed: Math.max(counts.failed, r.ok ? 0 : 1), output: clip([...out, r.output].join("\n"), 12_000) };
     } finally {
       await rm(fresh, { recursive: true, force: true });
     }

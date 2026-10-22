@@ -8,3 +8,6 @@ Choose how the product will be built and deployed, given the spec, the target pr
 - Name the risks and, for each, a mitigation.
 - Do not require any account, key or secret the person has not been told about in an assumption.
 - The `body` is the architecture as Markdown for a technical reader.
+- `roles`: every kind of person who uses the system, what they do, and `can`: what they may do, in the app's words ("book visits", "write prescriptions", "see takings"). Give each role only what the spec says. A system with one kind of user has one role.
+- `modules`: the system's parts (patients, visits, billing, reports...). Each names the roles that use it, the data it keeps, its pages, and the `stage` that adds it. Design every module now, so the data fits together, but build only the stage being built.
+- When you are shown the architecture so far, return the whole architecture again with this stage's additions; keep what is built and live unless the stage must change it, and say why.

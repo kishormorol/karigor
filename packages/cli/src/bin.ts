@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject } from "./run.js";
@@ -210,6 +210,33 @@ runFlags(program.command("fix").argument("<projectId>"))
     const store = await FsStore.open(root, projectId);
     if (!r.cycle) console.log("Nothing to fix right now.");
     else console.log(`\n${await renderStatus(store, r.state)}\n${fixRoundCostNote(opts.adapter)}`);
+  });
+
+runFlags(program.command("grow").argument("<projectId>"))
+  .option("--all", "keep going until every stage is built", false)
+  .description("build the next stage of the plan on top of the live app (karigor status lists the stages)")
+  .action(async (projectId: string, o: RunFlags & { all?: boolean }) => {
+    const root = program.opts<{ root: string }>().root;
+    const opts = await runOptions(root, projectId, o);
+    const store = await FsStore.open(root, projectId);
+    for (;;) {
+      const r = await growOnce(opts);
+      if (!r.stage) {
+        console.log(r.why);
+        break;
+      }
+      console.log(`\n${await renderStatus(store, r.state)}`);
+      const plan = await stagePlan(store, r.state);
+      if (r.state.status !== "finished") break;
+      if (!plan.next) {
+        console.log("\nEvery stage of the plan is built.");
+        break;
+      }
+      if (!o.all) {
+        console.log(`\nNext stage: ${plan.next.name}: ${plan.next.goal}. Try the app first, then run karigor grow ${projectId} again.`);
+        break;
+      }
+    }
   });
 
 runFlags(program.command("watch").argument("<projectId>"))

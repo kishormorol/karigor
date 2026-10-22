@@ -1,3 +1,4 @@
+import { stagePlan } from "./stages.js";
 import type { FsStore, ProjectState, Event, BacklogItem, MetaOf } from "@karigor/store";
 import { meter, renderMeter } from "@karigor/budget";
 
@@ -31,12 +32,18 @@ export async function renderStatus(store: FsStore, state: ProjectState): Promise
     case "finished": {
       const ids = state.artifacts.summary ?? [];
       const summary = ids.length ? await store.readArtifact("summary", ids[ids.length - 1]!) : undefined;
-      lines.push(`Status: ${state.cycle > 0 ? `updated (fix round ${state.cycle})` : "finished"}. ${summary?.meta.headline ?? ""}`.trim());
+      lines.push(`Status: ${state.stage ? `a stage was added (round ${state.cycle})` : state.cycle > 0 ? `updated (fix round ${state.cycle})` : "finished"}. ${summary?.meta.headline ?? ""}`.trim());
       if (summary?.meta.url) lines.push(`Link: ${summary.meta.url}`);
       break;
     }
   }
-  if (state.cycle > 0 && state.status === "running") lines.push(`This is fix round ${state.cycle}: problems seen after release are being fixed.`);
+  if (state.cycle > 0 && state.status === "running") lines.push(state.stage ? `Round ${state.cycle} builds the next stage on top of what is live.` : `This is fix round ${state.cycle}: problems seen after release are being fixed.`);
+  const plan = await stagePlan(store, state);
+  if (plan.stages.length > 1) {
+    lines.push("", "Stages:");
+    for (const s of plan.stages) lines.push(`  ${plan.built.has(s.id) ? "[built]   " : s.id === plan.current?.id ? "[building]" : "[later]   "} ${s.name}: ${s.goal}`);
+    if (state.status === "finished" && plan.next) lines.push(`Build the next one with: karigor grow ${state.projectId}`);
+  }
   const live = await liveRecord(store, state);
   if (live && state.status !== "finished") lines.push(`Live version: ${live.version}${live.url ? ` at ${live.url}` : ""}.`);
   if (live?.missingSettings?.length) {

@@ -46,7 +46,7 @@ phases:
     budgetWeight: 3
     transitions:
       - to: verify
-        gates: [build-succeeds]
+        gates: [build-succeeds, journeys-pass]
         onFail:
           - { action: retry, times: 1 }
           - { action: stop }

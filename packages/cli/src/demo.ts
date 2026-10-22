@@ -47,6 +47,7 @@ export function answerFor(req: ModelRequest<unknown>, attempt: number, o: Script
         nonGoals: ["Payments"],
         features: [{ id: "f1", name: "List a tool", description: "Add a tool with a photo", priority: "must" }],
         successCriteria: ["Two neighbours complete a loan in the first week"],
+        stages: [{ id: "lending", name: "Lending tools", goal: "Neighbours list tools and borrow them", featureIds: ["f1"] }],
         assumptions: [{ topic: "language", decision: "English only for now.", reason: "The idea was written in English." }],
         body: "# ToolShare\n\nNeighbours list and borrow tools.\n",
       };
@@ -55,6 +56,8 @@ export function answerFor(req: ModelRequest<unknown>, attempt: number, o: Script
         stack: [{ layer: "web", choice: "SvelteKit on Cloudflare Pages", reason: "free tier, phone-friendly" }, { layer: "db", choice: "Neon Postgres free tier", reason: "free" }],
         components: [{ name: "listing", responsibility: "create and show tools" }],
         risks: ["photo uploads need storage"],
+        roles: [{ name: "neighbour", does: "lists and borrows tools", can: ["list tools", "borrow tools"] }],
+        modules: [{ id: "listing", name: "Tools", purpose: "create and show tools", roles: ["neighbour"], data: ["tools"], pages: ["/tools"], stage: "lending" }],
         assumptions: [{ topic: "hosting", decision: "Free hosting on Cloudflare.", reason: "No money is needed to start." }],
         body: "# Architecture\n",
       };

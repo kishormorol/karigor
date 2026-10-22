@@ -49,6 +49,7 @@ export const fakeSpecOutput = {
   nonGoals: ["Payments"],
   features: [{ id: "f1", name: "List a tool", description: "Add a tool with a photo", priority: "must" }],
   successCriteria: ["Two neighbours complete a loan within a week of launch"],
+  stages: [{ id: "lending", name: "Lending tools", goal: "Neighbours list tools and borrow them", featureIds: ["f1"] }],
   assumptions: [{ topic: "language", decision: "The site is in English.", reason: "The idea was written in English." }],
   body: "# ToolShare\n\nA site where neighbours lend tools.",
 };

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { fixture, parseVitestJson, profileFor, webApp } from "../src/index.js";
+import { fixture, parsePlaywrightJson, parseVitestJson, profileFor, webApp } from "../src/index.js";
 
 const run = promisify(execFile);
 
@@ -80,5 +80,32 @@ describe("settings from .env.example", () => {
     expect(guessKind("FAMILY_PASSCODE", "The passcode the family types")).toBe("ask");
     expect(guessKind("TOKEN_SALT", "")).toBe("generate");
     expect(generateSettingValue()).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  });
+});
+
+describe("Playwright reports", () => {
+  it("counts journeys, names failing ones with their first error line, and reports a config error", () => {
+    const report = JSON.stringify({
+      suites: [
+        {
+          title: "team.spec.ts",
+          file: "team.spec.ts",
+          specs: [{ title: "an admin invites a member", file: "team.spec.ts", ok: true, tests: [{ status: "expected", results: [{ status: "passed" }] }] }],
+          suites: [
+            {
+              title: "visits",
+              file: "visits.spec.ts",
+              specs: [
+                { title: "the receptionist books a visit", file: "visits.spec.ts", ok: false, tests: [{ status: "unexpected", results: [{ status: "failed", error: { message: "\u001b[31mError: expect(locator).toBeVisible() failed\u001b[39m\n\nLocator: getByText('Today')" } }] }] },
+                { title: "skipped one", file: "visits.spec.ts", ok: true, tests: [{ status: "skipped", results: [] }] },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(parsePlaywrightJson(report)).toEqual({ passed: 1, failed: 1, failures: ["visits.spec.ts › visits › the receptionist books a visit: Error: expect(locator).toBeVisible() failed"] });
+    expect(parsePlaywrightJson(JSON.stringify({ suites: [], errors: [{ message: "Error: Cannot find module '@/db'\n at x" }] }))).toEqual({ passed: 0, failed: 1, failures: ["the journeys could not start: Error: Cannot find module '@/db'"] });
+    expect(parsePlaywrightJson("not json")).toEqual({ passed: 0, failed: 0, failures: [] });
   });
 });

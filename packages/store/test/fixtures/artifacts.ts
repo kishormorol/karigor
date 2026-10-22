@@ -24,6 +24,7 @@ export const spec: Artifact = {
       { id: "f2", name: "Request a tool", description: "Ask to borrow and pick a time", priority: "must" },
     ],
     successCriteria: ["A neighbour can list and another can request within 5 minutes of signing up"],
+    stages: [{ id: "lending", name: "Lending tools", goal: "Neighbours list tools and ask to borrow them", featureIds: ["f1", "f2"] }],
   },
   body: "# ToolShare\n\n...",
 };

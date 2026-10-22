@@ -1,6 +1,7 @@
 export * from "./types.js";
 export * from "./copy.js";
 export * from "./vitest.js";
+export * from "./playwright.js";
 export * from "./fixture.js";
 export * from "./web-app.js";
 

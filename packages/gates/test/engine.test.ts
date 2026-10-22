@@ -61,6 +61,21 @@ describe("mechanical gates", () => {
     expect(r.reasons[0]).toMatch(/1 test\(s\) failed/);
   });
 
+  it("journeys-pass names each failing journey, fails when none ran, and passes for software without journeys", async () => {
+    expect((await evaluate(await ctx("journeys-pass"))).verdict).toBe("pass");
+    sandbox = new FakeSandbox({ journeys: { passed: 3, failed: 1, failures: ["tests/e2e/visits.spec.ts › the receptionist books a visit: expected 'Today' to be visible"] } });
+    let r = await evaluate(await ctx("journeys-pass"));
+    expect(r.verdict).toBe("fail");
+    expect(r.reasons).toEqual(["journey failed: tests/e2e/visits.spec.ts › the receptionist books a visit: expected 'Today' to be visible"]);
+    sandbox = new FakeSandbox({ journeys: { passed: 0, failed: 0 } });
+    r = await evaluate(await ctx("journeys-pass"));
+    expect(r.reasons[0]).toMatch(/no browser journeys ran/);
+    sandbox = new FakeSandbox({ journeys: { available: false, passed: 0, failed: 0, output: "no browser journeys for the cli profile" } });
+    r = await evaluate(await ctx("journeys-pass"));
+    expect(r.verdict).toBe("pass");
+    expect((await store.readArtifact("gate-result", r.resultId)).body).toMatch(/no browser journeys for the cli profile/);
+  });
+
   it("security-scan-clean fails only on high or critical findings", async () => {
     sandbox = new FakeSandbox({ scan: { findings: [{ severity: "low", title: "noisy" }] } });
     expect((await evaluate(await ctx("security-scan-clean"))).verdict).toBe("pass");

@@ -1,0 +1,60 @@
+name: stage
+description: Builds the next stage of a released product on top of what is live.
+fitsWhen: |
+  The project is already released and the person asked for the next stage of its spec
+  (karigor grow). Never chosen for a new idea.
+initialPhase: design
+limits:
+  projectFailures: 25
+phases:
+  design:
+    description: Revise the architecture for this stage; earlier modules stay unless this stage changes them.
+    roles: [architect]
+    budgetWeight: 1
+    transitions:
+      - to: plan
+        gates: [architecture-sound, skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  plan:
+    description: Break this stage's features into small backlog items.
+    roles: [planner]
+    budgetWeight: 1
+    transitions:
+      - to: build
+        gates: [skeptic-review]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  build:
+    description: Sprints, with the same item checks as the first build.
+    roles: []
+    loop:
+      itemRoles: [developer]
+      itemGates: [tests-pass, lint-clean, diff-matches-spec, skeptic-review]
+      onItemFail:
+        - { action: retry, times: 2 }
+        - { action: shrink, times: 1 }
+        - { action: park }
+      itemsPerSprint: 3
+    budgetWeight: 5
+    transitions:
+      - to: release
+        gates: [build-succeeds, security-scan-clean, journeys-pass]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: sendBack, phase: plan, times: 1 }
+          - { action: stop }
+  release:
+    description: Preview, check, verify rollback, put live, and tell the person what this stage added.
+    roles: [releaser]
+    budgetWeight: 1
+    transitions:
+      - to: done
+        gates: [preview-healthy, rollback-verified]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  done:
+    terminal: true

@@ -43,6 +43,7 @@ export const GATE_NAMES = [
   "lint-clean",
   "security-scan-clean",
   "build-succeeds",
+  "journeys-pass",
   "preview-healthy",
   "rollback-verified",
   "spec-complete",

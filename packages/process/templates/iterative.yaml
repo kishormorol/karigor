@@ -52,7 +52,7 @@ phases:
     budgetWeight: 5
     transitions:
       - to: release
-        gates: [build-succeeds, security-scan-clean]
+        gates: [build-succeeds, security-scan-clean, journeys-pass]
         onFail:
           - { action: retry, times: 1 }
           - { action: sendBack, phase: plan, times: 1 }

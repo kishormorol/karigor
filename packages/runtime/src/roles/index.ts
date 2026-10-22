@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod/v4";
-import type { Artifact, ArtifactKind, ArtifactOf, BacklogItem, MetaOf, ProjectState, Role } from "@karigor/store";
+import type { Artifact, ArtifactKind, ArtifactOf, BacklogItem, MetaOf, ProjectState, Role, Stage } from "@karigor/store";
 import { TARGET_PROFILES } from "@karigor/store";
 import type { Template } from "@karigor/process";
 import { ArchitectOutput, DeveloperOutput, PlannerOutput, ProductOwnerOutput, ReleaserOutput, SelectorOutput, type AssumptionInput } from "./schemas.js";
@@ -52,6 +52,30 @@ async function latest<K extends ArtifactKind>(ctx: RoleContext, kind: K): Promis
   const ids = ctx.state.artifacts[kind];
   const id = ids?.[ids.length - 1];
   return id ? ctx.store.readArtifact(kind, id) : undefined;
+}
+
+/**
+ * The spec stage being built now: the one a `stage` cycle names, or the first stage during the first build.
+ * Undefined in a fix round, and for specs written before stages existed (they are one stage: everything).
+ */
+export function currentStage(state: ProjectState, spec: ArtifactOf<"spec"> | undefined): Stage | undefined {
+  const stages = spec?.meta.stages ?? [];
+  if (state.stage) return stages.find((s) => s.id === state.stage);
+  return state.cycle === 0 ? stages[0] : undefined;
+}
+
+/** What the person will have once each stage is built, with where the build is now. */
+function renderStages(state: ProjectState, spec: ArtifactOf<"spec">, now: Stage | undefined): string {
+  const built = new Set(state.stagesBuilt);
+  if (state.firstBuilt && spec.meta.stages[0]) built.add(spec.meta.stages[0].id);
+  const features = new Map(spec.meta.features.map((f) => [f.id, f]));
+  return spec.meta.stages
+    .map((s, i) => {
+      const mark = s.id === now?.id ? "BUILDING NOW" : built.has(s.id) ? "built and live" : "later";
+      const fs = s.featureIds.map((f) => `  - ${f}: ${features.get(f)?.name ?? f}${features.get(f) ? ` (${features.get(f)!.priority}) - ${features.get(f)!.description}` : ""}`).join("\n");
+      return `${i + 1}. **${s.name}** (\`${s.id}\`, ${mark}): ${s.goal}\n${fs}`;
+    })
+    .join("\n");
 }
 
 function section(title: string, body: string): string {
@@ -142,11 +166,20 @@ export const architect: RoleDefinition<ArchitectOutput> = {
   async inputs(ctx) {
     const spec = await latest(ctx, "spec");
     const ledger = await latest(ctx, "ledger");
+    const previous = await latest(ctx, "architecture");
+    const stage = currentStage(ctx.state, spec);
     const profile = ctx.state.targetProfile ?? "web-app";
     return [
       section("Target profile", `${profile}: ${TARGET_PROFILES[profile as keyof typeof TARGET_PROFILES] ?? ""}`),
       ctx.stackGuide ? section("The build crew's stack (design within it)", ctx.stackGuide) : "",
       spec ? renderArtifact(spec) : "",
+      spec?.meta.stages.length ? section("Stages", renderStages(ctx.state, spec, stage)) : "",
+      previous && ctx.state.stage
+        ? section(
+            "The architecture so far (revise it for the stage being built now)",
+            "What is built and live follows this design. Return the whole architecture again: keep earlier modules, roles and stack as they are unless this stage must change them (say why in `risks` or the body), and add what this stage needs.\n\n" + renderArtifact(previous),
+          )
+        : "",
       ledger ? renderArtifact(ledger) : "",
       renderFeedback(ctx),
     ].join("\n");
@@ -167,13 +200,22 @@ export const planner: RoleDefinition<PlannerOutput> = {
     const spec = await latest(ctx, "spec");
     const arch = await latest(ctx, "architecture");
     const parts = [spec ? renderArtifact(spec) : "", arch ? renderArtifact(arch) : "", ctx.stackGuide ? section("The build crew's stack (items must fit it)", ctx.stackGuide) : ""];
+    const stage = currentStage(ctx.state, spec);
+    if (spec && stage && ctx.purpose !== "shrink") {
+      parts.push(
+        section(
+          "Stage to build now",
+          `Plan only the stage marked BUILDING NOW: **${stage.name}** (\`${stage.id}\`): ${stage.goal}\nIts features: ${stage.featureIds.join(", ")}. Stages marked "built and live" exist already; stages marked "later" are not planned now.\n\n${renderStages(ctx.state, spec, stage)}`,
+        ),
+      );
+    }
     if (ctx.purpose === "shrink" && ctx.itemId) {
       const item = ctx.backlog.find((b) => b.id === ctx.itemId);
       parts.push(section("SHRINK this item", "```json\n" + JSON.stringify(item, null, 2) + "\n```\nIt failed repeatedly. Replace it with smaller items. Use ids prefixed with its id."));
       parts.push(section("Existing item ids (do not reuse)", ctx.backlog.map((b) => b.id).join(", ")));
     } else if (ctx.backlog.length && ctx.state.cycle > 0) {
-      // A fix round plans only for its work items; what earlier releases built is context, not work.
-      parts.push(section("Already built in earlier releases (context only; do not plan these again)", ctx.backlog.map((b) => `- ${b.title}`).join("\n")));
+      // A fix round or a later stage plans only its own work; what earlier releases built is context, not work.
+      parts.push(section("Already built in earlier releases (context only; do not plan these again)", (await builtSoFar(ctx)).map((b) => `- ${b.title}`).join("\n")));
     } else if (ctx.backlog.length) {
       parts.push(section("Existing backlog", "```json\n" + JSON.stringify(ctx.backlog, null, 2) + "\n```"));
     }
@@ -183,7 +225,9 @@ export const planner: RoleDefinition<PlannerOutput> = {
       parts.push(
         section(
           "Open work items (maintenance)",
-          "The product is live. Each item below is a problem seen in production or a request from the person. Plan the smallest backlog that fixes them, most severe first; do not add unrelated features.\n\n" + items.map(renderArtifact).join("\n"),
+          (stage
+            ? "The product is live. Each item below is a problem seen in production or a request from the person since the last release. Plan items for them too, alongside this stage's items, most severe first.\n\n"
+            : "The product is live. Each item below is a problem seen in production or a request from the person. Plan the smallest backlog that fixes them, most severe first; do not add unrelated features.\n\n") + items.map(renderArtifact).join("\n"),
         ),
       );
     }
@@ -191,7 +235,7 @@ export const planner: RoleDefinition<PlannerOutput> = {
     return parts.join("\n");
   },
   async write(out, ctx) {
-    const items: BacklogItem[] = out.items.map((i) => ({ ...i, status: "todo" as const, ...(i.featureId !== undefined ? { featureId: i.featureId } : {}) }));
+    const items: BacklogItem[] = out.items.map((i) => ({ ...i, status: "todo" as const, ...(i.featureId !== undefined ? { featureId: i.featureId } : {}), ...(i.moduleId !== undefined ? { moduleId: i.moduleId } : {}) }));
     let all: BacklogItem[];
     if (ctx.purpose === "shrink" && ctx.itemId) {
       const ids = new Set(ctx.backlog.map((b) => b.id));
@@ -216,6 +260,17 @@ export const planner: RoleDefinition<PlannerOutput> = {
     return [{ meta: { ...base(ctx, "planner", "backlog"), kind: "backlog", items: all }, body }];
   },
 };
+
+/** Every item finished in any earlier round, oldest first: what a later stage builds on. */
+async function builtSoFar(ctx: RoleContext): Promise<BacklogItem[]> {
+  const seen = new Map<string, BacklogItem>();
+  for (const id of ctx.state.artifacts.backlog ?? []) {
+    for (const b of (await ctx.store.readArtifact("backlog", id)).meta.items) {
+      if ((ctx.state.items[b.id]?.status ?? b.status) === "done") seen.set(b.id, b);
+    }
+  }
+  return seen.size ? [...seen.values()] : ctx.backlog;
+}
 
 /** Work items taken on by the current maintenance cycle, or every open one outside a cycle. */
 export function openWorkItems(ctx: Pick<RoleContext, "state">): string[] {
@@ -255,7 +310,7 @@ export const developer: RoleDefinition<DeveloperOutput> = {
     const item = ctx.backlog.find((b) => b.id === ctx.itemId);
     const parts = [
       section("Backlog item to implement", item ? "```json\n" + JSON.stringify(item, null, 2) + "\n```" : `(phase-level work for ${ctx.phase})`),
-      arch ? renderArtifact(arch) : "",
+      arch ? renderArchitectureFor(arch, item?.moduleId) : "",
       spec ? section("Spec summary", `${spec.meta.title}: ${spec.meta.problem}`) : "",
     ];
     const changes = ctx.state.artifacts["change"] ?? [];
@@ -276,6 +331,32 @@ export const developer: RoleDefinition<DeveloperOutput> = {
   },
 };
 
+/**
+ * A system's architecture grows with every stage. The developer sees its item's module in full, every
+ * other module as one line, and the roles: enough to fit in without reading a long body each time.
+ */
+export function renderArchitectureFor(arch: ArtifactOf<"architecture">, moduleId: string | undefined): string {
+  const m = arch.meta;
+  if (!m.modules.length) return renderArtifact(arch);
+  const mine = m.modules.find((x) => x.id === moduleId);
+  const lines = [
+    "### Stack",
+    ...m.stack.map((s) => `- ${s.layer}: ${s.choice}`),
+    "",
+    "### Roles",
+    ...(m.roles.length ? m.roles.map((r) => `- **${r.name}**: ${r.does}${r.can.length ? ` (can: ${r.can.join("; ")})` : ""}`) : ["- (one kind of user)"]),
+    "",
+    ...(mine
+      ? ["### This item's module", "```json", JSON.stringify(mine, null, 2), "```", ""]
+      : []),
+    "### Modules",
+    ...m.modules.map((x) => `- **${x.id}** ${x.name}: ${x.purpose}${x.id === mine?.id ? " (this item)" : ""}`),
+    "",
+    ...(m.risks.length ? ["### Risks", ...m.risks.map((r) => `- ${r}`)] : []),
+  ];
+  return section(`architecture ${m.id}`, lines.join("\n"));
+}
+
 export const releaser: RoleDefinition<ReleaserOutput> = {
   role: "releaser",
   schema: ReleaserOutput,
@@ -295,7 +376,11 @@ export const releaser: RoleDefinition<ReleaserOutput> = {
       ctx.deploy
         ? section("The deploy target already ran (describe this; do not return a deploy object)", `${renderArtifact(ctx.deploy)}\n\nWhere it will live once it passes its checks: ${ctx.deployTarget ?? "the deploy target"}.`)
         : section("Deploy adapter result", latestDeploy ? renderArtifact(latestDeploy) : "No deploy adapter has run. Nothing is deployed."),
-      ...(ctx.state.cycle > 0 ? [section("This is a maintenance release", `Cycle ${ctx.state.cycle}: say in the headline what was fixed or changed for the person, not what the product is.`)] : []),
+      ...(ctx.state.stage
+        ? [section("This release adds a stage", `It adds the stage "${currentStage(ctx.state, spec)?.name ?? ctx.state.stage}": ${currentStage(ctx.state, spec)?.goal ?? ""}. Say in the headline what the person can now do that they could not before.`)]
+        : ctx.state.cycle > 0
+          ? [section("This is a maintenance release", `Cycle ${ctx.state.cycle}: say in the headline what was fixed or changed for the person, not what the product is.`)]
+          : []),
       renderFeedback(ctx),
     ].join("\n");
   },

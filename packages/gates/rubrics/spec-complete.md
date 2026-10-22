@@ -8,6 +8,7 @@ You are reviewing a product spec written from a user's idea. Pass only if ALL of
 4. The success criteria could be checked by someone who did not write the spec.
 5. Nothing in the spec contradicts the idea. Additions beyond the idea are recorded in the assumption ledger in plain language.
 6. Non-goals are stated so scope cannot creep silently.
+7. The stages build the product in a sensible order: the first stage alone is something a real person can use end to end for the idea's core job; each later stage adds one area the person would recognise and needs only earlier stages; every `must` and `should` feature is in exactly one stage. A small idea with one stage is fine.
 
 Fail if any point is missing, and say exactly which sentence to change. Cite the artifact and quote the text your verdict rests on.
 

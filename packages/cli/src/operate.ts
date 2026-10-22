@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { stat } from "node:fs/promises";
-import { FsStore, acquireRunLock, assertIdle, makeId, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState } from "@karigor/store";
+import { FsStore, acquireRunLock, assertIdle, makeId, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState, type Stage } from "@karigor/store";
 import { loadTemplate } from "@karigor/process";
 import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
@@ -14,6 +14,9 @@ import { LocalSandbox, Workspace, checkUrl } from "@karigor/sandbox";
 import { LocalDeploy, startServer, type DeployAdapter, type RunningServer } from "@karigor/deploy";
 import { generateSettingValue, readSettings, type MissingSetting } from "@karigor/profiles";
 import { liveRecord } from "./render.js";
+import { stagePlan } from "./stages.js";
+
+export { stagePlan, type StagePlan } from "./stages.js";
 import { runProject, type RunOptions } from "./run.js";
 
 export type Severity = MetaOf<"work-item">["severity"];
@@ -214,6 +217,78 @@ async function operateOnceLocked(o: OperateOptions): Promise<OperateResult> {
   const { healthUrl: _h, healthCheck: _c, audit: _a, signals: _s, recordOnly: _r, ...run } = o;
   state = await runProject(run);
   return { recorded, cycle, state };
+}
+
+// ---- stages ------------------------------------------------------------------
+
+/**
+ * Begin building the next stage on top of what is live: its own budget slice at the project's tier,
+ * the `stage` template, and any open feedback taken on with it. Undefined when there is no next stage
+ * or the project is not finished (a stopped project is reopened first; a busy one is left alone).
+ */
+export async function startStage(store: FsStore, o: { adapter: ModelAdapter; templatesDir?: string; clock?: () => Date }): Promise<{ cycle: number; stage: Stage } | undefined> {
+  await assertIdle(store.dir, "the next stage");
+  const state = await store.replay();
+  if (state.status !== "finished" || !state.firstBuilt || !state.budgetTier) return undefined;
+  const plan = await stagePlan(store, state);
+  if (!plan.next) return undefined;
+  const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done").map(([id]) => id);
+  const template = await loadTemplate("stage", o.templatesDir);
+  const cycle = state.cycle + 1;
+  if (state.ledgerId) {
+    const ledger = await store.readArtifact("cost-ledger", state.ledgerId);
+    const expectedItems = Math.min(15, plan.next.featureIds.length * 2) + open.length;
+    const tiers = estimate(template, { expectedItems, judgmentModel: o.adapter.modelFor("judgment"), routineModel: o.adapter.modelFor("routine"), freeModel: o.adapter.name === "mock" ? "mock" : "ollama/local" });
+    const t = tiers.find((x) => x.tier === state.budgetTier)!;
+    const phaseBudgets = { ...ledger.meta.phaseBudgets };
+    for (const [phase, amount] of Object.entries(t.phaseBudgets)) phaseBudgets[`m${cycle}:${phase}`] = amount;
+    const meta = { ...ledger.meta, phaseBudgets, budgetTotal: ledger.meta.budgetTotal + t.total };
+    await store.writeArtifact({ meta, body: ledger.body.replace(/\n*$/, `\nStage "${plan.next.name}" (round ${cycle}): ${t.currency} ${t.total.toFixed(2)} added.\n`) });
+  }
+  await store.appendEvent({ type: "stage-started", by: "user", cycle, stageId: plan.next.id, template: "stage", workItemIds: open });
+  await store.commit(`karigor: building stage "${plan.next.name}" (round ${cycle})`);
+  return { cycle, stage: plan.next };
+}
+
+export interface GrowResult {
+  /** The stage this call built, when it started one. */
+  stage?: Stage;
+  cycle?: number;
+  state: ProjectState;
+  /** Plain words when nothing was started. */
+  why?: string;
+}
+
+/** Build the next stage, start to finish, holding the project's run lock throughout. */
+export async function growOnce(o: Omit<RunOptions, "root" | "projectId"> & { root: string; projectId: string }): Promise<GrowResult> {
+  const release = await acquireRunLock(join(o.root, o.projectId));
+  let started: { cycle: number; stage: Stage } | undefined;
+  const store = await FsStore.open(o.root, o.projectId, { ...(o.clock ? { clock: o.clock } : {}), ...(o.committer ? { committer: o.committer } : {}) });
+  try {
+    started = await startStage(store, { adapter: o.adapter, ...(o.templatesDir ? { templatesDir: o.templatesDir } : {}), ...(o.clock ? { clock: o.clock } : {}) });
+  } finally {
+    await release();
+  }
+  const state = await store.replay();
+  if (!started) {
+    const plan = await stagePlan(store, state);
+    const why =
+      state.status === "running" || (state.status === "waiting" && state.pausedReason)
+        ? "It is still being built; let that finish first (karigor resume if it was interrupted)."
+        : state.status === "waiting"
+          ? "It is waiting for settings first: karigor setup."
+          : state.status === "stopped"
+            ? "It stopped before finishing; karigor reopen, then karigor resume, then grow."
+            : !state.firstBuilt
+              ? "The first version is not built yet."
+              : !plan.next
+                ? "Every stage of the plan is built. To add more, describe it with karigor feedback."
+                : "Nothing to start.";
+    return { state, why };
+  }
+  o.log?.(`stage "${started.stage.name}" (round ${started.cycle}): starting`);
+  const after = await runProject(o);
+  return { stage: started.stage, cycle: started.cycle, state: after };
 }
 
 /** The production URL to watch for a hosted target (a local target is watched by `serve`). */

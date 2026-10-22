@@ -158,3 +158,23 @@ describe("role definitions", () => {
 });
 
 void ROLES;
+
+describe("stages in the spec", () => {
+  const out = (stages: unknown, features = fakeSpecOutput.features) => ROLE_DEFINITIONS["product-owner"].schema.safeParse({ ...fakeSpecOutput, features, stages });
+  const features = [
+    { id: "f1", name: "Book", description: "Book a visit", priority: "must" },
+    { id: "f2", name: "Bill", description: "Take payment", priority: "should" },
+    { id: "f3", name: "Theme", description: "Dark mode", priority: "could" },
+  ];
+  it("puts every must and should feature in exactly one stage, and names only real features", () => {
+    expect(out([{ id: "s1", name: "Visits", goal: "book", featureIds: ["f1"] }, { id: "s2", name: "Billing", goal: "pay", featureIds: ["f2"] }], features).success).toBe(true);
+    const missing = out([{ id: "s1", name: "Visits", goal: "book", featureIds: ["f1"] }], features);
+    expect(missing.success).toBe(false);
+    expect(JSON.stringify(missing.error?.issues)).toMatch(/should feature \\"f2\\" is in no stage/);
+    const twice = out([{ id: "s1", name: "A", goal: "a", featureIds: ["f1", "f2"] }, { id: "s2", name: "B", goal: "b", featureIds: ["f2"] }], features);
+    expect(JSON.stringify(twice.error?.issues)).toMatch(/in both stage/);
+    const ghost = out([{ id: "s1", name: "A", goal: "a", featureIds: ["f1", "f2", "f9"] }], features);
+    expect(JSON.stringify(ghost.error?.issues)).toMatch(/names feature \\"f9\\"/);
+    expect(out([], features).success).toBe(false);
+  });
+});

@@ -25,6 +25,14 @@ export const FeatureSchema = z.object({
   description: z.string().min(1),
   priority: PrioritySchema,
 });
+export const StageSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  /** Plain words: what the person can do once this stage is built. */
+  goal: z.string().min(1),
+  featureIds: z.array(z.string().min(1)).min(1),
+});
+export type Stage = z.infer<typeof StageSchema>;
 export const SpecMeta = meta("spec", {
   title: z.string().min(1),
   audience: z.string().min(1),
@@ -33,6 +41,11 @@ export const SpecMeta = meta("spec", {
   nonGoals: z.array(z.string()).default([]),
   features: z.array(FeatureSchema).min(1),
   successCriteria: z.array(z.string().min(1)).min(1),
+  /**
+   * The product in the order it is built. Stage 1 is the first release; `karigor grow` builds the rest.
+   * Specs written before stages existed have none, which reads as one stage holding every feature.
+   */
+  stages: z.array(StageSchema).default([]),
 });
 
 // ---- assumption ledger --------------------------------------------------
@@ -58,6 +71,22 @@ export const ArchitectureMeta = meta("architecture", {
   stack: z.array(z.object({ layer: z.string(), choice: z.string(), reason: z.string() })).min(1),
   components: z.array(z.object({ name: z.string(), responsibility: z.string() })).min(1),
   risks: z.array(z.string()).default([]),
+  /** The kinds of people who use the system and what each may do. */
+  roles: z.array(z.object({ name: z.string().min(1), does: z.string().min(1), can: z.array(z.string()).default([]) })).default([]),
+  /** The system's parts. Revised at every stage; earlier modules stay unless a stage changes them. */
+  modules: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        purpose: z.string().min(1),
+        roles: z.array(z.string()).default([]),
+        data: z.array(z.string()).default([]),
+        pages: z.array(z.string()).default([]),
+        stage: z.string().optional(),
+      }),
+    )
+    .default([]),
 });
 
 // ---- backlog ------------------------------------------------------------
@@ -71,6 +100,8 @@ export const BacklogItemSchema = z.object({
   status: ItemStatusSchema.default("todo"),
   dependsOn: z.array(z.string()).default([]),
   featureId: z.string().optional(),
+  /** The architecture module this item belongs to. */
+  moduleId: z.string().optional(),
 });
 export type BacklogItem = z.infer<typeof BacklogItemSchema>;
 export const BacklogMeta = meta("backlog", {

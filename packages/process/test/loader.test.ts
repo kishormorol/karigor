@@ -18,9 +18,9 @@ phases:
 ${overrides}`;
 
 describe("template loader", () => {
-  it("loads all four shipped templates", async () => {
+  it("loads every shipped template", async () => {
     const names = await listTemplates();
-    expect(names).toEqual(["iterative", "linear", "maintenance", "spike-then-build"]);
+    expect(names).toEqual(["iterative", "linear", "maintenance", "spike-then-build", "stage"]);
     for (const n of names) {
       const t = await loadTemplate(n);
       expect(t.name).toBe(n);
