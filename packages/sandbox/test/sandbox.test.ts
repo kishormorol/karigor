@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -104,6 +104,17 @@ describe("LocalSandbox", () => {
     server.close();
     expect((await s.checkUrl("http://127.0.0.1:1/")).ok).toBe(false);
     expect((await s.verifyRollback()).ok).toBe(false);
+  });
+
+  it("the build check runs on a brand-new database, never the developer's copy", async () => {
+    const w = await ws();
+    const profile = { ...fixture, commands: { ...fixture.commands, build: ["node", "-e", "require('fs').writeFileSync('db-url.txt', process.env.DATABASE_URL || 'unset')"] }, localSettings: { DATABASE_URL: "file:./data/app.db" } };
+    const r = await new LocalSandbox(w, profile).build();
+    expect(r.ok).toBe(true);
+    expect(r.output).toMatch(/fresh, empty database/);
+    const url = await readFile(join(w.dir, "db-url.txt"), "utf8");
+    expect(url).toMatch(/^file:.*karigor-build-db-.*database_url\.db$/);
+    expect(url).not.toContain(w.dir);
   });
 
   it("parses both audit formats at high and critical only", () => {

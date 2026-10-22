@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { CommandResult, Sandbox, ScanResult, SecurityFinding, TestRun, UrlCheck } from "@karigor/gates";
 import type { Profile } from "@karigor/profiles";
 import { clip, run } from "./exec.js";
@@ -24,10 +27,10 @@ export class LocalSandbox implements Sandbox {
     private readonly opts: LocalSandboxOptions = {},
   ) {}
 
-  private async cmd(argv: string[] | undefined, what: string): Promise<CommandResult & { stdout: string; stderr: string; code: number | null }> {
+  private async cmd(argv: string[] | undefined, what: string, env?: NodeJS.ProcessEnv): Promise<CommandResult & { stdout: string; stderr: string; code: number | null }> {
     if (!argv || argv.length === 0) return { ok: true, output: `no ${what} command for the ${this.profile.name} profile`, stdout: "", stderr: "", code: 0 };
     const [c, ...args] = argv;
-    const r = await run(c!, args, { cwd: this.workspace.dir, timeoutMs: this.opts.timeoutMs ?? 10 * 60 * 1000 });
+    const r = await run(c!, args, { cwd: this.workspace.dir, timeoutMs: this.opts.timeoutMs ?? 10 * 60 * 1000, ...(env ? { env } : {}) });
     return { ok: r.code === 0, output: clip(`$ ${argv.join(" ")}\n${r.stdout}${r.stderr ? `\n${r.stderr}` : ""}`), ...r };
   }
 
@@ -42,9 +45,21 @@ export class LocalSandbox implements Sandbox {
     return { ok: r.ok, output: r.output };
   }
 
+  /**
+   * The build runs against brand-new local databases (each `file:` setting the profile defaults),
+   * as a real release does: migrations must work from empty, not just on the developer's copy,
+   * which can hold tables from work that was later reverted.
+   */
   async build(): Promise<CommandResult> {
-    const r = await this.cmd(this.profile.commands.build, "build");
-    return { ok: r.ok, output: r.output };
+    const env: NodeJS.ProcessEnv = {};
+    const fresh = await mkdtemp(join(tmpdir(), "karigor-build-db-"));
+    for (const [k, v] of Object.entries(this.profile.localSettings ?? {})) if (v.startsWith("file:")) env[k] = `file:${join(fresh, `${k.toLowerCase()}.db`)}`;
+    try {
+      const r = await this.cmd(this.profile.commands.build, "build", env);
+      return { ok: r.ok, output: Object.keys(env).length ? `(on a fresh, empty database)\n${r.output}` : r.output };
+    } finally {
+      await rm(fresh, { recursive: true, force: true });
+    }
   }
 
   async securityScan(): Promise<ScanResult> {
