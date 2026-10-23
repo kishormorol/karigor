@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get started with Karigor</title>
+<meta name="description" content="From an idea to an app you can use: install Karigor, describe your app, build it, use it, grow it and put it online.">
+<meta property="og:title" content="Get started with Karigor">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0E1116">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<nav class="wrap site-nav" aria-label="Main">
+<a class="brand" href="/"><span class="brand-word">karigor</span><span class="brand-bn" lang="bn">কারিগর</span></a>
+<div class="nav-links">
+<a href="/how-it-works">How it works</a>
+<a href="/get-started" aria-current="page">Get started</a>
+<a href="https://github.com/kishormorol/karigor/tree/main/docs">Docs</a>
+<a class="btn-outline" href="https://github.com/kishormorol/karigor">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>GitHub</a>
+</div>
+</nav>
+</header>
+
+<section class="band" style="border-top: 0">
+<div class="wrap page-intro stack">
+<p class="eyebrow">Get started</p>
+<h1 class="h1" style="max-width: 900px; font-size: clamp(40px, 5.4vw, 68px)">From an idea to an app you can use.</h1>
+<p class="lede" style="max-width: 640px">You type a few commands. Karigor does the rest, and never asks a technical question. A stage usually takes a few hours; you can leave it running.</p>
+</div>
+</section>
+
+<div class="wrap docs">
+<nav class="toc" aria-label="On this page">
+<span class="toc-label">On this page</span>
+<a href="#install">1. Before you start</a>
+<a href="#idea">2. Describe your app</a>
+<a href="#build">3. Start the build</a>
+<a href="#setup">4. Give it what only you can</a>
+<a href="#use">5. Open and use it</a>
+<a href="#grow">6. Grow and change it</a>
+<a href="#online">7. Put it online</a>
+<a href="#commands">Command summary</a>
+</nav>
+
+<main id="main">
+<section id="install">
+<h2>1. Before you start (once)</h2>
+<p class="body">You need <a href="https://nodejs.org">Node.js</a> 22 or newer, git, and <a href="https://claude.com/claude-code">Claude Code</a> installed and signed in. Claude Code builds the app under your own login, so there is no API key and, on a subscription, nothing extra to pay.</p>
+<pre class="code">git clone https://github.com/kishormorol/karigor
+cd karigor
+npm install -g pnpm        # if you do not have it
+pnpm install &amp;&amp; pnpm build
+alias karigor="node $PWD/packages/cli/dist/bin.js"</pre>
+<p class="note-outline"><strong>No Claude Code?</strong> Use a free local model with <code>--adapter ollama</code> or an API key with <code>--adapter claude</code>. To watch the whole process with no model and no cost, add <code>--adapter demo</code> to any command.</p>
+</section>
+
+<section id="idea">
+<h2>2. Describe your app</h2>
+<p class="body">The idea is the only thing Karigor needs, and it shapes everything that follows. Write it as you would explain it to a person who will build it for you.</p>
+<ul class="checklist">
+<li><strong>Who uses it</strong><span>and what each kind of person may see or do</span></li>
+<li><strong>What it keeps track of</strong><span>orders, students, products, payments</span></li>
+<li><strong>The jobs it must do</strong><span>in the words you use at work</span></li>
+<li><strong>Local details</strong><span>currency, language, payment methods, phone or computer</span></li>
+</ul>
+<div class="example">
+<div class="tabs" role="tablist" aria-label="Example ideas">
+<button class="tab" type="button" role="tab" id="et-weak" aria-controls="ep-weak" aria-selected="false">Weak</button>
+<button class="tab" type="button" role="tab" id="et-strong" aria-controls="ep-strong" aria-selected="true">Strong</button>
+<button class="tab" type="button" role="tab" id="et-system" aria-controls="ep-system" aria-selected="false">A bigger system</button>
+</div>
+<div class="example-body" role="tabpanel" id="ep-weak" aria-labelledby="et-weak" hidden><p class="example-text">A grocery app</p><p class="small" style="font-size: 15px">Too little to go on. Karigor will guess who uses it, what it tracks and what matters, and record each guess.</p></div>
+<div class="example-body" role="tabpanel" id="ep-strong" aria-labelledby="et-strong"><p class="example-text">A shop counter for my small grocery in Dhaka. Only I sign in, on my phone.
+I add products sold by piece, kg, gram, litre, packet or dozen, with a price and how many I have.
+At the counter I enter what a customer bought; it adds up the total in taka, I choose cash or bKash,
+and the stock goes down. A home page shows today’s total, split into cash and bKash, and the
+products running low. I can cancel a sale I entered by mistake, and the stock goes back.</p><p class="small" style="font-size: 15px">Who signs in, what it keeps, the jobs in your own words, and the local details: taka and bKash.</p></div>
+<div class="example-body" role="tabpanel" id="ep-system" aria-labelledby="et-system" hidden><p class="example-text">A system for my small clinic in Mirpur. The receptionist registers patients and books visits with
+our three doctors. Each doctor sees their own visits for the day and writes notes and prescriptions;
+the receptionist must not read the notes. The accountant takes payments in cash or bKash, prints a
+receipt, and sees what is still owed. I, the owner, see each day’s visits and takings by doctor,
+with a chart for the month, and I add or remove staff.</p><p class="small" style="font-size: 15px">Every kind of person, and what each may and may not see. The design plans for them from the start.</p></div>
+</div>
+<p class="body">Karigor plans the whole product, then splits it into <strong>stages</strong>. Stage 1 is the smallest version someone can use end to end. Each later stage adds one area you would recognise, like “Billing” or “The owner’s dashboard”. A small idea is just one stage.</p>
+</section>
+
+<section id="build">
+<h2>3. Start the build</h2>
+<pre class="code">karigor new "your idea here" --run --port 3300</pre>
+<p class="body">It prints the project’s id, like <code>p-mvin1bja-92f2</code>. Keep it: every other command needs it. Then, with no input from you:</p>
+<ol class="numbered">
+<li>It writes a specification and splits it into stages, with every assumption recorded.</li>
+<li>It designs the system: who uses it, what each may do, and its parts.</li>
+<li>It splits stage 1 into small pieces, at most 15.</li>
+<li>A developer builds each piece with tests and browser journeys; a reviewer and a skeptic check it.</li>
+<li>Every journey runs again on a brand-new database, then a checked preview, a verified rollback, and release.</li>
+</ol>
+<div class="table-box" style="border-radius: 12px">
+<table style="min-width: 520px">
+<caption>If it stops, nothing is lost</caption>
+<thead><tr><th scope="col">What you see</th><th scope="col">What to do</th></tr></thead>
+<tbody>
+<tr><td>Your Claude usage limit ran out</td><td class="mono">karigor resume &lt;id&gt;</td></tr>
+<tr><td>The computer slept or the terminal closed</td><td class="mono">karigor resume &lt;id&gt;</td></tr>
+<tr><td>It is waiting for a setting</td><td class="mono">karigor setup &lt;id&gt;</td></tr>
+<tr><td>It stopped with work set aside</td><td class="mono">karigor reopen &lt;id&gt;</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<section id="setup">
+<h2>4. Give it what only you can provide</h2>
+<p class="body">Some apps need things only you can choose or own: the owner’s email, a passcode, a database account. Karigor makes its own secrets itself, and asks you for the rest in plain words. It hides what you type and stores values only where the app runs.</p>
+<pre class="code">karigor setup &lt;id&gt;</pre>
+</section>
+
+<section id="use">
+<h2>5. Open and use it</h2>
+<pre class="code">karigor serve &lt;id&gt; --port 3300
+karigor admin-link &lt;id&gt; you@example.com "Your name"</pre>
+<p class="body">Open http://localhost:3300 and the link <code>admin-link</code> prints to choose your password. Add your team from <strong>People</strong>; each gets a one-time link to send by WhatsApp, SMS or email. Leave <code>serve</code> running: it keeps the app up, checks its libraries each day and fixes problems on its own.</p>
+<p class="note"><strong>Try everything.</strong> Use it as you would on a busy day, on your phone too. Make mistakes on purpose, undo things, and write down whatever is wrong, confusing or missing.</p>
+</section>
+
+<section id="grow">
+<h2>6. Grow and change it</h2>
+<p class="body">Build the next stage on top of the live app, or ask for a change in your own words, one thing per message. Your data stays through every release.</p>
+<pre class="code code-wrap">karigor grow &lt;id&gt;            # the next stage, then it stops so you can try it
+karigor grow &lt;id&gt; --all      # every remaining stage
+karigor feedback &lt;id&gt; "Add a page that shows each month's total, with cash and bKash separately."
+karigor correct &lt;id&gt; a3 "Prices should allow paisa, like 62.50."</pre>
+</section>
+
+<section id="online">
+<h2>7. Put it online</h2>
+<p class="body">For a public address, use Vercel’s free tier, with a free <a href="https://turso.tech">Turso</a> database so the data survives on the internet.</p>
+<pre class="code">karigor new "..." --deploy vercel --run
+karigor setup &lt;id&gt;               # asks for the database address and token
+karigor watch &lt;id&gt; --every 15    # checks the live site and fixes problems</pre>
+<div class="grid" style="--min: 260px; gap: 12px">
+<div class="box"><strong>What it builds today</strong><span>Web apps for phone and computer: sign-in with roles, invitations by link, an activity log, forms, searchable lists, money and stock, dashboards with charts, CSV export.</span></div>
+<div class="box"><strong>Not yet</strong><span>File uploads, scheduled jobs, SMS, and one installation serving several organisations. Karigor works around them or leaves them out, and says so.</span></div>
+</div>
+</section>
+
+<section id="commands">
+<h2>Command summary</h2>
+<div class="table-box" style="border-radius: 12px">
+<table style="min-width: 560px">
+<thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
+<tbody>
+<tr><td class="mono">karigor new "&lt;idea&gt;" --run</td><td>Start a new app and build it</td></tr>
+<tr><td class="mono">karigor status &lt;id&gt;</td><td>Where it stands</td></tr>
+<tr><td class="mono">karigor resume &lt;id&gt;</td><td>Continue after a pause, limit or crash</td></tr>
+<tr><td class="mono">karigor setup &lt;id&gt;</td><td>Give settings only you can provide</td></tr>
+<tr><td class="mono">karigor serve &lt;id&gt; --port &lt;n&gt;</td><td>Run it on this computer and keep it healthy</td></tr>
+<tr><td class="mono">karigor feedback &lt;id&gt; "&lt;text&gt;"</td><td>Ask for a change or report a problem</td></tr>
+<tr><td class="mono">karigor fix &lt;id&gt;</td><td>Start a fix round now</td></tr>
+<tr><td class="mono">karigor grow &lt;id&gt; [--all]</td><td>Build the next stage, or every remaining one</td></tr>
+<tr><td class="mono">karigor admin-link &lt;id&gt; &lt;email&gt;</td><td>A one-time link to set your admin password</td></tr>
+<tr><td class="mono">karigor correct &lt;id&gt; &lt;decisionId&gt; "&lt;text&gt;"</td><td>Change a decision made for you</td></tr>
+<tr><td class="mono">karigor reopen &lt;id&gt;</td><td>Bring parked work back after a stop</td></tr>
+<tr><td class="mono">karigor dismiss &lt;id&gt; &lt;workItemId&gt;</td><td>Close a request you no longer want</td></tr>
+<tr><td class="mono">karigor explain &lt;id&gt;</td><td>The story of what happened</td></tr>
+<tr><td class="mono">karigor cost &lt;id&gt;</td><td>What it has used</td></tr>
+</tbody>
+</table>
+</div>
+<p class="body" style="font-size: 16px">The full walkthrough is in <a href="https://github.com/kishormorol/karigor/blob/main/docs/guide.md">Building an app with Karigor</a>.</p>
+</section>
+</main>
+</div>
+
+<footer class="site-footer">
+<div class="wrap footer-row">
+<span><span class="brand-word">karigor</span>Free and open source, Apache-2.0</span>
+<nav class="footer-links" aria-label="Footer">
+<a href="/">Home</a>
+<a href="/how-it-works">How it works</a>
+<a href="https://github.com/kishormorol/karigor/blob/main/docs/guide.md">Full guide</a>
+<a href="https://github.com/kishormorol/karigor">GitHub</a>
+</nav>
+</div>
+</footer>
+<script src="site.js" defer></script>
+</body>
+</html>

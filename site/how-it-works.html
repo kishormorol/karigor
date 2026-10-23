@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Karigor works</title>
+<meta name="description" content="A real software process run by a small deterministic kernel: phases, thirteen gates that need proof, a failure ladder and process templates.">
+<meta property="og:title" content="How Karigor works">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0E1116">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<nav class="wrap site-nav" aria-label="Main">
+<a class="brand" href="/"><span class="brand-word">karigor</span><span class="brand-bn" lang="bn">কারিগর</span></a>
+<div class="nav-links">
+<a href="/how-it-works" aria-current="page">How it works</a>
+<a href="/get-started">Get started</a>
+<a href="https://github.com/kishormorol/karigor/tree/main/docs">Docs</a>
+<a class="btn-outline" href="https://github.com/kishormorol/karigor">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>GitHub</a>
+</div>
+</nav>
+</header>
+
+<main id="main">
+<section class="wrap stack-lg" style="padding-block: clamp(48px, 8vw, 96px) 56px">
+<p class="eyebrow">How it works</p>
+<h1 class="h1" style="max-width: 980px">A real software process, run by a kernel that does not take an agent’s word for anything.</h1>
+<p class="lede" style="max-width: 680px">The kernel is small and deterministic. Agents do the thinking and the typing; the kernel decides what happens next, and only on evidence.</p>
+</section>
+
+<section class="wrap" aria-label="From idea to operation" style="padding-bottom: var(--section)">
+<ol class="pipeline">
+<li><span class="n">01</span><strong>Choose the process</strong><span>A selector picks a process template and a target profile for the idea. An estimator offers three cost tiers, and you pick one, once.</span></li>
+<li><span class="n">02</span><strong>Run the phases</strong><span>Phase roles produce artifacts: the product owner writes the spec, the architect the design, the planner the backlog, the releaser the release.</span></li>
+<li><span class="n">03</span><strong>Build in a real workspace</strong><span>The developer works in a real git repository, one backlog item per commit. Its edits stay inside the workspace; network, privilege and publishing commands are denied.</span></li>
+<li class="is-gate"><span class="n">04</span><strong>Pass the gates</strong><span>Every transition needs gates: real tests, lint, build and security scan, or a reviewer or skeptic verdict that must cite evidence. Failures walk a ladder.</span></li>
+<li><span class="n">05</span><strong>Release carefully</strong><span>Every journey runs again on a brand-new database. Then a preview starts, is checked over HTTP, a rollback is verified, and only then is it promoted. A promotion that fails goes back to what was live.</span></li>
+<li class="is-op"><span class="n">06</span><strong>Operate</strong><span>App errors, downtime, vulnerable libraries and your feedback become work items. The maintenance template triages, fixes, verifies and releases again.</span></li>
+</ol>
+</section>
+
+<section class="band">
+<div class="wrap section">
+<div class="head-row" style="margin-bottom: 32px">
+<h2 class="h2 h2-sm">Thirteen gates. Each one needs proof.</h2>
+<p class="body">A judged verdict fails only on blocking objections. Minor suggestions are recorded, not enforced, and a verdict with no citations is a fail.</p>
+</div>
+<div class="table-box">
+<table style="min-width: 640px">
+<thead><tr><th scope="col" style="width: 32%">Gate</th><th scope="col" style="width: 16%">Kind</th><th scope="col">What it proves</th></tr></thead>
+<tbody>
+<tr><td class="mono">schema-valid</td><td><span class="kind">mechanical</span></td><td>Every artifact an agent produced matches its schema.</td></tr>
+<tr><td class="mono">budget-ok</td><td><span class="kind">mechanical</span></td><td>The work so far fits the tier you chose.</td></tr>
+<tr><td class="mono">spec-complete</td><td><span class="kind kind-judged">judged</span></td><td>A reviewer finds the spec complete enough to design and build from.</td></tr>
+<tr><td class="mono">architecture-sound</td><td><span class="kind kind-judged">judged</span></td><td>The design names the roles and modules and fits the spec.</td></tr>
+<tr><td class="mono">tests-pass</td><td><span class="kind">mechanical</span></td><td>The project’s real tests run green.</td></tr>
+<tr><td class="mono">lint-clean</td><td><span class="kind">mechanical</span></td><td>The code passes the linter.</td></tr>
+<tr><td class="mono">build-succeeds</td><td><span class="kind">mechanical</span></td><td>The production build completes.</td></tr>
+<tr><td class="mono">security-scan-clean</td><td><span class="kind">mechanical</span></td><td>No leaked secrets and no vulnerable dependencies.</td></tr>
+<tr><td class="mono">diff-matches-spec</td><td><span class="kind kind-judged">judged</span></td><td>The change does what its backlog item and the spec say.</td></tr>
+<tr><td class="mono">skeptic-review</td><td><span class="kind kind-judged">judged</span></td><td>A skeptic, who can only object, finds no blocking problem.</td></tr>
+<tr><td class="mono">journeys-pass</td><td><span class="kind">mechanical</span></td><td>Each kind of user’s main jobs work in a browser, at phone and desktop size.</td></tr>
+<tr><td class="mono">preview-healthy</td><td><span class="kind">mechanical</span></td><td>The preview serves the new build, not a login page or the old one.</td></tr>
+<tr><td class="mono">rollback-verified</td><td><span class="kind">mechanical</span></td><td>Going back to the previous release actually works.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section class="wrap section">
+<div class="stack" style="max-width: 760px; margin-bottom: 36px">
+<p class="eyebrow">When something fails</p>
+<h2 class="h2 h2-sm">Failures walk a ladder, never a loop.</h2>
+<p class="body">A retried role is shown exactly why it failed and what it produced last time. Dropped or parked work is reverted, so it never ships.</p>
+</div>
+<div class="rungs">
+<div><span class="card-num">rung 1</span><strong>Retry</strong><span>With the objection quoted and the last attempt shown.</span></div>
+<div><span class="card-num">rung 2</span><strong>Send back or shrink</strong><span>Return to an earlier phase, or cut the item down to what can pass.</span></div>
+<div><span class="card-num">rung 3</span><strong>Park</strong><span>Set the item aside and revert it. The rest of the build carries on.</span></div>
+<div><span class="card-num">rung 4</span><strong>Stop</strong><span>Halt the project and say why, in plain words. Nothing broken goes live.</span></div>
+</div>
+</section>
+
+<section class="dark">
+<div class="wrap split section">
+<div class="stack" style="flex-basis: 360px">
+<p class="eyebrow">Process templates</p>
+<h2 class="h2 h2-sm">The right process for the idea.</h2>
+<p class="body">Each template is a YAML file: which phases exist, which roles run in each, which gates guard each transition, and what to do on failure. You can write your own.</p>
+<a class="dark-link" href="https://github.com/kishormorol/karigor/blob/main/docs/templates.md">Writing a process template</a>
+</div>
+<div style="flex-basis: 560px">
+<div class="tpl-tabs" role="tablist" aria-label="Templates">
+<button class="tpl-tab" type="button" role="tab" id="tt-iterative" aria-controls="tp-iterative" aria-selected="true">iterative</button>
+<button class="tpl-tab" type="button" role="tab" id="tt-linear" aria-controls="tp-linear" aria-selected="false">linear</button>
+<button class="tpl-tab" type="button" role="tab" id="tt-spike" aria-controls="tp-spike" aria-selected="false">spike-then-build</button>
+<button class="tpl-tab" type="button" role="tab" id="tt-stage" aria-controls="tp-stage" aria-selected="false">stage</button>
+<button class="tpl-tab" type="button" role="tab" id="tt-maint" aria-controls="tp-maint" aria-selected="false">maintenance</button>
+</div>
+<div class="tpl-panel" role="tabpanel" id="tp-iterative" aria-labelledby="tt-iterative"><p class="tpl-desc">Short sprints with phase gates. The default for most products.</p><p class="tpl-fits">Most ideas: built a few backlog items at a time, each sprint gated.</p><ol class="phases" aria-label="Phases"><li>specify</li><li>design</li><li>plan</li><li>build (sprints)</li><li>release</li></ol></div>
+<div class="tpl-panel" role="tabpanel" id="tp-linear" aria-labelledby="tt-linear" hidden><p class="tpl-desc">Waterfall. One pass through specify, design, plan, build, verify, release.</p><p class="tpl-fits">Small, well-understood ideas, like the family shopping list.</p><ol class="phases" aria-label="Phases"><li>specify</li><li>design</li><li>plan</li><li>build</li><li>verify</li><li>release</li></ol></div>
+<div class="tpl-panel" role="tabpanel" id="tp-spike" aria-labelledby="tt-spike" hidden><p class="tpl-desc">Resolve one risky unknown with a throwaway spike, then build iteratively.</p><p class="tpl-fits">Ideas that hinge on one thing nobody is sure will work.</p><ol class="phases" aria-label="Phases"><li>specify</li><li>spike</li><li>design</li><li>plan</li><li>build (sprints)</li><li>release</li></ol></div>
+<div class="tpl-panel" role="tabpanel" id="tp-stage" aria-labelledby="tt-stage" hidden><p class="tpl-desc">Builds the next stage of a released product on top of what is live.</p><p class="tpl-fits">Run by <code>karigor grow</code>, once stage 1 is live.</p><ol class="phases" aria-label="Phases"><li>design</li><li>plan</li><li>build</li><li>release</li></ol></div>
+<div class="tpl-panel" role="tabpanel" id="tp-maint" aria-labelledby="tt-maint" hidden><p class="tpl-desc">Entered from a production signal. Triage, fix, verify, release.</p><p class="tpl-fits">App errors, downtime, a vulnerable library or your feedback.</p><ol class="phases" aria-label="Phases"><li>triage</li><li>build</li><li>release</li></ol></div>
+</div>
+</div>
+</section>
+
+<section class="wrap section grid" style="--min: 250px; gap: 24px">
+<article class="card"><h3 class="h3">Crash anywhere, resume exactly</h3><p class="body">Everything is an event in an append-only log and a Markdown artifact, committed to git inside the project. <code>karigor resume</code> replays it to the exact state; <code>karigor explain</code> turns it into a story.</p></article>
+<article class="card"><h3 class="h3">Secrets stay where the app runs</h3><p class="body">Karigor makes secrets like a signing key itself and asks in plain words for what only you can provide. Values go only to the host’s sensitive settings or a private file; Karigor’s own records keep names, never values.</p></article>
+<article class="card"><h3 class="h3">Every decision is correctable</h3><p class="body">Nobody is asked a technical question, but every assumption is recorded. Change any of them in your own words; once the app is live, the change becomes a work item and a fix round.</p></article>
+<article class="card"><h3 class="h3">Self-host it safely</h3><p class="body">Run the chat UI from Docker to reach it from your phone. It refuses to listen beyond localhost without a token.</p></article>
+</section>
+
+<section class="wrap" style="padding-bottom: var(--section)">
+<div class="cta">
+<div><h2 class="h2" style="font-size: clamp(30px, 3.6vw, 44px)">Watch the whole process run, free, in two minutes.</h2></div>
+<a class="btn btn-light" href="/get-started">Get started</a>
+</div>
+</section>
+</main>
+
+<footer class="site-footer">
+<div class="wrap footer-row">
+<span><span class="brand-word">karigor</span>Free and open source, Apache-2.0</span>
+<nav class="footer-links" aria-label="Footer">
+<a href="/">Home</a>
+<a href="/get-started">Get started</a>
+<a href="https://github.com/kishormorol/karigor/blob/main/docs/templates.md">Process templates</a>
+<a href="https://github.com/kishormorol/karigor">GitHub</a>
+</nav>
+</div>
+</footer>
+<script src="site.js" defer></script>
+</body>
+</html>

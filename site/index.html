@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karigor — idea to live, maintained software</title>
+<meta name="description" content="Free, open-source software in which a team of AI agents takes an idea to deployed, maintained software. No technical questions, ever.">
+<meta property="og:title" content="Karigor — idea to live, maintained software">
+<meta property="og:description" content="A team of AI agents takes your idea to deployed, maintained software. Reliability comes from process, not trust.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0E1116">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<nav class="wrap site-nav" aria-label="Main">
+<a class="brand" href="/"><span class="brand-word">karigor</span><span class="brand-bn" lang="bn">কারিগর</span></a>
+<div class="nav-links">
+<a href="/how-it-works">How it works</a>
+<a href="/get-started">Get started</a>
+<a href="https://github.com/kishormorol/karigor/tree/main/docs">Docs</a>
+<a class="btn-outline" href="https://github.com/kishormorol/karigor">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>GitHub</a>
+</div>
+</nav>
+</header>
+
+<main id="main">
+<section class="wrap split hero">
+<div>
+<p class="pill"><span class="dot" aria-hidden="true"></span>Free and open source · Apache-2.0</p>
+<h1 class="h1 h1-hero">Describe it once.<br>Get software that ships, and <span class="accent">stays working.</span></h1>
+<p class="lede">Karigor is a team of AI agents that takes an idea from someone with no technical knowledge all the way to deployed, maintained software. You give it the idea and choose a budget, once. Nobody asks you a technical question.</p>
+<div class="btn-row">
+<a class="btn btn-primary" href="/get-started">Try it free in two minutes <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></a>
+<a class="btn btn-secondary" href="/how-it-works">See how it works</a>
+</div>
+<p class="small">No API key needed with a Claude Code login. Or run fully offline with a local model.</p>
+</div>
+<figure>
+<div class="chat" role="img" aria-label="The Karigor chat: a person describes a grocery counter app, and Karigor reports its progress in plain sentences until stage 1 is live">
+<div class="chat-top"><strong>Shop counter</strong><span class="mono">p-mvin1bja-92f2</span></div>
+<div class="msg msg-me">A shop counter for my small grocery in Dhaka. Only I sign in, on my phone. It adds up the total in taka, I choose cash or bKash, and the stock goes down.</div>
+<div class="msg">I wrote the specification and recorded every assumption I made. You can correct any of them.</div>
+<div class="msg msg-col"><span>The skeptic objected: cancelling a sale must put the stock back. I revised it.</span>
+<span class="chips">
+<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>tests</span>
+<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>lint</span>
+<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>build</span>
+<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>security scan</span>
+<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>journeys</span>
+</span></div>
+<div class="msg">Stage 1 is live at <span class="mono accent">localhost:3300</span>. I checked the preview and a rollback first.</div>
+<div class="chat-input"><span>Tell me what to change…</span><span class="send" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></div>
+</div>
+<figcaption>An example of the chat UI: the idea is the first message, and progress comes back as plain sentences.</figcaption>
+</figure>
+</section>
+
+<section class="band" aria-label="A real run">
+<div class="wrap proof">
+<p><strong>20 October 2026, a real run.</strong> “A page where my family keeps one shared shopping list” went from idea to a public vercel.app address with no one touching it.</p>
+<div class="stats">
+<div class="stat"><b>12</b><span>backlog items built and reviewed</span></div>
+<div class="stat"><b>1</b><span>lint failure caught and fixed</span></div>
+<div class="stat"><b>$0</b><span>extra on a Claude subscription</span></div>
+<div class="stat"><b>$6.48</b><span>the same work at API prices</span></div>
+</div>
+</div>
+</section>
+
+<section class="wrap" style="padding-block: var(--section) 48px">
+<div class="stack" style="max-width: 760px; margin-bottom: 48px">
+<p class="eyebrow">Why it is different</p>
+<h2 class="h2">Plenty of tools write code from a prompt. Karigor runs the whole job.</h2>
+</div>
+<div class="grid" style="--min: 320px; gap: 24px">
+<article class="card"><span class="card-num">01</span><h3 class="h3" style="font-size: 28px">It owns the whole lifecycle</h3><p class="body">Specify, design, plan, build, verify, release, and then watch production and fix what breaks. Not “here is a repo, good luck”.</p></article>
+<article class="card"><span class="card-num">02</span><h3 class="h3" style="font-size: 28px">Reliability comes from process, not trust</h3><p class="body">A small, deterministic kernel runs a real software process. Nothing moves forward without mechanical evidence: tests green, security scan clean, a healthy preview, a verified rollback. Agents will make mistakes; the gates stop them reaching you.</p></article>
+</div>
+</section>
+
+<section class="wrap" style="padding-block: 24px var(--section)">
+<h2 class="h3" style="font-size: 24px; margin-bottom: 28px">From idea to production, and back again</h2>
+<ol class="steps" aria-label="The lifecycle">
+<li><span class="role">product owner</span><strong>Specify</strong><span class="desc">A spec in stages, every assumption recorded.</span></li>
+<li><span class="role">architect</span><strong>Design</strong><span class="desc">Who uses it, what each may do, its parts.</span></li>
+<li><span class="role">planner</span><strong>Plan</strong><span class="desc">At most 15 small pieces per stage.</span></li>
+<li><span class="role">developer</span><strong>Build</strong><span class="desc">One backlog item per commit, in a real git repo.</span></li>
+<li class="is-gate"><span class="role">gates</span><strong>Verify</strong><span class="desc">Tests, lint, build, scan, reviewer, skeptic.</span></li>
+<li><span class="role">releaser</span><strong>Release</strong><span class="desc">Preview, health check, rollback, promote.</span></li>
+<li class="is-op"><span class="role">watch</span><strong>Operate</strong><span class="desc">Errors, downtime and your feedback become fixes.</span></li>
+</ol>
+<p class="loop-note"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>After release the maintenance process triages each signal, fixes it, verifies it and releases again.</p>
+</section>
+
+<section class="dark">
+<div class="wrap split section">
+<div class="stack-lg">
+<p class="eyebrow">Gates</p>
+<h2 class="h2">No step moves forward on an agent’s word.</h2>
+<p class="body">Every transition needs evidence. Some gates are mechanical and run the real thing. Others are judged by a reviewer and a skeptic who can only object, and a verdict that cites no evidence counts as a fail.</p>
+<p class="body">On the first real runs, the reviewer caught a loan that could never end and the skeptic caught a removed neighbour who could rejoin. Both were fixed on the next attempt.</p>
+<div class="dark-cols">
+<div><strong>Mechanical</strong><span>Tests, lint, build, dependency audit, secrets scan, browser journeys, preview health, rollback.</span></div>
+<div><strong>Judged</strong><span>Reviewer and skeptic with rubrics. A re-review sees its own earlier verdict, so it cannot move the goalposts.</span></div>
+</div>
+</div>
+<div class="log" style="flex-basis: 460px">
+<div class="log-top"><span>events.jsonl (example)</span><span>build · item clinic-roles</span></div>
+<ol>
+<li><span class="v-pass">pass</span><span>gate tests-pass</span></li>
+<li><span class="v-pass">pass</span><span>gate lint-clean</span></li>
+<li><span class="v-pass">pass</span><span>gate security-scan-clean</span></li>
+<li><span class="v-fail">fail</span><span>gate skeptic-review · a receptionist can open a doctor’s notes through the visit page</span></li>
+<li><span class="v-retry">retry</span><span>developer shown the objection and its last attempt</span></li>
+<li><span class="v-pass">pass</span><span>gate skeptic-review · objection addressed</span></li>
+<li><span class="v-pass">pass</span><span>gate journeys-pass · phone and desktop, fresh database</span></li>
+</ol>
+<div class="ladder"><strong>When a gate fails:</strong><span>retry with feedback</span><span aria-hidden="true">→</span><span>send back or shrink</span><span aria-hidden="true">→</span><span>park</span><span aria-hidden="true">→</span><span>stop</span></div>
+</div>
+</div>
+</section>
+
+<section class="wrap section">
+<div class="head-row">
+<div class="stack"><p class="eyebrow">Cost</p><h2 class="h2">Cost is a gate, not a surprise.</h2></div>
+<p class="body">Every step has a zero-dollar path. Karigor estimates three tiers and asks you to pick one, exactly once. A running meter shows what has been used.</p>
+</div>
+<div class="grid">
+<article class="card"><h3 class="h3">Free</h3><p class="body">A free local model for everything. Costs nothing; slower and less reliable, so expect more parked items.</p></article>
+<article class="card"><h3 class="h3">Cheap</h3><p class="body">The cheapest cloud model for everything. Good for small, simple ideas.</p></article>
+<article class="card card-featured"><h3 class="h3">Best</h3><p class="body">The strongest model for decisions and reviews, the cheap one for routine work. The best chance of a working result.</p></article>
+</div>
+<p class="note" style="margin-top: 40px"><strong>If the budget runs short,</strong> Karigor downgrades the model first, then parks optional work, then stops. Fix rounds after release have their own slice.</p>
+</section>
+
+<section class="band">
+<div class="wrap split section">
+<div class="stack" style="flex-basis: 380px">
+<p class="eyebrow">What gets built</p>
+<h2 class="h2 h2-sm">A real web app, on a stack you could hire for.</h2>
+<p class="body">Every web app starts with tested sign-in for many people, roles and permissions, an activity log and a UI kit of sidebars, tables, charts and dialogs. Tests, lint, build and journeys pass before the first feature is written.</p>
+<p class="body">Bigger ideas are split into stages. Stage 1 is the smallest version someone can use end to end; <code>karigor grow</code> builds each next stage on top of what is live.</p>
+</div>
+<ul class="tiles" aria-label="The web-app stack" style="flex-basis: 460px">
+<li><strong>Next.js + TypeScript</strong><span>the app</span></li>
+<li><strong>Tailwind</strong><span>styling</span></li>
+<li><strong>Drizzle</strong><span>SQLite locally, Turso-ready</span></li>
+<li><strong>Vitest</strong><span>unit tests</span></li>
+<li><strong>Playwright</strong><span>journeys at phone and desktop size</span></li>
+<li><strong>Local or Vercel</strong><span>this computer, or the free tier</span></li>
+</ul>
+</div>
+</section>
+
+<section class="wrap split section" id="start">
+<div class="stack" style="flex-basis: 360px">
+<p class="eyebrow">Try it</p>
+<h2 class="h2 h2-sm">Runs on what you already have.</h2>
+<p class="body">Start with the demo: a scripted crew with no model and no cost, so you can watch the whole process end to end. Then pick the engine you want.</p>
+<p class="small" style="font-size: 15px">Needs Node.js 22 or newer and git.</p>
+</div>
+<div class="term" style="flex-basis: 560px">
+<div class="tabs" role="tablist" aria-label="Choose an engine">
+<button class="tab" type="button" role="tab" id="t-demo" aria-controls="p-demo" aria-selected="true">Demo</button>
+<button class="tab" type="button" role="tab" id="t-cc" aria-controls="p-cc" aria-selected="false">Claude Code</button>
+<button class="tab" type="button" role="tab" id="t-ollama" aria-controls="p-ollama" aria-selected="false">Ollama</button>
+<button class="tab" type="button" role="tab" id="t-api" aria-controls="p-api" aria-selected="false">Anthropic API</button>
+</div>
+<div role="tabpanel" id="p-demo" aria-labelledby="t-demo"><pre>git clone https://github.com/kishormorol/karigor
+cd karigor
+pnpm install &amp;&amp; pnpm build
+
+node packages/cli/dist/bin.js new "A site where neighbours lend each other tools" \
+  --adapter demo --run</pre><p class="term-note">A scripted mock: no model, no cost. Watch the kernel work end to end.</p></div>
+<div role="tabpanel" id="p-cc" aria-labelledby="t-cc" hidden><pre>git clone https://github.com/kishormorol/karigor
+cd karigor
+pnpm install &amp;&amp; pnpm build
+
+node packages/cli/dist/bin.js new "your idea here" --run --port 3300</pre><p class="term-note">Runs headless under your own Claude Code login. No API key; nothing extra on a subscription.</p></div>
+<div role="tabpanel" id="p-ollama" aria-labelledby="t-ollama" hidden><pre>git clone https://github.com/kishormorol/karigor
+cd karigor
+pnpm install &amp;&amp; pnpm build
+
+export KARIGOR_OLLAMA_MODEL=qwen2.5:7b
+node packages/cli/dist/bin.js new "your idea here" --adapter ollama --run</pre><p class="term-note">A local model: free and offline. Small models are fast but weaker, so the gates park more of their work.</p></div>
+<div role="tabpanel" id="p-api" aria-labelledby="t-api" hidden><pre>git clone https://github.com/kishormorol/karigor
+cd karigor
+pnpm install &amp;&amp; pnpm build
+
+export ANTHROPIC_API_KEY=...
+node packages/cli/dist/bin.js new "your idea here" --adapter claude --run</pre><p class="term-note">Pay per token with your own key. The meter shows the running cost.</p></div>
+</div>
+</section>
+
+<section class="wrap" style="padding-bottom: var(--section)">
+<div class="cta">
+<div><h2 class="h2">Bring the idea. Karigor brings the craft.</h2><p>Karigor is Bangla for craftsperson.</p></div>
+<div class="btn-row">
+<a class="btn btn-light" href="/get-started">Build your first app</a>
+<a class="btn btn-ghost-light" href="https://github.com/kishormorol/karigor">Star on GitHub</a>
+</div>
+</div>
+</section>
+</main>
+
+<footer class="site-footer">
+<div class="wrap footer-row">
+<span><span class="brand-word">karigor</span>Free and open source, Apache-2.0</span>
+<nav class="footer-links" aria-label="Footer">
+<a href="/how-it-works">How it works</a>
+<a href="/get-started">Get started</a>
+<a href="https://github.com/kishormorol/karigor/blob/main/docs/templates.md">Process templates</a>
+<a href="https://github.com/kishormorol/karigor">GitHub</a>
+</nav>
+</div>
+</footer>
+<script src="site.js" defer></script>
+</body>
+</html>
