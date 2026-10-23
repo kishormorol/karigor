@@ -135,6 +135,16 @@ describe("judged gates", () => {
     expect(r.reasons[0]).toMatch(/not shown: spec-999/);
   });
 
+  it("accepts citations of the backlog item and diff it was shown, but not of anything else", async () => {
+    const item = { id: "clinic-roles", title: "Roles", description: "d", acceptance: ["a"], priority: "must" as const, estimate: "S" as const, status: "todo" as const, dependsOn: [] };
+    let judge = scriptedJudge(() => ({ verdict: "pass", citations: [{ ref: { kind: "backlog", id: "clinic-roles" }, quote: "Roles" }, { ref: { kind: "change", id: "diff" }, quote: "+export" }] }));
+    let r = await evaluate(await ctx("diff-matches-spec", { itemId: "clinic-roles", backlogItem: item }, judge));
+    expect(r.verdict).toBe("pass");
+    judge = scriptedJudge(() => ({ verdict: "pass", citations: [{ ref: { kind: "backlog", id: "another-item" }, quote: "x" }] }));
+    r = await evaluate(await ctx("diff-matches-spec", { itemId: "clinic-roles", backlogItem: item }, judge));
+    expect(r.reasons[0]).toMatch(/not shown: another-item/);
+  });
+
   it("hands the skeptic the diff and backlog item for item-level reviews", async () => {
     let seen: Record<string, string> = {};
     const judge: Judge = async (req) => {

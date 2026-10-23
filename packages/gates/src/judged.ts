@@ -108,7 +108,9 @@ export async function runJudged(ctx: GateContext): Promise<GateOutcome> {
     return { verdict: "fail", evidence, citations: [], reasons: [`${JUDGED[ctx.gate]} returned a verdict with no citations; a verdict must point at evidence`, ...v.reasons] };
   }
   const known = new Set(inputs.map((a) => `${a.meta.kind}/${a.meta.id}`));
-  const bad = v.citations.filter((c) => !known.has(`${c.ref.kind}/${c.ref.id}`));
+  // The judge was also shown the backlog item and the diff as plain sections; citing those is citing what it saw.
+  const shownIds = new Set([...Object.keys(extras), ...(ctx.itemId !== undefined ? [ctx.itemId] : [])]);
+  const bad = v.citations.filter((c) => !known.has(`${c.ref.kind}/${c.ref.id}`) && !shownIds.has(c.ref.id));
   if (bad.length) {
     return { verdict: "fail", evidence, citations: v.citations, reasons: [`${JUDGED[ctx.gate]} cited artifacts it was not shown: ${bad.map((c) => c.ref.id).join(", ")}`, ...v.reasons] };
   }
