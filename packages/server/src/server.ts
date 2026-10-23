@@ -129,11 +129,15 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     return true;
   };
 
+  /** Another process (karigor serve, a CLI run or resume) is working on it. */
+  const busyElsewhere = async (id: string) => !runs.has(id) && (await runningPid(join(o.root, id))) !== undefined;
+  const isRunning = async (id: string) => runs.has(id) || (await busyElsewhere(id));
+
   const view = async (id: string) => {
     const store = await FsStore.open(o.root, id).catch(() => {
       throw new HttpError(404, "no such project");
     });
-    const v = await projectView(store, runs.has(id));
+    const v = await projectView(store, await isRunning(id));
     const problem = problems.get(id);
     return problem ? { ...v, problem } : v;
   };
@@ -173,7 +177,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     if (method === "GET" && path === "/api/config") {
       return send(res, 200, { adapter: o.adapter, demo: o.adapter === "demo", deploy: o.deploy ?? "local", needsKey: o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"] });
     }
-    if (method === "GET" && path === "/api/projects") return send(res, 200, { projects: (await listProjects(o.root)).map((p) => ({ ...p, running: runs.has(p.id) })) });
+    if (method === "GET" && path === "/api/projects") return send(res, 200, { projects: await Promise.all((await listProjects(o.root)).map(async (p) => ({ ...p, running: await isRunning(p.id) }))) });
     if (method === "POST" && path === "/api/projects") {
       const b = await body(req);
       const idea = text(b, "idea");
@@ -200,7 +204,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
         busy = true;
         try {
           const s = await stat(join(o.root, id, "events.jsonl"));
-          const sig = `${s.size}:${s.mtimeMs}:${runs.has(id)}:${problems.get(id) ?? ""}`;
+          const sig = `${s.size}:${s.mtimeMs}:${await isRunning(id)}:${problems.get(id) ?? ""}`;
           if (sig !== last) {
             last = sig;
             res.write(`data: ${JSON.stringify(await view(id))}\n\n`);
@@ -223,6 +227,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     if (method === "POST" && action === "resume") {
       const b = await body(req);
       await view(id);
+      if (await busyElsewhere(id)) throw new HttpError(409, "it is already being worked on from another window or the command line");
       const started = startRun(id, "run", optionalKey(b));
       return send(res, 202, { started });
     }
@@ -230,6 +235,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       const b = await body(req);
       const v = await view(id);
       if (!v.nextStage) throw new HttpError(409, v.status === "finished" ? "every part of the plan is built" : "it is not finished yet");
+      if (await busyElsewhere(id)) throw new HttpError(409, "it is already being worked on from another window or the command line");
       return send(res, 202, { started: startRun(id, "grow", optionalKey(b)), stage: v.nextStage.name });
     }
     if (method === "POST" && action === "feedback") {

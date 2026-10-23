@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -83,6 +83,21 @@ describe("server", { timeout: 180_000 }, () => {
     const grow = await call(`/api/projects/${id}/grow`, { method: "POST", body: "{}" });
     expect(grow.status).toBe(409);
     expect(grow.json["error"]).toMatch(/every part of the plan is built/);
+  });
+
+  it("shows a build that another process is running, and will not start a second one", async () => {
+    const { k, call, root } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    // A CLI resume or karigor serve holds the project: its pid is in run.lock and it is alive.
+    await writeFile(join(root, id, "run.lock"), String(process.ppid));
+    expect((await call(`/api/projects/${id}`)).json).toMatchObject({ running: true });
+    expect((await call("/api/projects")).json["projects"]).toEqual([expect.objectContaining({ id, running: true })]);
+    const resumed = await call(`/api/projects/${id}/resume`, { method: "POST", body: "{}" });
+    expect(resumed.status).toBe(409);
+    expect(k.runs.has(id)).toBe(false);
+    await rm(join(root, id, "run.lock"));
+    expect((await call(`/api/projects/${id}`)).json).toMatchObject({ running: false });
   });
 
   it("streams the project as it changes", async () => {
