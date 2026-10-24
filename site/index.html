@@ -271,7 +271,7 @@
 <section class="wrap section" id="starters">
 <div class="needs">
 <div class="stack-lg">
-<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">37 ideas already written out. Start from one.</h2></div>
+<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">40 ideas already written out. Start from one.</h2></div>
 <p class="body">Common needs in Bangladesh, each written the way Karigor works best: every kind of person, what each may and may not do, taka, and bKash, Nagad or cash. Pick one, then say in your own words what is different for you.</p>
 <ul class="starter-list" aria-label="Ready-made ideas">
 <li><button type="button" data-starter="shop-counter" aria-controls="starter-card" aria-pressed="true">Shop counter</button></li>
@@ -311,6 +311,9 @@
 <li><button type="button" data-starter="salon-bookings" aria-controls="starter-card" aria-pressed="false">Salon and parlour bookings</button></li>
 <li><button type="button" data-starter="surveys" aria-controls="starter-card" aria-pressed="false">Surveys</button></li>
 <li><button type="button" data-starter="sms-notices" aria-controls="starter-card" aria-pressed="false">SMS notices to groups</button></li>
+<li><button type="button" data-starter="customer-messages" aria-controls="starter-card" aria-pressed="false">Customer messages</button></li>
+<li><button type="button" data-starter="furniture-workshop" aria-controls="starter-card" aria-pressed="false">Furniture workshop</button></li>
+<li><button type="button" data-starter="installment-sales" aria-controls="starter-card" aria-pressed="false">Installment (kisti) sales</button></li>
 </ul>
 <p class="small">Each is modelled on a well-known open-source app; no code is taken from it. In the chat UI they are under <strong>Or start from a ready-made idea</strong>.</p>
 </div>
@@ -684,6 +687,36 @@
 <li><strong>Modelled on</strong><span><a href="https://github.com/textbee/textbee">textbee</a></span></li>
 </ul>
 <pre class="starter-cmd">karigor new --starter sms-notices "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="customer-messages" hidden>
+<div class="ask-top"><span>Ready-made · customer-messages</span><span>For a business that gets many customer questions</span></div>
+<p class="ask-q starter-idea">One inbox for our customers’ questions. Customers write to us from a public page with their name, phone or email, and their question. Each message starts a conversation, and the customer gets a private link to it. Our staff see new conversations, take one, and reply; each reply goes to the customer by SMS or email with the link, where the customer reads the whole conversation and answers. Staff can use saved replies for common questions, add labels such as price, delivery or complaint, and keep private notes the customer never sees. A staff member cannot reply to a conversation someone else has taken, unless the manager moves it to them. The manager sees open conversations by age and by staff member, how quickly we first reply, and the most common labels.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Closing conversations with no reply after a week by themselves</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/chatwoot/chatwoot">Chatwoot</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter customer-messages "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="furniture-workshop" hidden>
+<div class="ask-top"><span>Ready-made · furniture-workshop</span><span>For a furniture maker or carpentry workshop</span></div>
+<p class="ask-q starter-idea">Orders and production for our furniture workshop. The showroom manager takes each customer’s order: the items, wood, size and finish, a photo or drawing, the price in taka, the advance paid by cash or bKash, and the promised delivery date. For each item the workshop manager lists the materials it needs (wood in cubic feet, board, hardware, polish) and assigns carpenters. Carpenters see only the items assigned to them and move each one through cutting, joinery, polish and ready; they cannot see prices or payments. Materials used are taken from stock, and the workshop manager sees what is running low. The owner sees orders due this week, orders late against their promised date, money still due from customers, and the cost of materials against the price for each order.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Delivery scheduling and fitting at the customer’s home</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/odoo/odoo">Odoo</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter furniture-workshop "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="installment-sales" hidden>
+<div class="ask-top"><span>Ready-made · installment-sales</span><span>For an electronics, furniture or motorcycle shop</span></div>
+<p class="ask-q starter-idea">Sales on monthly installments (kisti) for our electronics shop. The salesperson records each sale: the customer’s name, phone, address, national ID number and a photo of the ID, a guarantor, the product and its serial number, the price in taka, the down payment, and the number of months. The installment plan works out each month’s amount and due date. The collector records each payment received in cash or bKash, and the customer gets an SMS receipt. A collector sees only the customers on their own list and cannot change a plan or a price. Customers who are late get an SMS reminder three days after the due date. The owner sees money collected this month, what is due, customers overdue by how long, and the total still owed.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A fee for late payment, and taking back a product when payments stop</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/Blair2004/NexoPOS">NexoPOS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter installment-sales "what is different for you" --run</pre>
 </div>
 </div>
 </div>

@@ -273,6 +273,27 @@ export const STARTERS: Starter[] = [
     idea: "SMS notices for our school. The office keeps contacts (parents, teachers and staff) with their name and phone, in groups such as a class, all teachers, or the managing committee; one person can be in several groups. The headteacher writes a notice, picks the groups, and sends it, or schedules it for a later day; the page shows how many SMS it will be. Every message is kept with whether it was sent or not, and why. Office staff can add and edit contacts and draft notices, but they cannot send a notice; only the headteacher can. The headteacher sees every notice sent, to how many people, and how many failed, and can send the failed ones again. Later: replies from parents, and a notice board page parents can open.",
     basedOn: [{ name: "textbee", repo: "textbee/textbee" }],
   },
+  {
+    id: "customer-messages",
+    title: "Customer messages",
+    for: "a business that gets many customer questions",
+    idea: "One inbox for our customers' questions. Customers write to us from a public page with their name, phone or email, and their question. Each message starts a conversation, and the customer gets a private link to it. Our staff see new conversations, take one, and reply; each reply goes to the customer by SMS or email with the link, where the customer reads the whole conversation and answers. Staff can use saved replies for common questions, add labels such as price, delivery or complaint, and keep private notes the customer never sees. A staff member cannot reply to a conversation someone else has taken, unless the manager moves it to them. The manager sees open conversations by age and by staff member, how quickly we first reply, and the most common labels. Later: closing conversations with no reply after a week by themselves.",
+    basedOn: [{ name: "Chatwoot", repo: "chatwoot/chatwoot" }],
+  },
+  {
+    id: "furniture-workshop",
+    title: "Furniture workshop",
+    for: "a furniture maker or carpentry workshop",
+    idea: "Orders and production for our furniture workshop. The showroom manager takes each customer's order: the items, wood, size and finish, a photo or drawing, the price in taka, the advance paid by cash or bKash, and the promised delivery date. For each item the workshop manager lists the materials it needs (wood in cubic feet, board, hardware, polish) and assigns carpenters. Carpenters see only the items assigned to them and move each one through cutting, joinery, polish and ready; they cannot see prices or payments. Materials used are taken from stock, and the workshop manager sees what is running low. The owner sees orders due this week, orders late against their promised date, money still due from customers, and the cost of materials against the price for each order. Later: delivery scheduling and fitting at the customer's home.",
+    basedOn: [{ name: "Odoo", repo: "odoo/odoo" }],
+  },
+  {
+    id: "installment-sales",
+    title: "Installment (kisti) sales",
+    for: "an electronics, furniture or motorcycle shop",
+    idea: "Sales on monthly installments (kisti) for our electronics shop. The salesperson records each sale: the customer's name, phone, address, national ID number and a photo of the ID, a guarantor, the product and its serial number, the price in taka, the down payment, and the number of months. The installment plan works out each month's amount and due date. The collector records each payment received in cash or bKash, and the customer gets an SMS receipt. A collector sees only the customers on their own list and cannot change a plan or a price. Customers who are late get an SMS reminder three days after the due date. The owner sees money collected this month, what is due, customers overdue by how long, and the total still owed. Later: a fee for late payment, and taking back a product when payments stop.",
+    basedOn: [{ name: "NexoPOS", repo: "Blair2004/NexoPOS" }],
+  },
 ];
 
 export function findStarter(id: string): Starter | undefined {
