@@ -45,9 +45,9 @@
 <figure>
 <div class="chat" role="img" aria-label="The Karigor chat: a person describes a grocery counter app, and Karigor reports its progress in plain sentences until stage 1 is live">
 <div class="chat-top"><strong>Shop counter</strong><span class="mono">p-mvin1bja-92f2</span></div>
-<div class="msg msg-me">A shop counter for my small grocery in Dhaka. Only I sign in, on my phone. It adds up the total in taka, I choose cash or bKash, and the stock goes down.</div>
-<div class="msg">I wrote the specification and recorded every assumption I made. You can correct any of them.</div>
-<div class="msg msg-col"><span>The skeptic objected: cancelling a sale must put the stock back. I revised it.</span>
+<div class="msg msg-me" style="--d: .2s">A shop counter for my small grocery in Dhaka. Only I sign in, on my phone. It adds up the total in taka, I choose cash or bKash, and the stock goes down.</div>
+<div class="msg" style="--d: 1.1s">I wrote the specification and recorded every assumption I made. You can correct any of them.</div>
+<div class="msg msg-col" style="--d: 2s"><span>The skeptic objected: cancelling a sale must put the stock back. I revised it.</span>
 <span class="chips">
 <span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>tests</span>
 <span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>lint</span>
@@ -55,7 +55,7 @@
 <span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>security scan</span>
 <span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>journeys</span>
 </span></div>
-<div class="msg">Stage 1 is live at <span class="mono accent">localhost:3300</span>. I checked the preview and a rollback first.</div>
+<div class="msg" style="--d: 4s">Stage 1 is live at <span class="mono accent">localhost:3300</span>. I checked the preview and a rollback first.</div>
 <div class="chat-input"><span>Tell me what to change…</span><span class="send" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></div>
 </div>
 <figcaption>An example of the chat UI: the idea is the first message, and progress comes back as plain sentences.</figcaption>
@@ -74,7 +74,22 @@
 </div>
 </section>
 
-<section class="wrap" style="padding-block: var(--section) 48px">
+<section class="wrap reveal" id="watch" style="padding-block: var(--section) 0">
+<div class="head-row">
+<div class="stack"><p class="eyebrow">Watch a run</p><h2 class="h2">An idea in, a live app out.</h2></div>
+<p class="body">A real recording of Karigor’s chat page. You type the idea; it reports each step in plain words, checks the work at every stage and ends with a link to the live app.</p>
+</div>
+<figure class="player">
+<div class="window">
+<div class="window-bar" aria-hidden="true"><span></span><span></span><span></span><b>127.0.0.1:4321</b></div>
+<video id="demo" src="media/demo.mp4" poster="media/demo-poster.jpg" muted loop playsinline preload="metadata" aria-label="Recording: an idea for a tool-lending site is typed into Karigor's chat page, which reports writing the spec, designing, planning, building and putting it online, then shows it is live"></video>
+<button class="play" id="demo-toggle" type="button" aria-controls="demo" aria-pressed="false">Pause</button>
+</div>
+<figcaption>Recorded on the free demo adapter: no model and no cost. The steps are real; the work is pretend, so it finishes in seconds instead of hours.</figcaption>
+</figure>
+</section>
+
+<section class="wrap reveal" style="padding-block: var(--section) 48px">
 <div class="stack" style="max-width: 760px; margin-bottom: 48px">
 <p class="eyebrow">Why it is different</p>
 <h2 class="h2">Plenty of tools write code from a prompt. Karigor runs the whole job.</h2>

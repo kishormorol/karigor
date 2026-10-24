@@ -14,6 +14,8 @@ export interface ProjectView {
   /** One sentence on where things stand. */
   headline: string;
   phase?: string;
+  /** The kernel's name for the phase (specify, design, plan, build, release...), for the progress steps. */
+  phaseKey?: string;
   cycle: number;
   work: { done: number; open: number; parked: { title: string; reason: string }[] };
   decisions: { id: string; topic: string; decision: string; correctedTo?: string }[];
@@ -85,6 +87,7 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
     running,
     headline,
     ...(phase ? { phase } : {}),
+    ...(state.phase ? { phaseKey: state.phase } : {}),
     cycle: state.cycle,
     work: {
       done: items.filter((b) => st(b) === "done").length,

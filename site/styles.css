@@ -263,6 +263,36 @@ caption { text-align: left; padding: 14px 20px 4px; font-weight: 600; }
 .box { padding: 18px 20px; border-radius: 12px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
 .box span { font-size: 15px; color: var(--ink-2); }
 
+/* Motion */
+.chat .msg, .chat .chat-input { animation: rise .55s cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--d, 0s); }
+.chat .chat-input { --d: 4.6s; }
+.chat .chip { animation: pop .35s cubic-bezier(.2,.9,.3,1.4) both; }
+.chat .chip:nth-child(1) { animation-delay: 2.6s; }
+.chat .chip:nth-child(2) { animation-delay: 2.85s; }
+.chat .chip:nth-child(3) { animation-delay: 3.1s; }
+.chat .chip:nth-child(4) { animation-delay: 3.35s; }
+.chat .chip:nth-child(5) { animation-delay: 3.6s; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes pop { from { opacity: 0; transform: scale(.6); } }
+.reveal { transition: opacity .7s ease, transform .7s ease; }
+.js .reveal:not(.seen) { opacity: 0; transform: translateY(24px); }
+
+/* Demo player */
+.player { margin: 0; }
+.window { position: relative; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--soft); box-shadow: 0 1px 0 var(--line), 0 40px 80px -40px rgba(14,17,22,.35); }
+.window-bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.window-bar span { width: 11px; height: 11px; border-radius: 50%; background: #D5D8DE; }
+.window-bar b { margin-left: 10px; font-family: var(--mono); font-weight: 400; font-size: 13px; color: var(--muted); }
+.window video { display: block; width: 100%; height: auto; aspect-ratio: 900 / 640; background: var(--soft); }
+.play { position: absolute; right: 14px; bottom: 14px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.92); color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.play:hover { background: #FFFFFF; }
+.player figcaption { margin-top: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat .msg, .chat .chat-input, .chat .chip { animation: none; }
+  .reveal, .js .reveal:not(.seen) { transition: none; opacity: 1; transform: none; }
+}
+
 @media (max-width: 640px) {
   .toc { max-width: none; }
   .log li { flex-direction: column; gap: 0; }

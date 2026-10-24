@@ -2,6 +2,12 @@
 
 **Karigor** (Bangla: *craftsperson*) is free, open-source software in which a team of AI agents takes an idea from a person with no technical knowledge all the way to deployed, maintained software. After the idea and a one-time budget choice, no human is involved. Nobody is ever asked a technical question.
 
+<p align="center">
+  <img src="docs/media/karigor-demo.gif" width="720" alt="Karigor's chat page: an idea for a tool-lending site is typed in, Karigor reports writing the spec, designing, planning, building and putting it online, then shows it is live">
+  <br>
+  <sub>A run in the chat UI on the free <code>demo</code> adapter (no model, no cost: the steps are real, the work is pretend). Website: <a href="https://karigor-ten.vercel.app">karigor-ten.vercel.app</a></sub>
+</p>
+
 Plenty of tools generate code from a prompt. Karigor is different in two ways:
 
 1. **It owns the whole lifecycle.** Specify, design, plan, build, verify, release, and then watch production and fix what breaks. Not "here is a repo, good luck."
