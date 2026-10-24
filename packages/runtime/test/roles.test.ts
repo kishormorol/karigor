@@ -59,10 +59,11 @@ describe("role definitions", () => {
     const store = await freshStore();
     const state = emptyState("p1");
     await seed(store, state, [idea]);
-    const ctx = await roleContext(store, state, { deployTarget: 'this computer: run "karigor serve" and open http://localhost:3000' });
+    const ctx = await roleContext(store, state, { deployTarget: 'this computer: run "karigor serve" and open http://localhost:3000', capabilities: "It can:\n- Forms\n\nNot yet (leave these out):\n- File uploads" });
     let prompt = "";
     await runWorker({ role: "product-owner", key: "k", ctx, adapter: new MockAdapter((req) => ((prompt = req.user), fakeSpecOutput)), budget: openBudget() });
     expect(prompt).toMatch(/Where it will go live[^\n]*\n+this computer: run "karigor serve"/);
+    expect(prompt).toMatch(/What this kind of software can do[\s\S]*Not yet[\s\S]*File uploads/);
   });
 
   it("ledger entries accumulate across roles with stable numbering", async () => {

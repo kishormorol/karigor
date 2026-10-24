@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { fixture, parsePlaywrightJson, parseVitestJson, profileFor, webApp } from "../src/index.js";
+import { fixture, parsePlaywrightJson, parseVitestJson, profileFor, renderCapabilities, webApp } from "../src/index.js";
 
 const run = promisify(execFile);
 
@@ -37,6 +37,12 @@ describe("profiles", () => {
     expect(parseVitestJson(out, "", 1)).toEqual({ passed: 2, failed: 1, skipped: 0, durationMs: 250 });
     expect(parseVitestJson("no report", "", 1)).toMatchObject({ passed: 0, failed: 1 });
     expect(parseVitestJson("no report", "", 0)).toMatchObject({ passed: 0, failed: 0 });
+  });
+
+  it("web-app says what it can do and what it cannot yet, in plain words", () => {
+    expect(webApp.capabilities?.can.join(" ")).toMatch(/Sign-in for many people/);
+    expect(webApp.capabilities?.notYet.join(" ")).toMatch(/File uploads/);
+    expect(renderCapabilities(webApp.capabilities!)).toMatch(/^It can:\n- [\s\S]*\nNot yet \(leave these out or work around them/);
   });
 
   it("names unknown profiles", () => {

@@ -53,10 +53,12 @@ async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: R
       push(await latestOf(ctx, "spec"));
       push(await latestOf(ctx, "idea"));
       push(await latestOf(ctx, "ledger"));
+      if (ctx.capabilities) extras["capabilities"] = ctx.capabilities;
       break;
     case "architecture-sound":
       push(await latestOf(ctx, "architecture"));
       push(await latestOf(ctx, "spec"));
+      if (ctx.capabilities) extras["capabilities"] = ctx.capabilities;
       break;
     case "diff-matches-spec":
       push(await latestOf(ctx, "spec"));

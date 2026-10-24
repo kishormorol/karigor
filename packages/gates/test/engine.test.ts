@@ -165,6 +165,18 @@ describe("judged gates", () => {
     expect(sandbox.calls).toContain("diff:b1");
   });
 
+  it("hands the spec and architecture reviewers what the kind of software can do, and its rubric holds the spec to it", async () => {
+    let seen: Record<string, string> = {};
+    let rubric = "";
+    const judge: Judge = async (req) => ((seen = req.extras), (rubric = req.rubric), { verdict: "pass", citations: [{ ref: { kind: "spec", id: "spec-1" }, quote: "ToolShare" }], reasons: [], minor: [] });
+    await evaluate(await ctx("spec-complete", { capabilities: "It can:\n- Forms\n\nNot yet:\n- File uploads" }, judge));
+    expect(seen["capabilities"]).toMatch(/Not yet:\n- File uploads/);
+    expect(rubric).toMatch(/capabilities. section is given, no .must. or .should. feature needs something/);
+    seen = {};
+    await evaluate(await ctx("architecture-sound", {}, judge));
+    expect(seen["capabilities"]).toBeUndefined();
+  });
+
   it("derives the verdict from blocking reasons and keeps suggestions separate", async () => {
     const nitpick = scriptedJudge(() => ({ verdict: "fail", reasons: [], minor: ["goal 2 could be phrased more precisely"] }));
     const r = await evaluate(await ctx("spec-complete", {}, nitpick));

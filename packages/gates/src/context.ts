@@ -24,6 +24,8 @@ export interface GateContext {
   backlogItem?: BacklogItem;
   /** The same gate's previous verdict in the previous attempt, so a re-review does not move the goalposts. */
   previousReview?: { verdict: "pass" | "fail"; reasons: string[]; minor: string[] };
+  /** What the kind of software being built can and cannot do yet, rendered; specs and designs are judged against it. */
+  capabilities?: string;
   /** Injected by the orchestrator from the budget package. */
   budgetCheck?: () => { ok: boolean; reason: string };
   clock: () => Date;

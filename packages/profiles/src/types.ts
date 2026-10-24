@@ -31,6 +31,23 @@ export interface ProfileCommands {
   start?: string[];
 }
 
+/** What a kind of software can do today and what it cannot yet, in the person's words. */
+export interface Capabilities {
+  can: string[];
+  notYet: string[];
+}
+
+/** The capabilities as a section the spec, design and plan are written within. */
+export function renderCapabilities(c: Capabilities): string {
+  return [
+    "It can:",
+    ...c.can.map((x) => `- ${x}`),
+    "",
+    "Not yet (leave these out or work around them, and record that in the assumption ledger in plain words):",
+    ...c.notYet.map((x) => `- ${x}`),
+  ].join("\n");
+}
+
 export interface Profile {
   name: TargetProfile | "fixture";
   description: string;
@@ -42,6 +59,8 @@ export interface Profile {
   hasJourneys?(dir: string): Promise<boolean>;
   /** Counts and failing journeys from the report `e2e` wrote. */
   parseJourneys?(report: string): JourneyCounts;
+  /** What this kind of software can and cannot do yet; specs and plans stay within it. */
+  capabilities?: Capabilities;
   /** Markdown the architect and developer read: conventions, where things go, how to test. */
   stackGuide: string;
   /** Path a running release answers with a 2xx when it is healthy. */

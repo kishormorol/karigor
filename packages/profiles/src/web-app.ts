@@ -81,6 +81,22 @@ export const webApp: Profile = {
     return Boolean(pkg.scripts?.e2e);
   },
   parseJourneys: parsePlaywrightJson,
+  capabilities: {
+    can: [
+      "Work in a browser on phones and computers",
+      "Sign-in for many people, with roles and what each may see and do; invitations by one-time link",
+      "An activity log of who did what",
+      "Forms, searchable and sortable lists, records with money and stock",
+      "Dashboards with charts, and CSV export for spreadsheets",
+      "Password-reset emails, once the person has a free Resend account",
+    ],
+    notYet: [
+      "File uploads (photos, documents)",
+      "Jobs that run on a schedule by themselves (a reminder every morning)",
+      "Sending SMS or WhatsApp messages",
+      "One installation serving several separate organisations, each with its own data",
+    ],
+  },
   healthPath: "/api/health",
   localSettings: { DATABASE_URL: "file:./data/app.db" },
   parseTests: parseVitestJson,

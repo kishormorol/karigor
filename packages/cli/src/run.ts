@@ -20,7 +20,7 @@ import {
 } from "@karigor/store";
 import { eventsFor, listTemplates, loadTemplate, next, scopeOf, workerStartEvent, type Action, type Outcome, type Template } from "@karigor/process";
 import { evaluate, type GateContext, type Sandbox } from "@karigor/gates";
-import { generateSettingValue, type Profile } from "@karigor/profiles";
+import { generateSettingValue, renderCapabilities, type Profile } from "@karigor/profiles";
 import { LocalSandbox, Workspace, clip } from "@karigor/sandbox";
 import { releaseVersion, type DeployAdapter, type LiveRelease } from "@karigor/deploy";
 import { join } from "node:path";
@@ -181,10 +181,12 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
   });
   // A real build can only make the kind of software its profile scaffolds; the selector is offered just that.
   const buildable = opts.profile && opts.profile.name !== "fixture" ? [opts.profile.name] : undefined;
+  const capabilities = opts.profile?.capabilities ? renderCapabilities(opts.profile.capabilities) : undefined;
   const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({
     state, store, phase, backlog, templates, clock, makeId: newId,
     ...(opts.profile ? { stackGuide: opts.profile.stackGuide } : {}),
     ...(buildable ? { buildable } : {}),
+    ...(capabilities ? { capabilities } : {}),
     ...(opts.deploy ? { deployTarget: opts.deploy.describe() } : {}),
     ...extra,
   });
@@ -551,6 +553,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
               return { ok: a.ok, reason: a.reason };
             },
             ...(previousReview ? { previousReview } : {}),
+            ...(capabilities ? { capabilities } : {}),
             ...(action.itemId !== undefined ? { itemId: action.itemId } : {}),
             ...(action.round !== undefined ? { round: action.round } : {}),
             ...(action.transitionTo !== undefined ? { transitionTo: action.transitionTo } : {}),
