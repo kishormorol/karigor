@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -90,6 +90,8 @@ receipt, and sees what is still owed. I, the owner, see each day’s visits and 
 with a chart for the month, and I add or remove staff.</p><p class="small" style="font-size: 15px">Every kind of person, and what each may and may not see. The design plans for them from the start.</p></div>
 </div>
 <p class="body">Karigor plans the whole product, then splits it into <strong>stages</strong>. Stage 1 is the smallest version someone can use end to end. Each later stage adds one area you would recognise, like “Billing” or “The owner’s dashboard”. A small idea is just one stage.</p>
+<p class="body"><strong>Or start from a <a href="/#starters">ready-made idea</a>.</strong> 24 are already written this way for common needs in Bangladesh, from a shop counter to a samity. List them with <code>karigor starters</code>, then add only what is different for you:</p>
+<pre class="code">karigor new --starter samity "We collect every month, not every week." --run</pre>
 </section>
 
 <section id="build">
@@ -159,6 +161,8 @@ karigor watch &lt;id&gt; --every 15    # checks the live site and fixes problems
 <thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
 <tbody>
 <tr><td class="mono">karigor new "&lt;idea&gt;" --run</td><td>Start a new app and build it</td></tr>
+<tr><td class="mono">karigor starters [id]</td><td>List ready-made ideas, or read one in full</td></tr>
+<tr><td class="mono">karigor new --starter &lt;id&gt; "&lt;changes&gt;" --run</td><td>Start from a ready-made idea, with your changes</td></tr>
 <tr><td class="mono">karigor status &lt;id&gt;</td><td>Where it stands</td></tr>
 <tr><td class="mono">karigor resume &lt;id&gt;</td><td>Continue after a pause, limit or crash</td></tr>
 <tr><td class="mono">karigor setup &lt;id&gt;</td><td>Give settings only you can provide</td></tr>
@@ -191,6 +195,6 @@ karigor watch &lt;id&gt; --every 15    # checks the live site and fixes problems
 </nav>
 </div>
 </footer>
-<script src="site.js?v=4" defer></script>
+<script src="site.js?v=5" defer></script>
 </body>
 </html>

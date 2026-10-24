@@ -271,6 +271,15 @@ figcaption { margin-top: 12px; font-size: 13px; color: var(--muted); }
 }
 
 /* Stack list */
+.starter-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.starter-list button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); font: inherit; font-size: 15px; color: var(--ink-2); cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
+.starter-list button:hover { border-color: var(--ink-2); color: var(--ink); }
+.starter-list button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-tint); color: var(--accent-ink); font-weight: 600; }
+#starter-card { scroll-margin-top: 16px; }
+.starter-idea { font-size: 17px; }
+.ask-rows a { color: var(--accent-ink); }
+.starter-cmd { margin: 16px 20px 20px; padding: 12px 14px; border-radius: 10px; background: var(--ink); color: #FFFFFF; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .tiles { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-content: start; }
 .tiles li { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
 .tiles strong { display: block; }

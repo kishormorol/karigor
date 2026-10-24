@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -261,6 +261,284 @@
 </div>
 </section>
 
+<section class="wrap section" id="starters">
+<div class="needs">
+<div class="stack-lg">
+<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">24 ideas already written out. Start from one.</h2></div>
+<p class="body">Common needs in Bangladesh, each written the way Karigor works best: every kind of person, what each may and may not do, taka, and bKash, Nagad or cash. Pick one, then say in your own words what is different for you.</p>
+<ul class="starter-list" aria-label="Ready-made ideas">
+<li><button type="button" data-starter="shop-counter" aria-controls="starter-card" aria-pressed="true">Shop counter</button></li>
+<li><button type="button" data-starter="pharmacy" aria-controls="starter-card" aria-pressed="false">Pharmacy</button></li>
+<li><button type="button" data-starter="restaurant" aria-controls="starter-card" aria-pressed="false">Restaurant orders</button></li>
+<li><button type="button" data-starter="online-shop" aria-controls="starter-card" aria-pressed="false">Online shop</button></li>
+<li><button type="button" data-starter="cash-book" aria-controls="starter-card" aria-pressed="false">Cash book</button></li>
+<li><button type="button" data-starter="invoices" aria-controls="starter-card" aria-pressed="false">Invoices and dues</button></li>
+<li><button type="button" data-starter="parts-stock" aria-controls="starter-card" aria-pressed="false">Parts and stock</button></li>
+<li><button type="button" data-starter="samity" aria-controls="starter-card" aria-pressed="false">Samity savings and loans</button></li>
+<li><button type="button" data-starter="clinic" aria-controls="starter-card" aria-pressed="false">Clinic</button></li>
+<li><button type="button" data-starter="doctor-serial" aria-controls="starter-card" aria-pressed="false">Doctor’s serial</button></li>
+<li><button type="button" data-starter="school" aria-controls="starter-card" aria-pressed="false">School</button></li>
+<li><button type="button" data-starter="madrasa" aria-controls="starter-card" aria-pressed="false">Madrasa</button></li>
+<li><button type="button" data-starter="coaching" aria-controls="starter-card" aria-pressed="false">Coaching centre</button></li>
+<li><button type="button" data-starter="library" aria-controls="starter-card" aria-pressed="false">Library</button></li>
+<li><button type="button" data-starter="field-visits" aria-controls="starter-card" aria-pressed="false">Household visits</button></li>
+<li><button type="button" data-starter="donors" aria-controls="starter-card" aria-pressed="false">Donors and donations</button></li>
+<li><button type="button" data-starter="staff-leave" aria-controls="starter-card" aria-pressed="false">Staff, leave and salaries</button></li>
+<li><button type="button" data-starter="support-tickets" aria-controls="starter-card" aria-pressed="false">Support tickets</button></li>
+<li><button type="button" data-starter="leads" aria-controls="starter-card" aria-pressed="false">Leads and follow-ups</button></li>
+<li><button type="button" data-starter="guest-house" aria-controls="starter-card" aria-pressed="false">Guest house bookings</button></li>
+<li><button type="button" data-starter="courier" aria-controls="starter-card" aria-pressed="false">Parcel delivery</button></li>
+<li><button type="button" data-starter="isp-billing" aria-controls="starter-card" aria-pressed="false">Internet subscriber billing</button></li>
+<li><button type="button" data-starter="farm-records" aria-controls="starter-card" aria-pressed="false">Poultry farm records</button></li>
+<li><button type="button" data-starter="event-tickets" aria-controls="starter-card" aria-pressed="false">Event registration</button></li>
+</ul>
+<p class="small">Each is modelled on a well-known open-source app; no code is taken from it. In the chat UI they are under <strong>Or start from a ready-made idea</strong>.</p>
+</div>
+
+<div class="ask-card" id="starter-card">
+<div class="ask" data-card="shop-counter">
+<div class="ask-top"><span>Ready-made · shop-counter</span><span>For a grocery or stationery shop</span></div>
+<p class="ask-q starter-idea">A shop counter for my small grocery. I, the owner, add products with their prices in taka and how many are in stock. My two salesmen ring up sales on their phones: they pick products, the total adds up, and the customer pays by cash, bKash or Nagad (for bKash and Nagad they type the transaction ID). Each sale lowers the stock, and cancelling a sale puts the stock back. Salesmen cannot change prices or see the takings. I see each day’s sales and takings by payment method, and a list of products running low.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Buying stock from suppliers, and money customers owe us on credit (baki)</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/opensourcepos/opensourcepos">Open Source POS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter shop-counter "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="pharmacy" hidden>
+<div class="ask-top"><span>Ready-made · pharmacy</span><span>For a medicine shop</span></div>
+<p class="ask-q starter-idea">A system for my pharmacy. I, the owner, record medicines with their generic name, company, price and the batches we receive, each with its expiry date and quantity. Salesmen sell from the oldest batch first, record the payment (cash, bKash or Nagad) and can note the doctor’s prescription. A salesman cannot change prices, delete a sale or see the takings. I see sales and takings for each day, medicines running low, and batches that expire in the next 60 days.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Purchase orders to suppliers, and returns of expired stock</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/openboxes/openboxes">OpenBoxes</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter pharmacy "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="restaurant" hidden>
+<div class="ask-top"><span>Ready-made · restaurant</span><span>For a restaurant or cloud kitchen</span></div>
+<p class="ask-q starter-idea">Orders for my restaurant. I, the owner, keep the menu with prices in taka and can mark an item as finished for today. Waiters take an order for a table or a parcel, add items and send it to the kitchen. The kitchen sees open orders, oldest first, and marks each one ready. The cashier prints the bill, records how it was paid (cash, bKash or card) and closes the order. Waiters cannot give discounts; only I can. I see the day’s sales, the best-selling items, and takings by payment method.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Delivery orders with the customer’s address and phone</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/tastyigniter/TastyIgniter">TastyIgniter</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter restaurant "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="online-shop" hidden>
+<div class="ask-top"><span>Ready-made · online-shop</span><span>For a Facebook seller with their own site</span></div>
+<p class="ask-q starter-idea">My own online shop instead of only selling on Facebook. Customers browse products by category with photos, prices in taka and sizes, add them to a cart and place an order with their name, phone and delivery address. They choose cash on delivery, or bKash and type the transaction ID. My staff confirm each order, check bKash payments, and move it through packed, sent with the courier, delivered or returned. Staff cannot change prices or products; only I can. I see orders by status, sales by day, and products running out.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Discount codes, and a page where customers track their order with their phone number</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/bagisto/bagisto">Bagisto</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter online-shop "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="cash-book" hidden>
+<div class="ask-top"><span>Ready-made · cash-book</span><span>For a small business or a household</span></div>
+<p class="ask-q starter-idea">A cash book for my business. I and my manager record money coming in and going out each day, with an amount in taka, a category (sales, rent, salary, electricity, supplies and so on), how it was paid (cash, bank, bKash) and a note. The manager can add entries and edit those from the last seven days, but cannot change older entries or delete any; I can edit anything. I see the balance in each account, this month against last month by category, and a chart of income and spending over the year.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Monthly budgets for each category with a warning when one is nearly used up</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/firefly-iii/firefly-iii">Firefly III</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter cash-book "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="invoices" hidden>
+<div class="ask-top"><span>Ready-made · invoices</span><span>For freelancers, agencies and suppliers</span></div>
+<p class="ask-q starter-idea">Invoices for my small agency. I keep our clients with their contact details. My accounts officer writes invoices with items, quantities and prices in taka, VAT where it applies, and a due date, then marks payments as they arrive, in part or in full, by bank, cheque or bKash. The accounts officer cannot delete an invoice once it is sent; only I can cancel it. I see who owes us what, invoices that are overdue, and money received this month.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Quotations that turn into invoices, and expenses against each project</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/InvoiceShelf/InvoiceShelf">InvoiceShelf</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter invoices "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="parts-stock" hidden>
+<div class="ask-top"><span>Ready-made · parts-stock</span><span>For spare-parts dealers and workshops</span></div>
+<p class="ask-q starter-idea">Stock for my motorcycle spare-parts shop. I keep parts with their part number, which models they fit, the shelf they sit on, buying price and selling price in taka. Staff record parts received from suppliers and parts sold or used in a repair. Staff can search for any part by number, name or model, but cannot change prices. I see stock on hand and its value, parts below their minimum, and which parts sell fastest.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A record of each repair job with the parts and labour charged</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/inventree/InvenTree">InvenTree</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter parts-stock "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="samity" hidden>
+<div class="ask-top"><span>Ready-made · samity</span><span>For a cooperative samity or NGO microcredit</span></div>
+<p class="ask-q starter-idea">A system for our savings samity. The manager enrols members with their name, NID number, phone and group, and sets each member’s weekly savings amount. Field officers record each week’s savings and loan instalments collected in their own groups, and cannot see other officers’ groups. The manager gives loans with an amount in taka, a number of weekly instalments and a service charge, and the instalment schedule is worked out. Members’ balances, savings and loans outstanding are always up to date. The committee sees total savings, loans outstanding, overdue instalments by officer, and collections each week.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Member withdrawals, and yearly profit shared out by savings</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/apache/fineract">Apache Fineract</a>, <a href="https://github.com/openMF/web-app">Mifos web app</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter samity "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="clinic" hidden>
+<div class="ask-top"><span>Ready-made · clinic</span><span>For a small clinic with several doctors</span></div>
+<p class="ask-q starter-idea">A system for my small clinic. The receptionist registers patients and books visits with our three doctors. Each doctor sees their own visits for the day and writes notes and prescriptions; the receptionist must not read the notes. The accountant takes payments in cash or bKash, prints a receipt, and sees what is still owed. I, the owner, see each day’s visits and takings by doctor, with a chart for the month, and I add or remove staff.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Lab tests with results attached to the visit</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/openemr/openemr">OpenEMR</a>, <a href="https://github.com/Bahmni/openmrs-module-bahmniapps">Bahmni</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter clinic "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="doctor-serial" hidden>
+<div class="ask-top"><span>Ready-made · doctor-serial</span><span>For a doctor’s chamber</span></div>
+<p class="ask-q starter-idea">Serial booking for a doctor’s chamber. The doctor sets which days and hours they sit and how many patients they see each day. The assistant books a serial for a patient with their name, age and phone, and on the day marks each patient as arrived, seen or absent. The assistant sees the list and the fees collected, but cannot read the doctor’s notes. The doctor sees today’s list in order and writes a short note and prescription for each patient.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A page where patients book their own serial with their phone number, and an SMS when their turn is near</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/alextselegidis/easyappointments">Easy!Appointments</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter doctor-serial "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="school" hidden>
+<div class="ask-top"><span>Ready-made · school</span><span>For a kindergarten or private school</span></div>
+<p class="ask-q starter-idea">A system for our school. The office keeps students with their class, section, roll number and guardian’s phone. Teachers take attendance for their own sections each morning and enter marks for their subjects after each exam; they cannot change another teacher’s marks. Results and grades are worked out from the marks, and a printable result card is made for each student. The accountant records monthly fees paid by cash or bKash and sees who has not paid. The headteacher sees attendance and results for every class.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Guardians sign in to see their child’s attendance, results and fees</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/GibbonEdu/core">Gibbon</a>, <a href="https://github.com/francoisjacquet/rosariosis">RosarioSIS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter school "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="madrasa" hidden>
+<div class="ask-top"><span>Ready-made · madrasa</span><span>For a madrasa with hifz and boarding</span></div>
+<p class="ask-q starter-idea">A system for our madrasa. The office admits students with their guardian’s name and phone, their class, and whether they live in the boarding. Hifz teachers record each student’s daily lesson: the para and pages memorised and revised, and how well they recited. Other teachers take attendance and enter exam marks for their own classes. The accountant records monthly tuition and boarding fees, and donations with the donor’s name. Teachers cannot see the accounts. The muhtamim sees each student’s hifz progress, attendance, fees owed, and the month’s income and spending.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>The boarding’s meal attendance and costs</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/francoisjacquet/rosariosis">RosarioSIS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter madrasa "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="coaching" hidden>
+<div class="ask-top"><span>Ready-made · coaching</span><span>For a coaching or tuition centre</span></div>
+<p class="ask-q starter-idea">A system for my coaching centre. I create batches (for example SSC science, morning) with their teacher, days and monthly fee in taka. The office admits students into batches and records fees paid by cash or bKash. Teachers take attendance for their own batches and enter marks for each class test; they cannot see the fees. Students sign in to see their attendance, marks and position in the batch. I see students owing fees, attendance by batch, and income this month.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Model tests with merit lists across all batches</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/moodle/moodle">Moodle</a>, <a href="https://github.com/frappe/lms">Frappe LMS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter coaching "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="library" hidden>
+<div class="ask-top"><span>Ready-made · library</span><span>For a school, college or community library</span></div>
+<p class="ask-q starter-idea">A system for our college library. The librarian catalogues books with title, author, subject, publisher and how many copies we have, and registers members (students and teachers). Assistants lend and take back books by searching for the member and the book; students may borrow two books for 14 days, teachers five for 30 days. Late returns add a fine in taka that the assistant records when paid. Assistants cannot remove books or members, or let a fine off; only the librarian can. Members sign in to search the catalogue and see what they have borrowed. The librarian sees overdue books, the most borrowed books, and fines collected.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Members can reserve a book that is out</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/Koha-Community/Koha">Koha</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter library "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="field-visits" hidden>
+<div class="ask-top"><span>Ready-made · field-visits</span><span>For NGO field workers</span></div>
+<p class="ask-q starter-idea">A system for our NGO’s community health workers. Supervisors register households in each worker’s area with the head of household, members, ages and phone. Workers open their own households on their phones and record each visit: who they met, pregnant women and children under five, any danger signs, and advice given. A worker cannot see households outside their area. Supervisors see visits per worker each week, households not visited this month, and every visit with danger signs. The programme manager sees totals by area with charts, and can export them for reports.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Follow-up reminders for households with danger signs</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/dimagi/commcare-hq">CommCare</a>, <a href="https://github.com/kobotoolbox/kpi">KoboToolbox</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter field-visits "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="donors" hidden>
+<div class="ask-top"><span>Ready-made · donors</span><span>For an NGO, mosque committee or foundation</span></div>
+<p class="ask-q starter-idea">A system for our foundation’s donors. The office keeps donors with their name, phone, address and how they like to give. Staff record each donation with its amount in taka, date, method (cash, bank, bKash) and the project it is for, such as zakat, education or flood relief, and a receipt is made for each one. Staff cannot delete a donation once recorded. The treasurer sees donations by project and by month, and each donor’s giving this year. The chairman sees the totals and the top projects.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Spending recorded against each project, so we can show donors how their money was used</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/civicrm/civicrm-core">CiviCRM</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter donors "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="staff-leave" hidden>
+<div class="ask-top"><span>Ready-made · staff-leave</span><span>For an office or factory</span></div>
+<p class="ask-q starter-idea">A system for our office staff. HR keeps each employee’s details, department, joining date and monthly salary in taka. Employees sign in to apply for leave (casual, sick or annual), see how much leave they have left, and see their salary slips. Each department head approves or refuses leave for their own team only. HR records attendance from the daily register and makes the month’s salary sheet, with deductions for unpaid leave and any advance. Employees cannot see anyone else’s salary. Management sees headcount, leave taken by department, and the salary bill each month.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Overtime and festival bonuses</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/frappe/hrms">Frappe HR</a>, <a href="https://github.com/orangehrm/orangehrm">OrangeHRM</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter staff-leave "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="support-tickets" hidden>
+<div class="ask-top"><span>Ready-made · support-tickets</span><span>For after-sales and customer support</span></div>
+<p class="ask-q starter-idea">Support for our electronics shop’s customers. Customers fill in a form with their name, phone, the product, its serial number and the problem, and get a ticket number. Support staff see new tickets, take one, write notes, and move it through received, in repair, waiting for parts, ready for pickup and closed. Staff see all tickets but cannot change a ticket someone else has taken. The manager assigns tickets, sees open tickets by age and by staff member, and repairs done each week. Customers check their ticket’s status by entering the ticket number and phone.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Warranty checks by serial number and date of purchase</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/zammad/zammad">Zammad</a>, <a href="https://github.com/frappe/helpdesk">Frappe Helpdesk</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter support-tickets "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="leads" hidden>
+<div class="ask-top"><span>Ready-made · leads</span><span>For real-estate agents and sales teams</span></div>
+<p class="ask-q starter-idea">Leads for our flat-selling business. Sales agents add each enquiry with the buyer’s name, phone, budget in taka, preferred area and flat size, and where they heard of us. Agents log every call and visit, set the next follow-up date, and move the lead through new, contacted, visited site, negotiating, booked or lost. Agents see only their own leads. The sales manager assigns leads, sees each agent’s follow-ups due today, and the number of leads at each step. The owner sees bookings this month and which sources bring buyers.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Our projects and flats, with which flats are still available</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/espocrm/espocrm">EspoCRM</a>, <a href="https://github.com/twentyhq/twenty">Twenty</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter leads "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="guest-house" hidden>
+<div class="ask-top"><span>Ready-made · guest-house</span><span>For a hotel or guest house</span></div>
+<p class="ask-q starter-idea">Bookings for our guest house in Cox’s Bazar. The manager sets up rooms with their type, number of beds and nightly rate in taka, higher on weekends and holidays. The front desk books rooms for guests with their name, phone and NID or passport number, checks them in and out, and records advance and final payments by cash or bKash. The front desk cannot change room rates. The manager sees which rooms are free on any date, occupancy for the month, and income by room type.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A page where guests see free rooms and send a booking request</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/Qloapps/QloApps">QloApps</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter guest-house "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="courier" hidden>
+<div class="ask-top"><span>Ready-made · courier</span><span>For a local courier</span></div>
+<p class="ask-q starter-idea">A system for our local delivery service. Merchants sign in to book parcels with the customer’s name, phone, address, area and the cash-on-delivery amount in taka. The hub manager assigns parcels to riders by area. Riders see their own parcels for the day on their phones and mark each one delivered, partly delivered, returned or rescheduled, with the cash collected. Merchants see only their own parcels and what they are owed. The accountant records payments to merchants. The owner sees deliveries per rider and cash held by each rider.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Delivery charges by area and weight</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/fleetbase/fleetbase">Fleetbase</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter courier "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="isp-billing" hidden>
+<div class="ask-top"><span>Ready-made · isp-billing</span><span>For a local broadband ISP</span></div>
+<p class="ask-q starter-idea">Billing for our local internet service. The office keeps subscribers with their name, phone, address, area, connection date and package (speed and monthly price in taka). Each month a bill is made for every active subscriber. Line men record payments collected by cash or bKash in their own areas and cannot see other areas. The office marks subscribers as disconnected or reconnected. The owner sees collections this month, dues by area and by line man, and new and disconnected subscribers.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A page where subscribers see their dues with their phone number, and SMS reminders before the due date</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/lirantal/daloradius">daloRADIUS</a>, <a href="https://github.com/hotspotbilling/phpnuxbill">PHPNuxBill</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter isp-billing "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="farm-records" hidden>
+<div class="ask-top"><span>Ready-made · farm-records</span><span>For a poultry or fish farm</span></div>
+<p class="ask-q starter-idea">Records for my poultry farm. I set up sheds and each batch of birds with the date they arrived, how many, and what they cost in taka. The farm worker records each day’s feed used, deaths, medicines and vaccines given, and eggs collected. The worker cannot see money. I record feed and medicine bought, and birds or eggs sold with the price. For each batch I see the birds left, feed per bird, deaths, costs, sales and profit, with charts over time.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A vaccine schedule for each batch with reminders</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/farmOS/farmOS">farmOS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter farm-records "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="event-tickets" hidden>
+<div class="ask-top"><span>Ready-made · event-tickets</span><span>For seminars, fairs and reunions</span></div>
+<p class="ask-q starter-idea">Registration for our school’s alumni reunion. People register with their name, phone, batch year and how many guests they bring; the fee in taka depends on the number of guests. They pay by bKash and type the transaction ID, and volunteers check each payment and confirm the registration, which gives a ticket code. On the day, volunteers check people in by searching the code or phone. Volunteers cannot change fees. The organisers see registrations by batch, money confirmed and pending, and how many have arrived.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>T-shirt sizes and food choices for each guest</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/pretix/pretix">pretix</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter event-tickets "what is different for you" --run</pre>
+</div>
+</div>
+</div>
+</section>
+
 <section class="wrap split section" id="start">
 <div class="stack" style="flex-basis: 360px">
 <p class="eyebrow">Try it</p>
@@ -323,6 +601,6 @@ node packages/cli/dist/bin.js new "your idea here" --adapter claude --run</pre><
 </nav>
 </div>
 </footer>
-<script src="site.js?v=4" defer></script>
+<script src="site.js?v=5" defer></script>
 </body>
 </html>

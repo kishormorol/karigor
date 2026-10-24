@@ -246,3 +246,13 @@ if (moments.length) {
     }, { threshold: 0.2 }).observe(document.querySelector(".needs"));
   }
 }
+
+// Ready-made ideas: picking one shows it in full, with the command that starts it.
+const starterBtns = [...document.querySelectorAll(".starter-list button")];
+for (const btn of starterBtns) btn.addEventListener("click", () => {
+  for (const b of starterBtns) b.setAttribute("aria-pressed", String(b === btn));
+  for (const card of document.querySelectorAll("#starter-card [data-card]")) card.hidden = card.dataset.card !== btn.dataset.starter;
+  // On a phone the card is below the list; bring it into view.
+  const card = document.getElementById("starter-card");
+  if (card.getBoundingClientRect().top > innerHeight * 0.6) card.scrollIntoView({ behavior: calm ? "auto" : "smooth", block: "start" });
+});
