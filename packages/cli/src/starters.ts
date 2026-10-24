@@ -252,6 +252,27 @@ export const STARTERS: Starter[] = [
     idea: "Membership and claims for our community health insurance scheme. Enrolment officers register households with each member's name, age and phone, and record the yearly premium paid in cash or bKash; a household is covered for a year from payment. Partner clinics look up a member by their card number, see whether they are covered, and send a claim for a visit with the treatment and cost, and a photo of the bill. Claims officers check each claim and approve it, or reject it with a reason. A clinic sees only its own claims and cannot approve them. The scheme manager sees members covered, premiums collected, claims paid by clinic, and households whose cover ends in the next month. Later: an SMS to households a week before their cover ends.",
     basedOn: [{ name: "openIMIS", repo: "openimis/openimis-be_py" }],
   },
+  {
+    id: "salon-bookings",
+    title: "Salon and parlour bookings",
+    for: "a beauty parlour, salon or spa",
+    idea: "Bookings for our beauty parlour. I, the owner, list our services with how long each takes and its price in taka, and our beauticians with the days and hours they work. Customers book from a public page: they pick a service, a beautician or anyone free, and a time that is still open, and give their name and phone. Each booking gets an SMS confirming it, and a reminder the day before. The receptionist sees today's bookings, adds walk-in customers, marks who came, and records the payment in cash or bKash. A beautician sees only their own bookings and cannot see the takings. I see bookings and takings for each day and month, the busiest services, and customers who did not come. Later: packages for brides, and a customer's past visits.",
+    basedOn: [{ name: "Cal.diy", repo: "calcom/cal.diy" }, { name: "Easy!Appointments", repo: "alextselegidis/easyappointments" }],
+  },
+  {
+    id: "surveys",
+    title: "Surveys",
+    for: "a research team, NGO or union parishad",
+    idea: "Surveys our field team fills in on their phones. A survey manager writes each survey: its questions in order, each one a short answer, a number, a date, a choice from a list, or a photo, and which questions must be answered. Enumerators see only the surveys assigned to them, fill in one response per household or person, and can save a response and finish it later. An enumerator cannot see other enumerators' responses or change a response after a supervisor has checked it. Supervisors check each response for their own team, send it back with a note if something is wrong, or accept it. The survey manager sees how many responses each enumerator has done, totals and charts for each question, and can export every response for a spreadsheet. Later: questions that only appear after a certain answer.",
+    basedOn: [{ name: "ODK Central", repo: "getodk/central" }, { name: "KoboToolbox", repo: "kobotoolbox/kpi" }],
+  },
+  {
+    id: "sms-notices",
+    title: "SMS notices to groups",
+    for: "a school, mosque committee, samity or housing society",
+    idea: "SMS notices for our school. The office keeps contacts (parents, teachers and staff) with their name and phone, in groups such as a class, all teachers, or the managing committee; one person can be in several groups. The headteacher writes a notice, picks the groups, and sends it, or schedules it for a later day; the page shows how many SMS it will be. Every message is kept with whether it was sent or not, and why. Office staff can add and edit contacts and draft notices, but they cannot send a notice; only the headteacher can. The headteacher sees every notice sent, to how many people, and how many failed, and can send the failed ones again. Later: replies from parents, and a notice board page parents can open.",
+    basedOn: [{ name: "textbee", repo: "textbee/textbee" }],
+  },
 ];
 
 export function findStarter(id: string): Starter | undefined {

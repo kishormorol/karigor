@@ -271,7 +271,7 @@
 <section class="wrap section" id="starters">
 <div class="needs">
 <div class="stack-lg">
-<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">34 ideas already written out. Start from one.</h2></div>
+<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">37 ideas already written out. Start from one.</h2></div>
 <p class="body">Common needs in Bangladesh, each written the way Karigor works best: every kind of person, what each may and may not do, taka, and bKash, Nagad or cash. Pick one, then say in your own words what is different for you.</p>
 <ul class="starter-list" aria-label="Ready-made ideas">
 <li><button type="button" data-starter="shop-counter" aria-controls="starter-card" aria-pressed="true">Shop counter</button></li>
@@ -308,6 +308,9 @@
 <li><button type="button" data-starter="distributor" aria-controls="starter-card" aria-pressed="false">Distributor and sales reps</button></li>
 <li><button type="button" data-starter="farmers-coop" aria-controls="starter-card" aria-pressed="false">Farmers’ cooperative</button></li>
 <li><button type="button" data-starter="health-insurance" aria-controls="starter-card" aria-pressed="false">Micro health insurance</button></li>
+<li><button type="button" data-starter="salon-bookings" aria-controls="starter-card" aria-pressed="false">Salon and parlour bookings</button></li>
+<li><button type="button" data-starter="surveys" aria-controls="starter-card" aria-pressed="false">Surveys</button></li>
+<li><button type="button" data-starter="sms-notices" aria-controls="starter-card" aria-pressed="false">SMS notices to groups</button></li>
 </ul>
 <p class="small">Each is modelled on a well-known open-source app; no code is taken from it. In the chat UI they are under <strong>Or start from a ready-made idea</strong>.</p>
 </div>
@@ -651,6 +654,36 @@
 <li><strong>Modelled on</strong><span><a href="https://github.com/openimis/openimis-be_py">openIMIS</a></span></li>
 </ul>
 <pre class="starter-cmd">karigor new --starter health-insurance "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="salon-bookings" hidden>
+<div class="ask-top"><span>Ready-made · salon-bookings</span><span>For a beauty parlour, salon or spa</span></div>
+<p class="ask-q starter-idea">Bookings for our beauty parlour. I, the owner, list our services with how long each takes and its price in taka, and our beauticians with the days and hours they work. Customers book from a public page: they pick a service, a beautician or anyone free, and a time that is still open, and give their name and phone. Each booking gets an SMS confirming it, and a reminder the day before. The receptionist sees today’s bookings, adds walk-in customers, marks who came, and records the payment in cash or bKash. A beautician sees only their own bookings and cannot see the takings. I see bookings and takings for each day and month, the busiest services, and customers who did not come.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Packages for brides, and a customer’s past visits</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/calcom/cal.diy">Cal.diy</a>, <a href="https://github.com/alextselegidis/easyappointments">Easy!Appointments</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter salon-bookings "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="surveys" hidden>
+<div class="ask-top"><span>Ready-made · surveys</span><span>For a research team, NGO or union parishad</span></div>
+<p class="ask-q starter-idea">Surveys our field team fills in on their phones. A survey manager writes each survey: its questions in order, each one a short answer, a number, a date, a choice from a list, or a photo, and which questions must be answered. Enumerators see only the surveys assigned to them, fill in one response per household or person, and can save a response and finish it later. An enumerator cannot see other enumerators’ responses or change a response after a supervisor has checked it. Supervisors check each response for their own team, send it back with a note if something is wrong, or accept it. The survey manager sees how many responses each enumerator has done, totals and charts for each question, and can export every response for a spreadsheet.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Questions that only appear after a certain answer</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/getodk/central">ODK Central</a>, <a href="https://github.com/kobotoolbox/kpi">KoboToolbox</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter surveys "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="sms-notices" hidden>
+<div class="ask-top"><span>Ready-made · sms-notices</span><span>For a school, mosque committee, samity or housing society</span></div>
+<p class="ask-q starter-idea">SMS notices for our school. The office keeps contacts (parents, teachers and staff) with their name and phone, in groups such as a class, all teachers, or the managing committee; one person can be in several groups. The headteacher writes a notice, picks the groups, and sends it, or schedules it for a later day; the page shows how many SMS it will be. Every message is kept with whether it was sent or not, and why. Office staff can add and edit contacts and draft notices, but they cannot send a notice; only the headteacher can. The headteacher sees every notice sent, to how many people, and how many failed, and can send the failed ones again.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Replies from parents, and a notice board page parents can open</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/textbee/textbee">textbee</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter sms-notices "what is different for you" --run</pre>
 </div>
 </div>
 </div>
