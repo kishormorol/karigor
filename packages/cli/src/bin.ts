@@ -8,6 +8,7 @@ import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject, runWaiting } from "./run.js";
 import { projectPort, runOptions as setupRun, type RunFlags } from "./setup.js";
+import { findStarter, ideaFor, renderStarter, renderStarters } from "./starters.js";
 
 const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: (l) => console.log(l) });
 
@@ -28,16 +29,28 @@ const runFlags = (c: Command) =>
 runFlags(
   program
     .command("new")
-    .argument("<idea>", "the idea, in plain language")
+    .argument("[idea]", "the idea, in plain language; with --starter, your changes to the ready-made idea")
+    .option("--starter <id>", "start from a ready-made idea (see karigor starters)")
     .option("--run", "start building immediately", false),
 )
   .description("record an idea as a new project")
-  .action(async (idea: string, o: RunFlags & { run: boolean }) => {
+  .action(async (idea: string | undefined, o: RunFlags & { run: boolean; starter?: string }) => {
     const root = program.opts<{ root: string }>().root;
-    const projectId = await createProject(root, idea);
+    const projectId = await createProject(root, ideaFor(idea, o.starter));
     console.log(`Created project ${projectId}`);
     if (o.run) await run(root, projectId, o);
     else console.log(`Next: karigor run ${projectId}`);
+  });
+
+program
+  .command("starters")
+  .argument("[id]", "a ready-made idea to show in full")
+  .description("list ready-made ideas for common needs, or show one in full")
+  .action((id?: string) => {
+    if (id === undefined) return console.log(renderStarters());
+    const starter = findStarter(id);
+    if (!starter) throw new Error(`there is no ready-made idea called "${id}"; karigor starters lists them`);
+    console.log(renderStarter(starter));
   });
 
 async function run(root: string, projectId: string, o: RunFlags & { wait?: string | boolean }) {

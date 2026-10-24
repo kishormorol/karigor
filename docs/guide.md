@@ -49,6 +49,16 @@ with a chart for the month, and I add or remove staff.
 
 Karigor plans the whole product, then splits it into **stages** in the order they are built. Stage 1 is the smallest version someone can use end to end (for the clinic: register a patient and book a visit). Each later stage adds one area you would recognise ("Billing", "The owner's dashboard"). The first build makes stage 1; you add the rest with `karigor grow` (step 6). A small idea is just one stage.
 
+**Or start from a ready-made idea.** Karigor has ideas already written this way for common needs in Bangladesh: a shop counter, pharmacy, restaurant, online shop, cash book, invoices, parts stock, samity savings and loans, clinic, doctor's serial, school, madrasa, coaching centre, library, household visits, donors, staff and salaries, support tickets, leads, guest house, parcel delivery, internet billing, poultry farm and event registration. Each one is modelled on a well-known open-source app.
+
+```sh
+karigor starters                  # list them
+karigor starters samity           # read one in full
+karigor new --starter samity "We collect every month, not every week. Members can also save for Eid." --run
+```
+
+What you write after the starter's name is added to it as your changes, so say only what is different for you.
+
 ## 3. Start the build
 
 ```sh
@@ -179,6 +189,8 @@ Not yet supported: file uploads (photos, documents), scheduled jobs (a reminder 
 | Command | What it does |
 |---|---|
 | `karigor new "<idea>" --run` | Start a new app and build it |
+| `karigor starters [id]` | List ready-made ideas, or read one in full |
+| `karigor new --starter <id> "<changes>" --run` | Start from a ready-made idea, with your changes |
 | `karigor status <id>` | Where it stands |
 | `karigor resume <id> [--wait]` | Continue after a pause, limit or crash; `--wait` keeps retrying through usage limits |
 | `karigor setup <id>` | Give settings only you can provide |
