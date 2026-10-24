@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css?v=3">
+<link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -159,17 +159,87 @@
 </div>
 </section>
 
+<section class="wrap section" id="needs-you">
+<div class="needs">
+<div class="stack-lg">
+<div class="stack"><p class="eyebrow">Needs you</p><h2 class="h2 h2-sm">Five moments need you. Everything else is done for you.</h2></div>
+<p class="body">Karigor never asks a technical question. These are the only times it waits for you, and each one is asked in plain words.</p>
+<ol class="moments" aria-label="The moments that need you">
+<li><button type="button" data-moment="budget" aria-controls="moment-card" aria-pressed="true"><span class="m-when">Before it starts</span><strong>Pick a budget, once</strong></button></li>
+<li><button type="button" data-moment="setup" aria-controls="moment-card" aria-pressed="false"><span class="m-when">When the app needs it</span><strong>Give what only you have</strong></button></li>
+<li><button type="button" data-moment="correct" aria-controls="moment-card" aria-pressed="false"><span class="m-when">Any time</span><strong>Correct an assumption</strong></button></li>
+<li><button type="button" data-moment="grow" aria-controls="moment-card" aria-pressed="false"><span class="m-when">After stage 1 is live</span><strong>Build the next part</strong></button></li>
+<li><button type="button" data-moment="change" aria-controls="moment-card" aria-pressed="false"><span class="m-when">Whenever you like</span><strong>Tell it what to change</strong></button></li>
+</ol>
+</div>
+
+<div class="ask-card" id="moment-card">
+<div class="ask" data-card="budget">
+<div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Needs your call</span></div>
+<p class="ask-q">How much should I spend? You choose once; a running meter shows what has been used.</p>
+<ul class="ask-rows">
+<li><strong>Free</strong><span>A local model for everything. Costs nothing; slower, and more work gets parked.</span></li>
+<li><strong>Cheap</strong><span>The cheapest cloud model for everything. Good for small, simple ideas.</span></li>
+<li class="is-picked"><strong>Best</strong><span>The strongest model for decisions and reviews, the cheap one for routine work.</span></li>
+</ul>
+<div class="ask-actions" aria-hidden="true"><span class="ask-btn">Free</span><span class="ask-btn">Cheap</span><span class="ask-btn ask-btn-main">Best</span></div>
+<p class="ask-note">If money runs short it uses a cheaper model first, then sets optional work aside, then stops. It never overspends.</p>
+</div>
+
+<div class="ask" data-card="setup" hidden>
+<div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Waiting for a setting</span></div>
+<p class="ask-q">To keep your data safe on the internet, the app needs a free database. Paste its address and token.</p>
+<ul class="ask-rows">
+<li><strong>Database address</strong><span class="ask-field">libsql://shop-counter-….turso.io</span></li>
+<li><strong>Database token</strong><span class="ask-field">••••••••••••••••••</span></li>
+</ul>
+<p class="ask-note">What you type is hidden. It is stored only where the app runs, never in the project’s records. Secrets like signing keys Karigor makes itself.</p>
+</div>
+
+<div class="ask" data-card="correct" hidden>
+<div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Assumptions</span></div>
+<p class="ask-q">I recorded every decision I made for you. Change any of them in your own words.</p>
+<ul class="ask-rows">
+<li><strong>a1</strong><span>Only the owner signs in.</span></li>
+<li><strong>a2</strong><span>A sale is paid in full, by cash or bKash.</span></li>
+<li class="is-changed"><strong>a3</strong><span><s>Prices are whole taka.</s> <em>Prices should allow paisa, like 62.50.</em></span></li>
+<li><strong>a4</strong><span>Stock can’t go below zero.</span></li>
+</ul>
+<p class="ask-note">Once the app is live, a correction becomes a fix round, built and checked like everything else.</p>
+</div>
+
+<div class="ask" data-card="grow" hidden>
+<div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Your call</span></div>
+<p class="ask-q">Stage 1 is live. Try it on a busy day, then build the next part when you are ready.</p>
+<ul class="ask-rows">
+<li class="is-live"><strong>Stage 1</strong><span>The counter: sales, payments and stock. <b>Live</b></span></li>
+<li><strong>Stage 2</strong><span>Daily takings, with cash and bKash separately.</span></li>
+<li><strong>Stage 3</strong><span>Suppliers and restocking.</span></li>
+</ul>
+<div class="ask-actions" aria-hidden="true"><span class="ask-btn">Not yet</span><span class="ask-btn ask-btn-main">Build the next part</span></div>
+<p class="ask-note">A new stage never starts by itself. Each one builds on what is live, and your data stays.</p>
+</div>
+
+<div class="ask" data-card="change" hidden>
+<div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Feedback</span></div>
+<p class="ask-q ask-me">On the sales list, tapping anywhere on a sale should open it, not just the time.</p>
+<ul class="ask-rows">
+<li><strong>Next</strong><span>While the app is being served, a fix round starts within ten minutes.</span></li>
+<li><strong>Checks</strong><span>The same gates as the first build: tests, review, skeptic, journeys.</span></li>
+<li><strong>Then</strong><span>A new release. Your data stays.</span></li>
+</ul>
+<p class="ask-note">One thing per message works best. Errors and downtime it notices on its own.</p>
+</div>
+</div>
+</div>
+</section>
+
 <section class="wrap section">
 <div class="head-row">
 <div class="stack"><p class="eyebrow">Cost</p><h2 class="h2">Cost is a gate, not a surprise.</h2></div>
-<p class="body">Every step has a zero-dollar path. Karigor estimates three tiers and asks you to pick one, exactly once. A running meter shows what has been used.</p>
+<p class="body">Every step has a zero-dollar path. Karigor estimates three tiers before it starts and you pick one, exactly once. A running meter shows what has been used, and <code>karigor cost</code> tells you at any time.</p>
 </div>
-<div class="grid">
-<article class="card"><h3 class="h3">Free</h3><p class="body">A free local model for everything. Costs nothing; slower and less reliable, so expect more parked items.</p></article>
-<article class="card"><h3 class="h3">Cheap</h3><p class="body">The cheapest cloud model for everything. Good for small, simple ideas.</p></article>
-<article class="card card-featured"><h3 class="h3">Best</h3><p class="body">The strongest model for decisions and reviews, the cheap one for routine work. The best chance of a working result.</p></article>
-</div>
-<p class="note" style="margin-top: 40px"><strong>If the budget runs short,</strong> Karigor downgrades the model first, then parks optional work, then stops. Fix rounds after release have their own slice.</p>
+<p class="note"><strong>If the budget runs short,</strong> Karigor downgrades the model first, then parks optional work, then stops. Fix rounds after release have their own slice.</p>
 </section>
 
 <section class="band">
@@ -253,6 +323,6 @@ node packages/cli/dist/bin.js new "your idea here" --adapter claude --run</pre><
 </nav>
 </div>
 </footer>
-<script src="site.js?v=3" defer></script>
+<script src="site.js?v=4" defer></script>
 </body>
 </html>

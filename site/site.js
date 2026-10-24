@@ -222,3 +222,27 @@ for (const btn of gateButtons) {
     for (const panel of document.querySelectorAll("#gate-panel [data-panel]")) panel.hidden = panel.dataset.panel !== btn.dataset.gate;
   });
 }
+
+// Needs you: each moment shows the card Karigor would show. The cards step through on their own while on screen,
+// until someone picks one; never with reduced motion.
+const moments = [...document.querySelectorAll(".moments button")];
+if (moments.length) {
+  const show = (btn) => {
+    for (const b of moments) b.setAttribute("aria-pressed", String(b === btn));
+    for (const card of document.querySelectorAll("#moment-card [data-card]")) card.hidden = card.dataset.card !== btn.dataset.moment;
+  };
+  let auto = null;
+  const stopAuto = () => { clearInterval(auto); auto = null; };
+  for (const btn of moments) btn.addEventListener("click", () => { stopAuto(); show(btn); });
+  if (!calm) {
+    let touched = false;
+    for (const b of moments) b.addEventListener("click", () => { touched = true; });
+    new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !touched && !auto) auto = setInterval(() => {
+        const i = moments.findIndex((b) => b.getAttribute("aria-pressed") === "true");
+        show(moments[(i + 1) % moments.length]);
+      }, 6000);
+      else if (!e.isIntersecting) stopAuto();
+    }, { threshold: 0.2 }).observe(document.querySelector(".needs"));
+  }
+}
