@@ -143,6 +143,10 @@ describe("judged gates", () => {
     judge = scriptedJudge(() => ({ verdict: "pass", citations: [{ ref: { kind: "backlog", id: "another-item" }, quote: "x" }] }));
     r = await evaluate(await ctx("diff-matches-spec", { itemId: "clinic-roles", backlogItem: item }, judge));
     expect(r.reasons[0]).toMatch(/not shown: another-item/);
+    // Its own earlier verdict is context, not evidence.
+    judge = scriptedJudge(() => ({ verdict: "pass", citations: [{ ref: { kind: "review", id: "previous-review" }, quote: "objection addressed" }] }));
+    r = await evaluate(await ctx("diff-matches-spec", { itemId: "clinic-roles", backlogItem: item, previousReview: { verdict: "fail", reasons: ["x"], minor: [] } }, judge));
+    expect(r.reasons[0]).toMatch(/not shown: previous-review/);
   });
 
   it("hands the skeptic the diff and backlog item for item-level reviews", async () => {
