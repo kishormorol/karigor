@@ -271,7 +271,7 @@
 <section class="wrap section" id="starters">
 <div class="needs">
 <div class="stack-lg">
-<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">24 ideas already written out. Start from one.</h2></div>
+<div class="stack"><p class="eyebrow">Ready-made</p><h2 class="h2 h2-sm">34 ideas already written out. Start from one.</h2></div>
 <p class="body">Common needs in Bangladesh, each written the way Karigor works best: every kind of person, what each may and may not do, taka, and bKash, Nagad or cash. Pick one, then say in your own words what is different for you.</p>
 <ul class="starter-list" aria-label="Ready-made ideas">
 <li><button type="button" data-starter="shop-counter" aria-controls="starter-card" aria-pressed="true">Shop counter</button></li>
@@ -298,6 +298,16 @@
 <li><button type="button" data-starter="isp-billing" aria-controls="starter-card" aria-pressed="false">Internet subscriber billing</button></li>
 <li><button type="button" data-starter="farm-records" aria-controls="starter-card" aria-pressed="false">Poultry farm records</button></li>
 <li><button type="button" data-starter="event-tickets" aria-controls="starter-card" aria-pressed="false">Event registration</button></li>
+<li><button type="button" data-starter="garment-lines" aria-controls="starter-card" aria-pressed="false">Garment production</button></li>
+<li><button type="button" data-starter="factory-attendance" aria-controls="starter-card" aria-pressed="false">Attendance and overtime</button></li>
+<li><button type="button" data-starter="health-reports" aria-controls="starter-card" aria-pressed="false">Monthly health reports</button></li>
+<li><button type="button" data-starter="hospital-ward" aria-controls="starter-card" aria-pressed="false">Hospital wards</button></li>
+<li><button type="button" data-starter="community-reports" aria-controls="starter-card" aria-pressed="false">Community problem reports</button></li>
+<li><button type="button" data-starter="documents" aria-controls="starter-card" aria-pressed="false">Office documents</button></li>
+<li><button type="button" data-starter="transport-fleet" aria-controls="starter-card" aria-pressed="false">Transport fleet</button></li>
+<li><button type="button" data-starter="distributor" aria-controls="starter-card" aria-pressed="false">Distributor and sales reps</button></li>
+<li><button type="button" data-starter="farmers-coop" aria-controls="starter-card" aria-pressed="false">Farmers’ cooperative</button></li>
+<li><button type="button" data-starter="health-insurance" aria-controls="starter-card" aria-pressed="false">Micro health insurance</button></li>
 </ul>
 <p class="small">Each is modelled on a well-known open-source app; no code is taken from it. In the chat UI they are under <strong>Or start from a ready-made idea</strong>.</p>
 </div>
@@ -541,6 +551,106 @@
 <li><strong>Modelled on</strong><span><a href="https://github.com/pretix/pretix">pretix</a></span></li>
 </ul>
 <pre class="starter-cmd">karigor new --starter event-tickets "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="garment-lines" hidden>
+<div class="ask-top"><span>Ready-made · garment-lines</span><span>For a garment factory or sewing unit</span></div>
+<p class="ask-q starter-idea">Production tracking for our garment factory. The merchandiser enters each buyer’s order: style, colour, sizes, quantity and shipment date. The production manager splits an order across sewing lines and sets each line’s daily target. Line supervisors enter each hour’s output and any rejects with the reason, on their phones. Quality inspectors record checks for each batch. A supervisor sees only their own line and cannot change targets. The manager sees each line’s output against target for today, orders at risk of missing their shipment date, and reject rates by line with charts.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Cutting and finishing sections, and buyer reports to export</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/frePPLe/frepple">frePPLe</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter garment-lines "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="factory-attendance" hidden>
+<div class="ask-top"><span>Ready-made · factory-attendance</span><span>For a factory with shifts</span></div>
+<p class="ask-q starter-idea">Attendance and overtime for our factory workers. The HR officer adds workers with their ID card number, section, shift and basic wage in taka. Each morning and evening the section supervisor marks who came, who was late and who was absent, and records overtime hours. A supervisor sees only their own section and cannot change wages. At month end the HR officer sees each worker’s days present, absences, late days and overtime hours, and the overtime pay at double the hourly rate, ready to export for the payroll sheet. The owner sees attendance by section with charts.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Leave requests, and an SMS to the worker with their monthly summary</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/horilla/horilla-hr">Horilla</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter factory-attendance "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="health-reports" hidden>
+<div class="ask-top"><span>Ready-made · health-reports</span><span>For an upazila health office or NGO health programme</span></div>
+<p class="ask-q starter-idea">Monthly reporting for the health facilities in our upazila. The district officer sets up the facilities and the figures each one reports every month: antenatal visits, deliveries, children vaccinated, and cases of diarrhoea and pneumonia. Each facility’s in-charge enters their figures for the month and submits them; after submitting they cannot change them without the officer reopening the report. A facility sees only its own reports. The officer sees which facilities have not reported this month, totals for the upazila with charts month by month, and can export the figures. On the 25th each month, facilities that have not reported get a reminder by SMS.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Targets for each facility, and comparison with last year</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/dhis2/dhis2-core">DHIS2</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter health-reports "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="hospital-ward" hidden>
+<div class="ask-top"><span>Ready-made · hospital-ward</span><span>For a small private hospital</span></div>
+<p class="ask-q starter-idea">Admissions and wards for our small hospital. The admission desk registers a patient with their name, age, guardian, phone and the doctor in charge, and gives them a free bed in a ward or cabin. Nurses see the patients in their own ward, record temperature, blood pressure and medicines given each shift, and note anything the doctor should know. Doctors write daily notes and orders for their own patients and can upload a test report as a photo or PDF. A nurse cannot discharge a patient or see the bills. The accounts desk adds bed charges each day, medicines and tests, and records payments in cash, bKash or card. At discharge the doctor writes a summary and the patient’s bill is settled. The administrator sees beds free and taken, and today’s admissions and discharges.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>An operation theatre schedule</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/openmrs/openmrs-core">OpenMRS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter hospital-ward "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="community-reports" hidden>
+<div class="ask-top"><span>Ready-made · community-reports</span><span>For a ward councillor’s office or a residents’ society</span></div>
+<p class="ask-q starter-idea">A place for people in our ward to report problems: waterlogging, a broken road, a streetlight out, garbage not collected. Anyone can send a report from a public page with what is wrong, where it is in words (road and landmark), a photo, and their phone number. Office staff check each new report, put it in a category, and assign it to the right person. That person updates the status (seen, being fixed, fixed) and adds a photo when it is done. Staff cannot delete a report; only the councillor can, with a reason. The public page shows fixed and open problems without anyone’s phone number. The councillor sees open problems by category and by area, and how long fixes take.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>An SMS to the person who reported it when it is fixed</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/ushahidi/platform">Ushahidi</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter community-reports "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="documents" hidden>
+<div class="ask-top"><span>Ready-made · documents</span><span>For an office, chamber or small company</span></div>
+<p class="ask-q starter-idea">A filing cabinet for our office’s documents. Staff upload scanned papers, photos and PDFs: deeds, contracts, licences, letters and receipts. Each document gets a title, a date, a type, the client or party it belongs to, and tags, and can be found by searching any of these. Some documents are marked confidential: only partners can open those, and staff cannot see them in lists or searches. Licences and contracts can have an expiry date, and the office manager sees what expires in the next 30 days. Everyone can see who uploaded each document and when.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A daily reminder by email of documents about to expire</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/paperless-ngx/paperless-ngx">Paperless-ngx</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter documents "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="transport-fleet" hidden>
+<div class="ask-top"><span>Ready-made · transport-fleet</span><span>For a truck, bus or rent-a-car company</span></div>
+<p class="ask-q starter-idea">Records for our transport business. The manager adds vehicles with their registration number, fitness and tax token expiry dates, and drivers with their licence expiry. For each trip the dispatcher records the vehicle, driver, from and to, the hire charge in taka and the advance paid. Drivers record fuel bought and road costs (tolls, parking) for their own trips, with a photo of the receipt. A driver sees only their own trips and cannot change hire charges. The owner sees income and costs per vehicle each month, the profit per vehicle with charts, and papers or licences expiring in the next 30 days.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Servicing schedules, and an SMS to drivers before their licence expires</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/fleetbase/fleetbase">Fleetbase</a>, <a href="https://github.com/traccar/traccar">Traccar</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter transport-fleet "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="distributor" hidden>
+<div class="ask-top"><span>Ready-made · distributor</span><span>For a wholesale distributor or dealer</span></div>
+<p class="ask-q starter-idea">Orders and dues for our distribution business. I, the owner, keep the products with their trade price in taka, and the shops we supply, each on a route. Each sales representative (SR) visits the shops on their route, takes orders on their phone and records money collected. The delivery team sees today’s orders by route, marks each delivered, and notes anything returned. An SR sees only their own shops and orders and cannot change prices or give credit beyond a shop’s limit. The accountant records payments by cash, bKash or bank, and sees what each shop owes and for how long. I see sales by SR, route and product each month with charts, and the shops with the oldest dues.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>Targets and commission for each SR</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/frappe/erpnext">ERPNext</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter distributor "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="farmers-coop" hidden>
+<div class="ask-top"><span>Ready-made · farmers-coop</span><span>For a farmers’ group selling vegetables or fish</span></div>
+<p class="ask-q starter-idea">Weekly orders for our farmers’ cooperative. Each week the coordinator opens an order cycle with the produce available, its price per kilo in taka, and the day orders close. Farmers in the group enter how much of each item they can supply this week. Customers (families, restaurants and shops) sign in and place orders until the cycle closes; they cannot change an order after that. When it closes, each farmer sees how much to bring, and the packing team sees a list per customer. Payments are recorded in cash or bKash on delivery. A farmer sees only their own supply and earnings. The coordinator sees sales per farmer and per item, and what each farmer is owed.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>A reminder by SMS to customers when a new cycle opens</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/openfoodfoundation/openfoodnetwork">Open Food Network</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter farmers-coop "what is different for you" --run</pre>
+</div>
+
+<div class="ask" data-card="health-insurance" hidden>
+<div class="ask-top"><span>Ready-made · health-insurance</span><span>For an NGO or cooperative running a health scheme</span></div>
+<p class="ask-q starter-idea">Membership and claims for our community health insurance scheme. Enrolment officers register households with each member’s name, age and phone, and record the yearly premium paid in cash or bKash; a household is covered for a year from payment. Partner clinics look up a member by their card number, see whether they are covered, and send a claim for a visit with the treatment and cost, and a photo of the bill. Claims officers check each claim and approve it, or reject it with a reason. A clinic sees only its own claims and cannot approve them. The scheme manager sees members covered, premiums collected, claims paid by clinic, and households whose cover ends in the next month.</p>
+<ul class="ask-rows">
+<li><strong>Later stages</strong><span>An SMS to households a week before their cover ends</span></li>
+<li><strong>Modelled on</strong><span><a href="https://github.com/openimis/openimis-be_py">openIMIS</a></span></li>
+</ul>
+<pre class="starter-cmd">karigor new --starter health-insurance "what is different for you" --run</pre>
 </div>
 </div>
 </div>
