@@ -213,3 +213,12 @@ if (run) {
     play(current);
   }
 }
+
+// Gate flow: each gate button shows its own panel of checks; the Proven gate is open to start with.
+const gateButtons = document.querySelectorAll(".gate-btn");
+for (const btn of gateButtons) {
+  btn.addEventListener("click", () => {
+    for (const b of gateButtons) b.setAttribute("aria-pressed", String(b === btn));
+    for (const panel of document.querySelectorAll("#gate-panel [data-panel]")) panel.hidden = panel.dataset.panel !== btn.dataset.gate;
+  });
+}

@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -91,7 +91,7 @@
 </figure>
 </section>
 
-<section class="wrap reveal" style="padding-block: var(--section) 48px">
+<section class="wrap reveal section">
 <div class="stack" style="max-width: 760px; margin-bottom: 48px">
 <p class="eyebrow">Why it is different</p>
 <h2 class="h2">Plenty of tools write code from a prompt. Karigor runs the whole job.</h2>
@@ -102,44 +102,59 @@
 </div>
 </section>
 
-<section class="wrap" style="padding-block: 24px var(--section)">
-<h2 class="h3" style="font-size: 24px; margin-bottom: 28px">From idea to production, and back again</h2>
-<ol class="steps" aria-label="The lifecycle">
-<li><span class="role">product owner</span><strong>Specify</strong><span class="desc">A spec in stages, every assumption recorded.</span></li>
-<li><span class="role">architect</span><strong>Design</strong><span class="desc">Who uses it, what each may do, its parts.</span></li>
-<li><span class="role">planner</span><strong>Plan</strong><span class="desc">At most 15 small pieces per stage.</span></li>
-<li><span class="role">developer</span><strong>Build</strong><span class="desc">One backlog item per commit, in a real git repo.</span></li>
-<li class="is-gate"><span class="role">gates</span><strong>Verify</strong><span class="desc">Tests, lint, build, scan, reviewer, skeptic.</span></li>
-<li><span class="role">releaser</span><strong>Release</strong><span class="desc">Preview, health check, rollback, promote.</span></li>
-<li class="is-op"><span class="role">watch</span><strong>Operate</strong><span class="desc">Errors, downtime and your feedback become fixes.</span></li>
-</ol>
-<p class="loop-note"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>After release the maintenance process triages each signal, fixes it, verifies it and releases again.</p>
-</section>
+<section class="dark" id="gates">
+<div class="wrap section">
+<div class="head-row">
+<div class="stack"><p class="eyebrow">Gates</p><h2 class="h2">No step moves forward on an agent’s word.</h2></div>
+<p class="body">Three gates stand between your idea and a live app. Each one needs evidence: some run the real thing, others are judged by a reviewer and a skeptic who must cite proof. Pick a gate to see what it checks.</p>
+</div>
 
-<section class="dark">
-<div class="wrap split section">
-<div class="stack-lg">
-<p class="eyebrow">Gates</p>
-<h2 class="h2">No step moves forward on an agent’s word.</h2>
-<p class="body">Every transition needs evidence. Some gates are mechanical and run the real thing. Others are judged by a reviewer and a skeptic who can only object, and a verdict that cites no evidence counts as a fail.</p>
-<p class="body">On the first real runs, the reviewer caught a loan that could never end and the skeptic caught a removed neighbour who could rejoin. Both were fixed on the next attempt.</p>
-<div class="dark-cols">
-<div><strong>Mechanical</strong><span>Tests, lint, build, dependency audit, secrets scan, browser journeys, preview health, rollback.</span></div>
-<div><strong>Judged</strong><span>Reviewer and skeptic with rubrics. A re-review sees its own earlier verdict, so it cannot move the goalposts.</span></div>
-</div>
-</div>
-<div class="log" style="flex-basis: 460px">
-<div class="log-top"><span>events.jsonl (example)</span><span>build · item clinic-roles</span></div>
-<ol>
-<li><span class="v-pass">pass</span><span>gate tests-pass</span></li>
-<li><span class="v-pass">pass</span><span>gate lint-clean</span></li>
-<li><span class="v-pass">pass</span><span>gate security-scan-clean</span></li>
-<li><span class="v-fail">fail</span><span>gate skeptic-review · a receptionist can open a doctor’s notes through the visit page</span></li>
-<li><span class="v-retry">retry</span><span>developer shown the objection and its last attempt</span></li>
-<li><span class="v-pass">pass</span><span>gate skeptic-review · objection addressed</span></li>
-<li><span class="v-pass">pass</span><span>gate journeys-pass · phone and desktop, fresh database</span></li>
+<ol class="flow" aria-label="From idea to live, with three gates">
+<li class="flow-step"><span class="flow-role">you</span><strong>An idea</strong><span>One sentence, in your own words. Nobody asks you a technical question.</span></li>
+<li class="flow-step"><span class="flow-role">product owner · architect</span><strong>Spec &amp; design</strong><span>Who uses it and what each may do. Every assumption recorded.</span></li>
+<li class="flow-gate"><button class="gate-btn" type="button" data-gate="reviewed" aria-controls="gate-panel" aria-pressed="false"><span class="flow-role">gate</span><strong>Reviewed</strong><span>A reviewer must find the spec and design complete.</span></button><span class="flow-fail">no evidence → retry</span></li>
+<li class="flow-step"><span class="flow-role">planner · developer</span><strong>Build</strong><span>Small pieces, one commit each, in a real git repo.</span></li>
+<li class="flow-gate"><button class="gate-btn" type="button" data-gate="proven" aria-controls="gate-panel" aria-pressed="true"><span class="flow-role">gate · every piece</span><strong>Proven</strong><span>Tests, lint, build, scan, review, skeptic, journeys.</span></button><span class="flow-fail">a failure → the ladder</span></li>
+<li class="flow-gate"><button class="gate-btn" type="button" data-gate="safe" aria-controls="gate-panel" aria-pressed="false"><span class="flow-role">gate · releaser</span><strong>Safe to ship</strong><span>A healthy preview and a rollback that works.</span></button><span class="flow-fail">unhealthy → not promoted</span></li>
+<li class="flow-step flow-live"><span class="flow-role">live</span><strong>Your app</strong><span>A real address you can share.</span></li>
 </ol>
-<div class="ladder"><strong>When a gate fails:</strong><span>retry with feedback</span><span aria-hidden="true">→</span><span>send back or shrink</span><span aria-hidden="true">→</span><span>park</span><span aria-hidden="true">→</span><span>stop</span></div>
+<p class="flow-loop"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg><span><strong>Then it keeps working.</strong> App errors, downtime, vulnerable libraries and your feedback become fixes, and every fix goes back through the same gates.</span></p>
+
+<div class="gate-panel" id="gate-panel" aria-live="polite">
+<div data-panel="reviewed" hidden>
+<div><p class="gp-title">Reviewed checks the plan before any code is written.</p>
+<ul class="gp-list">
+<li><code>spec-complete</code><span class="gk gk-j">judged</span><span>A reviewer finds the spec complete enough to design and build from.</span></li>
+<li><code>architecture-sound</code><span class="gk gk-j">judged</span><span>The design names the roles and modules and fits the spec.</span></li>
+<li><code>schema-valid</code><span class="gk">mechanical</span><span>Every document an agent produced matches its schema.</span></li>
+<li><code>budget-ok</code><span class="gk">mechanical</span><span>The work so far fits the cost tier you chose.</span></li>
+</ul></div>
+<div class="gp-side"><p class="gp-label">When it fails</p><p>The role is shown exactly what was objected to and what it wrote last time, then tries again. A verdict that cites no evidence counts as a fail, so a judge cannot wave work through.</p></div>
+</div>
+<div data-panel="proven">
+<div><p class="gp-title">Proven runs on every piece of the build, not once at the end.</p>
+<ul class="gp-list">
+<li><code>tests-pass</code><span class="gk">mechanical</span><span>The project’s real tests run green.</span></li>
+<li><code>lint-clean</code><span class="gk">mechanical</span><span>The code passes the linter.</span></li>
+<li><code>build-succeeds</code><span class="gk">mechanical</span><span>The production build completes.</span></li>
+<li><code>security-scan-clean</code><span class="gk">mechanical</span><span>No leaked secrets, no vulnerable libraries.</span></li>
+<li><code>diff-matches-spec</code><span class="gk gk-j">judged</span><span>The change does what its piece and the spec say.</span></li>
+<li><code>skeptic-review</code><span class="gk gk-j">judged</span><span>A skeptic, who can only object, finds nothing blocking.</span></li>
+<li><code>journeys-pass</code><span class="gk">mechanical</span><span>Each kind of user’s main jobs work in a browser, on phone and desktop.</span></li>
+</ul></div>
+<div class="gp-side"><p class="gp-label">When it fails, the ladder</p>
+<ol class="ladder-steps"><li><b>Retry</b>with the objection quoted</li><li><b>Send back or shrink</b>the piece</li><li><b>Park</b>it and revert it</li><li><b>Stop</b>and say why</li></ol>
+<p>Parked work is reverted, so it never ships, and the rest of the build carries on. On a real run the reviewer caught a loan that could never end, and the skeptic caught a removed neighbour who could rejoin.</p></div>
+</div>
+<div data-panel="safe" hidden>
+<div><p class="gp-title">Safe to ship guards the moment your app goes live.</p>
+<ul class="gp-list">
+<li><code>journeys-pass</code><span class="gk">mechanical</span><span>Every journey runs again, on a brand-new database.</span></li>
+<li><code>preview-healthy</code><span class="gk">mechanical</span><span>The preview serves the new build, not a login page or the old one.</span></li>
+<li><code>rollback-verified</code><span class="gk">mechanical</span><span>Going back to the previous release actually works.</span></li>
+</ul></div>
+<div class="gp-side"><p class="gp-label">When it fails</p><p>Nothing is promoted. If a promotion fails after all, the app goes back to what was live, so a broken release never stays up.</p></div>
+</div>
 </div>
 </div>
 </section>
@@ -238,6 +253,6 @@ node packages/cli/dist/bin.js new "your idea here" --adapter claude --run</pre><
 </nav>
 </div>
 </footer>
-<script src="site.js?v=2" defer></script>
+<script src="site.js?v=3" defer></script>
 </body>
 </html>
