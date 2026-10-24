@@ -15,7 +15,7 @@ const toggle = document.getElementById("demo-toggle");
 if (video && toggle) {
   let paused = calm;
   const sync = () => { toggle.textContent = video.paused ? "Play" : "Pause"; toggle.setAttribute("aria-pressed", String(video.paused)); };
-  toggle.addEventListener("click", () => { paused = !video.paused; paused ? video.pause() : video.play(); });
+  toggle.addEventListener("click", () => { paused = !video.paused; paused ? video.pause() : video.play().catch(() => {}); sync(); });
   video.addEventListener("play", sync);
   video.addEventListener("pause", sync);
   new IntersectionObserver(([e]) => { if (e.isIntersecting && !paused) video.play().catch(() => {}); else video.pause(); }, { threshold: 0.4 }).observe(video);

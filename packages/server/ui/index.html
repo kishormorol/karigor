@@ -194,7 +194,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 <footer>
   <form class="composer" id="composer">
     <label for="input" class="sr">Message</label>
-    <textarea id="input" rows="1" placeholder="Describe your idea in a sentence or two…"></textarea>
+    <textarea id="input" rows="1" placeholder="Describe your idea…"></textarea>
     <button class="btn" id="send" type="submit">Send</button>
   </form>
   <div class="hint" id="hint"></div>
@@ -473,7 +473,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     shown = justCreated === id ? 0 : -1;
     justCreated = null;
     hint.textContent = "";
-    input.placeholder = id ? "Something wrong, or something to add? Tell me…" : "Describe your idea in a sentence or two…";
+    input.placeholder = id ? "Something to fix or add?" : "Describe your idea…";
     send.textContent = id ? "Send" : "Build";
     render();
     if (!id) return;
