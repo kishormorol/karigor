@@ -27,7 +27,7 @@ import { join } from "node:path";
 import { readFile, stat } from "node:fs/promises";
 import { ROLE_PRIORS, check, costOf, estimate, isFlatRate, record, type CostLedgerMeta } from "@karigor/budget";
 import type { CostEntry } from "@karigor/store";
-import { QuotaError, isProducingRole, makeJudge, runAgentWorker, runWorker, summaryArtifact, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
+import { QuotaError, buildableTarget, isProducingRole, makeJudge, runAgentWorker, runWorker, summaryArtifact, type AgentAdapter, type ModelAdapter, type ProducingRole, type RoleContext, type Usage, type WorkerBudget, SelectorOutput } from "@karigor/runtime";
 
 export interface RunOptions {
   root: string;
@@ -179,7 +179,15 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
       else pending.push(entry);
     },
   });
-  const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({ state, store, phase, backlog, templates, clock, makeId: newId, ...(opts.profile ? { stackGuide: opts.profile.stackGuide } : {}), ...extra });
+  // A real build can only make the kind of software its profile scaffolds; the selector is offered just that.
+  const buildable = opts.profile && opts.profile.name !== "fixture" ? [opts.profile.name] : undefined;
+  const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({
+    state, store, phase, backlog, templates, clock, makeId: newId,
+    ...(opts.profile ? { stackGuide: opts.profile.stackGuide } : {}),
+    ...(buildable ? { buildable } : {}),
+    ...(opts.deploy ? { deployTarget: opts.deploy.describe() } : {}),
+    ...extra,
+  });
 
   // ---- workspace (real build crew) -----------------------------------------
   let workspace: Workspace | undefined;
@@ -413,7 +421,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
           const out = SelectorOutput.safeParse(result.output);
           if (out.success && templates.some((t) => t.name === out.data.template && !CONTINUATION_TEMPLATES.has(t.name))) {
             chosen = out.data.template;
-            profile = out.data.targetProfile;
+            profile = buildableTarget(out.data.targetProfile, buildable).target;
           }
         }
         await appendAll([

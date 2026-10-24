@@ -36,6 +36,35 @@ describe("role definitions", () => {
     expect(ledger.meta.kind === "ledger" && ledger.meta.assumptions.map((a) => a.topic)).toEqual(["process", "kind of software"]);
   });
 
+  it("selector is offered only the kinds this run can build, and a kind it cannot build falls back in plain words", async () => {
+    const store = await freshStore();
+    const state = emptyState("p1");
+    await seed(store, state, [idea]);
+    const ctx = await roleContext(store, state, { buildable: ["web-app"] });
+    let prompt = "";
+    const adapter = new MockAdapter((req) => {
+      prompt = req.user;
+      return { template: "iterative", targetProfile: "mobile-app", reasons: ["used on phones"], assumptions: [] };
+    });
+    const r = await runWorker({ role: "selector", key: "k", ctx, adapter, budget: openBudget() });
+    expect(prompt).toMatch(/\*\*web-app\*\*/);
+    expect(prompt).not.toMatch(/mobile-app/);
+    const ledger = r.artifacts[0]!;
+    const kind = ledger.meta.kind === "ledger" ? ledger.meta.assumptions.find((a) => a.topic === "kind of software") : undefined;
+    expect(kind?.decision).toMatch(/website or web application/);
+    expect(kind?.reason).toMatch(/installable phone app.*cannot build yet/);
+  });
+
+  it("product owner and architect are told where the product will really go live", async () => {
+    const store = await freshStore();
+    const state = emptyState("p1");
+    await seed(store, state, [idea]);
+    const ctx = await roleContext(store, state, { deployTarget: 'this computer: run "karigor serve" and open http://localhost:3000' });
+    let prompt = "";
+    await runWorker({ role: "product-owner", key: "k", ctx, adapter: new MockAdapter((req) => ((prompt = req.user), fakeSpecOutput)), budget: openBudget() });
+    expect(prompt).toMatch(/Where it will go live[^\n]*\n+this computer: run "karigor serve"/);
+  });
+
   it("ledger entries accumulate across roles with stable numbering", async () => {
     const store = await freshStore();
     const state = emptyState("p1");

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod/v4";
-import type { Artifact, ArtifactKind, ArtifactOf, BacklogItem, MetaOf, ProjectState, Role, Stage } from "@karigor/store";
+import type { Artifact, ArtifactKind, ArtifactOf, BacklogItem, MetaOf, ProjectState, Role, Stage, TargetProfile } from "@karigor/store";
 import { TARGET_PROFILES } from "@karigor/store";
 import type { Template } from "@karigor/process";
 import { ArchitectOutput, DeveloperOutput, PlannerOutput, ProductOwnerOutput, ReleaserOutput, SelectorOutput, type AssumptionInput } from "./schemas.js";
@@ -31,6 +31,8 @@ export interface RoleContext {
   deploy?: ArtifactOf<"deploy-record">;
   /** Plain words from the deploy target: where the product lives and how to open it. */
   deployTarget?: string;
+  /** Kinds of software this run can really build (target profile names). Unset: every kind is offered. */
+  buildable?: string[];
   backlog: BacklogItem[];
   templates: Template[];
   clock: () => Date;
@@ -129,18 +131,34 @@ export const selector: RoleDefinition<SelectorOutput> = {
   async inputs(ctx) {
     const idea = await latest(ctx, "idea");
     const templates = ctx.templates.map((t) => `- **${t.name}**: ${t.description}\n  Fits when: ${t.fitsWhen.trim().replace(/\n/g, " ")}`).join("\n");
-    const profiles = Object.entries(TARGET_PROFILES).map(([k, v]) => `- **${k}**: ${v}`).join("\n");
+    const profiles = Object.entries(TARGET_PROFILES).filter(([k]) => !ctx.buildable || ctx.buildable.includes(k)).map(([k, v]) => `- **${k}**: ${v}`).join("\n");
     return [section("Idea", idea?.meta.text ?? "(missing)"), section("Templates", templates), section("Target profiles", profiles)].join("\n");
   },
   async write(out, ctx) {
+    const { target, fellBack } = buildableTarget(out.targetProfile, ctx.buildable);
     const l = await ledgerWith(ctx, "selector", [
       { topic: "process", decision: `Work will follow the "${out.template}" process.`, reason: out.reasons.join(" ") },
-      { topic: "kind of software", decision: `This will be built as: ${TARGET_PROFILES[out.targetProfile]}`, reason: out.reasons.join(" ") },
+      {
+        topic: "kind of software",
+        decision: `This will be built as: ${TARGET_PROFILES[target]}`,
+        reason: fellBack ? `The best fit would be ${TARGET_PROFILES[out.targetProfile].charAt(0).toLowerCase()}${TARGET_PROFILES[out.targetProfile].slice(1, -1)}, which Karigor cannot build yet, so this is the closest kind it can. ${out.reasons.join(" ")}` : out.reasons.join(" "),
+      },
       ...out.assumptions,
     ]);
     return l ? [l] : [];
   },
 };
+
+/** The kind the selector chose, or the first buildable kind when the chosen one cannot be built in this run. */
+export function buildableTarget(chosen: TargetProfile, buildable?: string[]): { target: TargetProfile; fellBack: boolean } {
+  if (!buildable || buildable.includes(chosen)) return { target: chosen, fellBack: false };
+  const target = (buildable.find((k) => k in TARGET_PROFILES) ?? "web-app") as TargetProfile;
+  return { target, fellBack: true };
+}
+
+/** Where releases really go, so a spec never promises hosting the run will not use. */
+const whereItLives = (ctx: RoleContext) =>
+  ctx.deployTarget ? section("Where it will go live (plan for this; do not promise other hosting)", ctx.deployTarget) : "";
 
 export const productOwner: RoleDefinition<ProductOwnerOutput> = {
   role: "product-owner",
@@ -149,7 +167,7 @@ export const productOwner: RoleDefinition<ProductOwnerOutput> = {
   async inputs(ctx) {
     const idea = await latest(ctx, "idea");
     const ledger = await latest(ctx, "ledger");
-    return [section("Idea", idea?.meta.text ?? "(missing)"), ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
+    return [section("Idea", idea?.meta.text ?? "(missing)"), whereItLives(ctx), ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
   },
   async write(out, ctx) {
     const { assumptions, body, ...fields } = out;
@@ -172,6 +190,7 @@ export const architect: RoleDefinition<ArchitectOutput> = {
     return [
       section("Target profile", `${profile}: ${TARGET_PROFILES[profile as keyof typeof TARGET_PROFILES] ?? ""}`),
       ctx.stackGuide ? section("The build crew's stack (design within it)", ctx.stackGuide) : "",
+      whereItLives(ctx),
       spec ? renderArtifact(spec) : "",
       spec?.meta.stages.length ? section("Stages", renderStages(ctx.state, spec, stage)) : "",
       previous && ctx.state.stage
