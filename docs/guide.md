@@ -176,9 +176,11 @@ Karigor uses the Vercel CLI's own login (`vercel login`), or a token in `VERCEL_
 
 ## 10. What to expect
 
-Karigor builds web apps that work on phones and computers, from a single-person tool to a system with several roles: sign-in for many people with roles and permissions, invitations by link, an activity log, forms, searchable and sortable lists, records with money and stock, dashboards with charts, and CSV export for spreadsheets. Each stage is at most 15 pieces of work, complete and tested end to end, including in a real browser for each kind of user.
+Karigor builds web apps that work on phones and computers, from a single-person tool to a system with several roles: sign-in for many people with roles and permissions, invitations by link, an activity log, forms, searchable and sortable lists, records with money and stock, dashboards with charts, CSV export for spreadsheets, photos and documents up to 4 MB, jobs that run on a schedule by themselves (a reminder every morning), and email and SMS. Each stage is at most 15 pieces of work, complete and tested end to end, including in a real browser for each kind of user.
 
-Not yet supported: file uploads (photos, documents), scheduled jobs (a reminder every morning), SMS, and one installation serving several separate organisations. Karigor will work around them or leave them out and say so. Tips:
+Email and SMS go out once you have an account with an email service (Resend) or an SMS service (Twilio, or any SMS gateway with a web address, such as a local provider); until then the app keeps each message and shows it as not sent. Hosted on Vercel's free plan, scheduled jobs run once a day; under `karigor serve` on your computer they run every few minutes.
+
+Not yet supported: files over 4 MB, WhatsApp, anything that updates on screen without reloading, taking card or mobile-money payments inside the app (it records payments made elsewhere), and one installation serving several separate organisations. Karigor will work around them or leave them out and say so. Tips:
 
 - Name each kind of person and what they may and may not see; the design plans for them from the start.
 - Try each stage before building the next; your feedback goes into the next stage.

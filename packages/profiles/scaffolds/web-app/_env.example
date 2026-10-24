@@ -4,3 +4,24 @@ DATABASE_URL=file:./data/app.db
 # Optional: the Turso database token, needed only when hosted.
 # karigor: service turso
 DATABASE_AUTH_TOKEN=
+# The key the scheduler uses to start scheduled jobs. A random secret; nobody needs to know it.
+# karigor: generate
+CRON_SECRET=
+# Optional: to send emails (password resets, receipts), a free Resend account's API key. Until then emails are kept, not sent.
+# karigor: service resend
+RESEND_API_KEY=
+# Optional: the address emails come from, on a domain your Resend account has verified (for example "Clinic <hello@yourclinic.com>").
+# karigor: service resend
+EMAIL_FROM=
+# Optional: to send SMS through Twilio, your Twilio account SID. Until an SMS service is set up, messages are kept, not sent.
+# karigor: service twilio
+TWILIO_ACCOUNT_SID=
+# Optional: your Twilio auth token.
+# karigor: service twilio
+TWILIO_AUTH_TOKEN=
+# Optional: the Twilio phone number SMS come from.
+# karigor: service twilio
+TWILIO_FROM=
+# Optional: instead of Twilio, any SMS gateway's web address with {to} and {text} in it, from your SMS provider's account (for example a local provider's "send SMS" link with your API key).
+# karigor: service sms-gateway
+SMS_GATEWAY_URL=

@@ -16,4 +16,4 @@ export function sessionCookieOptions() {
  * Pages anyone may open without signing in. Add the app's own public pages here (a booking form,
  * a parent's lookup page); everything else needs a signed-in person.
  */
-export const PUBLIC_PATHS: RegExp[] = [/^\/login\/?$/, /^\/welcome\/[^/]+\/?$/, /^\/api\/health\/?$/, /^\/icon\.svg$/, /^\/favicon\.ico$/];
+export const PUBLIC_PATHS: RegExp[] = [/^\/login\/?$/, /^\/welcome\/[^/]+\/?$/, /^\/api\/health\/?$/, /^\/api\/jobs\/?$/, /^\/icon\.svg$/, /^\/favicon\.ico$/, /^\/manifest\.webmanifest$/];

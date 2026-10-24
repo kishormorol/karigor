@@ -360,6 +360,23 @@ export interface ServeOptions extends Omit<OperateOptions, "deploy" | "healthUrl
 }
 
 /**
+ * Ask the live app to run its due scheduled jobs, as Vercel Cron does when hosted. Apps made from a
+ * template without jobs answer 404, which is fine. Returns the lines worth logging.
+ */
+export async function runScheduledJobs(url: string, secret: string | undefined, fetcher: typeof fetch = fetch): Promise<string[]> {
+  if (!secret) return [];
+  try {
+    const res = await fetcher(url, { headers: { authorization: `Bearer ${secret}` } });
+    if (res.status === 404) return [];
+    if (!res.ok) return [`scheduled jobs could not start: the app said ${res.status}`];
+    const body = (await res.json().catch(() => ({}))) as { ran?: { name: string; result: string }[] };
+    return (body.ran ?? []).filter((j) => j.result !== "skipped").map((j) => `scheduled job ${j.name}: ${j.result}`);
+  } catch (e) {
+    return [`scheduled jobs could not start: ${(e as Error).message}`];
+  }
+}
+
+/**
  * Production for the local target: serve the live release on `port`, read its output for errors,
  * check its health on an interval, run fix rounds when needed, and switch to each new release.
  */
@@ -397,6 +414,7 @@ export async function serveProject(o: ServeOptions): Promise<void> {
       const { log: _l, port: _p, everyMs: _e, auditEveryMs: _a, signal: _s, ...rest } = o;
       const r = await operateOnce({ ...rest, log, deploy, signals, audit, ...(server ? { healthUrl: `http://127.0.0.1:${o.port}${healthPath}` } : {}) });
       if (r.cycle) log(`fix round ${r.cycle} ended: ${r.state.status}${r.state.stopReason ? ` (${r.state.stopReason})` : ""}`);
+      if (server && o.profile.jobsPath) for (const l of await runScheduledJobs(`http://127.0.0.1:${o.port}${o.profile.jobsPath}`, (await deploy.settingsEnv())["CRON_SECRET"])) log(l);
       await new Promise<void>((res) => {
         const t = setTimeout(res, o.everyMs);
         o.signal?.addEventListener("abort", () => {

@@ -29,6 +29,12 @@ People, sign-in and roles (already built and tested; build on them, never add a 
 - The app's name and tagline are in \`src/lib/app.ts\`; set them in the first item.
 - People join by a one-time link an admin copies and sends (no email service needed). The first admin's link comes from \`pnpm admin:link <email> "<name>"\`; Karigor runs it for the person.
 
+Built in and tested; use these rather than writing your own (an app made from an older template may lack them; add them only when an item needs them):
+- Email and SMS: \`sendEmail({ to, subject, text })\` and \`sendSms({ to, text })\` from \`src/server/messages.ts\`. Every message is kept in the \`messages\` table, sent or not: with no service set up it is kept as "not sent", so the app works before the person opens any account. Email uses Resend; SMS uses Twilio or any SMS gateway's web address (\`SMS_GATEWAY_URL\`, for local providers). Their settings are already in \`.env.example\`. Show the person what was not sent (an admin "Messages" list from \`listMessages()\`), and never claim a message went out when its status is not "sent".
+- File uploads (photos, documents up to 4 MB): a form with \`<input type="file" name="file">\` posting to a server action that calls \`saveUpload(formData.get("file") as File, user.id)\` from \`src/server/files.ts\`; show \`UploadError\` messages with \`Alert\`. Files live in the \`files\` table (no storage account needed) and are served at \`/files/<id>\` to signed-in people; store the id on your own record, and check the permission on any page that lists them. HTML and SVG are refused on purpose.
+- Scheduled jobs: add a \`Job\` to \`JOBS\` in \`src/server/jobs.ts\` with \`every: "day"\` or \`"hour"\`. They run through \`/api/jobs\`: once a day on Vercel's free plan (\`vercel.json\`), every few minutes under \`karigor serve\`. A job must be safe to run late or twice: check what is already done (a reminder already sent today) before doing it. Never add another cron or timer.
+- Installing on a phone: \`app/manifest.ts\` lets people add the app to their home screen; it uses the app name from \`src/lib/app.ts\`.
+
 Browser journeys (Karigor runs them on a brand-new database before every release; a failing journey stops the release. An app without \`playwright.config.ts\` has none):
 - \`tests/e2e/*.spec.ts\` with Playwright. Each kind of user's main jobs is a journey: "the receptionist registers a patient and books a visit", "a doctor cannot see the takings". Add or extend one in every item that changes what someone can do in the browser.
 - Use the helpers in \`tests/e2e/helpers.ts\`: \`signedIn(page, "receptionist")\` (a new person of that role, already signed in), \`makePerson(role)\` + \`signInAs(page, person)\` (through the real sign-in page), \`openSection(page, "Visits")\` (works on phone and desktop). Create the data a journey needs through the app's own pages or the server functions; never rely on another journey's data.
@@ -81,20 +87,24 @@ export const webApp: Profile = {
     return Boolean(pkg.scripts?.e2e);
   },
   parseJourneys: parsePlaywrightJson,
+  jobsPath: "/api/jobs",
   capabilities: {
     can: [
-      "Work in a browser on phones and computers",
+      "Work in a browser on phones and computers, and be added to a phone's home screen like an app",
       "Sign-in for many people, with roles and what each may see and do; invitations by one-time link",
       "An activity log of who did what",
       "Forms, searchable and sortable lists, records with money and stock",
       "Dashboards with charts, and CSV export for spreadsheets",
-      "Password-reset emails, once the person has a free Resend account",
+      "Photos and documents up to 4 MB, kept in the app's own database",
+      "Jobs that run on a schedule by themselves: once a day when hosted on the free plan, every few minutes on this computer",
+      "Sending email and SMS once the person has an account with an email or SMS service (Resend; Twilio or any SMS gateway with a web address); until then messages are kept and shown as not sent",
     ],
     notYet: [
-      "File uploads (photos, documents)",
-      "Jobs that run on a schedule by themselves (a reminder every morning)",
-      "Sending SMS or WhatsApp messages",
       "One installation serving several separate organisations, each with its own data",
+      "Files over 4 MB (videos, large scans)",
+      "Jobs that must run more than once a day when hosted on the free plan",
+      "WhatsApp messages, live chat, or anything that updates on screen without reloading",
+      "Taking card or mobile-money payments inside the app (it records payments made elsewhere)",
     ],
   },
   healthPath: "/api/health",

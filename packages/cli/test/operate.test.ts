@@ -193,3 +193,20 @@ describe("signals", () => {
 });
 
 void readFile;
+
+describe("scheduled jobs on this computer", () => {
+  it("serve asks the live app to run its due jobs with the app's own secret, and logs only what ran", async () => {
+    const { runScheduledJobs } = await import("../src/index.js");
+    const seen: (string | null)[] = [];
+    const app = (async (_url: string, init?: RequestInit) => {
+      seen.push(new Headers(init?.headers).get("authorization"));
+      return Response.json({ ran: [{ name: "remind", result: "ok" }, { name: "cleanup", result: "skipped" }, { name: "sync", result: "failed: no network" }] });
+    }) as typeof fetch;
+    expect(await runScheduledJobs("http://127.0.0.1:3000/api/jobs", "s3cret", app)).toEqual(["scheduled job remind: ok", "scheduled job sync: failed: no network"]);
+    expect(seen).toEqual(["Bearer s3cret"]);
+    // an app from an older template has no jobs; no secret means nothing to call
+    expect(await runScheduledJobs("http://x/api/jobs", "s", (async () => new Response("", { status: 404 })) as typeof fetch)).toEqual([]);
+    expect(await runScheduledJobs("http://x/api/jobs", undefined, app)).toEqual([]);
+    expect(await runScheduledJobs("http://x/api/jobs", "s", (async () => new Response("", { status: 401 })) as typeof fetch)).toEqual(["scheduled jobs could not start: the app said 401"]);
+  });
+});

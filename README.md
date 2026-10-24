@@ -156,7 +156,9 @@ Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (k
 
 7. ~~Growing systems: stages, people and roles, browser journeys, a kit for systems~~
 
-Next: file uploads and scheduled jobs in the web-app profile, a full recorded idea-to-production run on a real model, more target profiles (static site, API, mobile), Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
+The web-app profile also has file uploads, scheduled jobs, email and SMS, and can be added to a phone's home screen.
+
+Next: a full recorded idea-to-production run on a real model, more target profiles (static site, API, mobile), Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
 
 ## Development
 

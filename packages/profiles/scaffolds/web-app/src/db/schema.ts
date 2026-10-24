@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { blob, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Database tables. Add one `sqliteTable` per kind of thing the app stores.
@@ -69,3 +69,40 @@ export const activity = sqliteTable(
   },
   (t) => [index("activity_at_idx").on(t.at)],
 );
+
+/** Every email and SMS the app tried to send, sent or not, newest last. Written by src/server/messages.ts. */
+export const messages = sqliteTable(
+  "messages",
+  {
+    id: text("id").primaryKey(),
+    channel: text("channel", { enum: ["email", "sms"] }).notNull(),
+    to: text("to").notNull(),
+    subject: text("subject"),
+    body: text("body").notNull(),
+    /** sent; not-sent (no service set up yet); failed (the service refused it). */
+    status: text("status", { enum: ["sent", "not-sent", "failed"] }).notNull(),
+    /** Why it was not sent, in plain words, or the service's message id. */
+    detail: text("detail"),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [index("messages_created_idx").on(t.createdAt)],
+);
+
+/** Uploaded files, kept in the database itself so they work on this computer and when hosted. Written by src/server/files.ts. */
+export const files = sqliteTable("files", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  size: integer("size").notNull(),
+  data: blob("data", { mode: "buffer" }).notNull(),
+  uploadedBy: text("uploaded_by"),
+  createdAt: integer("created_at").notNull(),
+});
+
+/** When each scheduled job last ran. Written by src/server/jobs.ts. */
+export const jobRuns = sqliteTable("job_runs", {
+  name: text("name").primaryKey(),
+  lastRunAt: integer("last_run_at").notNull(),
+  /** "ok" or the error, in a line. */
+  result: text("result").notNull(),
+});
