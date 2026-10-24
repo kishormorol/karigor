@@ -42,23 +42,25 @@
 </div>
 <p class="small">No API key needed with a Claude Code login. Or run fully offline with a local model.</p>
 </div>
-<figure>
-<div class="chat" role="img" aria-label="The Karigor chat: a person describes a grocery counter app, and Karigor reports its progress in plain sentences until stage 1 is live">
-<div class="chat-top"><strong>Shop counter</strong><span class="mono">p-mvin1bja-92f2</span></div>
-<div class="msg msg-me" style="--d: .2s">A shop counter for my small grocery in Dhaka. Only I sign in, on my phone. It adds up the total in taka, I choose cash or bKash, and the stock goes down.</div>
-<div class="msg" style="--d: 1.1s">I wrote the specification and recorded every assumption I made. You can correct any of them.</div>
-<div class="msg msg-col" style="--d: 2s"><span>The skeptic objected: cancelling a sale must put the stock back. I revised it.</span>
-<span class="chips">
-<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>tests</span>
-<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>lint</span>
-<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>build</span>
-<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>security scan</span>
-<span class="chip"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>journeys</span>
-</span></div>
-<div class="msg" style="--d: 4s">Stage 1 is live at <span class="mono accent">localhost:3300</span>. I checked the preview and a rollback first.</div>
-<div class="chat-input"><span>Tell me what to change…</span><span class="send" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></div>
+<figure class="run" id="run" aria-label="An example run of Karigor, replayed in your browser">
+<div class="run-card">
+<div class="run-top"><span>Run · <b id="run-name">Shop counter</b></span><span id="run-pct" class="is-live"><i class="live-dot" aria-hidden="true"></i>Live</span></div>
+<div class="run-bar"><span id="run-fill" style="--p: 100%"></span></div>
+<p class="run-idea" id="run-idea">A shop counter for my small grocery in Dhaka. Only I sign in, on my phone. It adds up the total in taka, I choose cash or bKash, and the stock goes down.</p>
+<ol class="run-phases" id="run-phases"><li data-state="done">Spec</li><li data-state="done">Design</li><li data-state="done">Plan</li><li data-state="done">Build</li><li data-state="done">Release</li></ol>
+<ul class="run-items" id="run-items">
+<li data-s="passed"><span class="ri-icon" aria-hidden="true">✓</span><span class="ri-title">Sign in on my phone</span><span class="ri-status">passed</span></li>
+<li data-s="passed"><span class="ri-icon" aria-hidden="true">✓</span><span class="ri-title">Products and prices in taka</span><span class="ri-status">passed</span></li>
+<li data-s="passed"><span class="ri-icon" aria-hidden="true">✓</span><span class="ri-title">Ring up a sale</span><span class="ri-status">passed</span></li>
+<li data-s="passed"><span class="ri-icon" aria-hidden="true">✓</span><span class="ri-title">Pay by cash or bKash</span><span class="ri-status">passed</span></li>
+<li data-s="passed"><span class="ri-icon" aria-hidden="true">✓</span><span class="ri-title">Stock goes down with each sale</span><span class="ri-status">passed</span></li>
+<li data-s="passed"><span class="ri-icon" aria-hidden="true">✓</span><span class="ri-title">Cancel a sale</span><span class="ri-status">passed · 1 fix</span></li>
+</ul>
+<div class="run-gates" id="run-gates"><span class="g" data-g="pass">preview</span><span class="g" data-g="pass">rollback</span></div>
+<div class="run-foot"><p class="run-say" id="run-say">Stage 1 is live at <span class="mono">localhost:3300</span>.</p><button class="run-btn" id="run-toggle" type="button" hidden>Pause</button></div>
 </div>
-<figcaption>An example of the chat UI: the idea is the first message, and progress comes back as plain sentences.</figcaption>
+<div class="try" id="run-try" role="group" aria-label="Example ideas" hidden><span class="try-label">Try an idea</span><button type="button" data-ex="shop" aria-pressed="true">Shop counter</button><button type="button" data-ex="family" aria-pressed="false">Family list</button><button type="button" data-ex="tools" aria-pressed="false">Tool lending</button></div>
+<figcaption>The steps of a real run, replayed in your browser. A real run takes hours, not seconds.</figcaption>
 </figure>
 </section>
 
