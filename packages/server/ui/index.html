@@ -160,6 +160,21 @@ li.fail { color: var(--bad); }
 .examples { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 480px; margin-top: 8px; }
 .examples button { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; transition: border-color .15s, transform .15s; }
 .examples button:hover { border-color: var(--accent); transform: translateY(-1px); }
+.starters { width: 100%; max-width: 560px; margin-top: 20px; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.starters h2 { margin: 0; font-size: 15px; }
+.starters > p { font-size: 13px; padding: 0; }
+.sgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sgrid button { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; transition: border-color .15s, transform .15s; }
+.sgrid button:hover { border-color: var(--accent); transform: translateY(-1px); }
+.sgrid button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.sgrid b { font-size: 14px; }
+.sgrid span { font-size: 12px; color: var(--muted); }
+@media (max-width: 420px) { .sgrid { grid-template-columns: 1fr; } }
+.picked { max-width: 720px; margin: 0 auto 8px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 14px; padding: 8px 12px; font-size: 14px; }
+.picked .top { display: flex; gap: 10px; align-items: center; }
+.picked .what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.picked .what .meta { padding: 0; }
+.picked p { margin: 6px 0 2px; font-size: 13px; color: var(--muted); max-height: 30vh; overflow: auto; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 footer { position: sticky; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
@@ -192,6 +207,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 <main id="main" aria-live="polite"></main>
 
 <footer>
+  <div class="picked" id="picked" hidden></div>
   <form class="composer" id="composer">
     <label for="input" class="sr">Message</label>
     <textarea id="input" rows="1" placeholder="Describe your idea…"></textarea>
@@ -231,6 +247,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   let stream = null;
   let justCreated = null; // a project this tab just started: its first messages slide in too
   let shown = -1; // messages already on screen for this project; -1 until the first view arrives
+  let starters = null; // the ready-made ideas, loaded once
+  let picked = null; // the ready-made idea a new project starts from
+  let allStarters = false;
 
   const store = {
     get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -432,7 +451,48 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
           el("li", {}, el("span", { class: "n" }, "1"), el("b", {}, "You describe it"), "In your own words, once."),
           el("li", {}, el("span", { class: "n" }, "2"), el("b", {}, "Karigor builds it"), "Every step is checked: tests, reviews, a security scan."),
           el("li", {}, el("span", { class: "n" }, "3"), el("b", {}, "It goes live"), "And stays working: problems become fixes.")),
+        startersSection(),
       ),
+    );
+  }
+
+  // ---- ready-made ideas: pick one, then say what is different for you ----
+  function startersSection() {
+    const box = el("section", { class: "starters", "aria-labelledby": "startersTitle" });
+    const fill = () => {
+      if (!starters || !starters.length) return box.replaceChildren();
+      const list = allStarters ? starters : starters.slice(0, 6);
+      box.replaceChildren(
+        el("h2", { id: "startersTitle" }, "Or start from a ready-made idea"),
+        el("p", { class: "meta" }, "Common needs in Bangladesh, written out in full. Pick one, then tell me what is different for you."),
+        el("div", { class: "sgrid" }, list.map((s) => el("button", { type: "button", "aria-pressed": picked && picked.id === s.id ? "true" : "false", "data-starter": s.id, onclick: () => pick(s) }, el("b", {}, s.title), el("span", {}, `For ${s.for}`)))),
+        starters.length > 6 ? el("button", { type: "button", class: "linkbtn", onclick: () => { allStarters = !allStarters; fill(); } }, allStarters ? "Show fewer" : `Show all ${starters.length}`) : null,
+      );
+    };
+    if (starters) fill();
+    else api("/api/starters").then((r) => { starters = r.starters; fill(); }).catch(() => { starters = []; });
+    return box;
+  }
+
+  function pick(s) {
+    picked = s;
+    showPicked();
+    input.focus();
+  }
+  function showPicked() {
+    const box = $("picked");
+    const on = !!(picked && !current);
+    box.hidden = !on;
+    for (const b of document.querySelectorAll("[data-starter]")) b.setAttribute("aria-pressed", String(on && b.dataset.starter === picked.id));
+    input.placeholder = current ? "Something to fix or add?" : on ? "What is different for you? (optional)" : "Describe your idea…";
+    if (!on) return box.replaceChildren();
+    const full = el("p", { hidden: true }, picked.idea, el("br"), el("br"), `Modelled on ${picked.basedOn.join(", ")}.`);
+    box.replaceChildren(
+      el("div", { class: "top" },
+        el("span", { class: "what" }, el("span", {}, "Starting from ", el("b", {}, picked.title)), el("span", { class: "meta" }, "Add what is different for you, or send as it is.")),
+        el("button", { type: "button", class: "linkbtn", onclick: (e) => { full.hidden = !full.hidden; e.target.textContent = full.hidden ? "Read it" : "Hide"; } }, "Read it"),
+        el("button", { type: "button", class: "linkbtn", "aria-label": `Remove ${picked.title}`, onclick: () => { picked = null; showPicked(); input.focus(); } }, "Remove")),
+      full,
     );
   }
 
@@ -440,13 +500,15 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   async function submit(e) {
     e.preventDefault();
     const t = input.value.trim();
-    if (!t) return;
+    const starter = !current && picked ? picked.id : null;
+    if (!t && !starter) return;
     if (config.needsKey && !store.get("karigor_key")) { $("keyDialog").showModal(); return; }
     send.disabled = true;
     try {
       if (!current) {
-        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey({ idea: t })) });
+        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey(starter ? { starter, idea: t } : { idea: t })) });
         input.value = "";
+        picked = null;
         justCreated = r.projectId;
         location.hash = `#/p/${r.projectId}`;
       } else {
@@ -473,7 +535,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     shown = justCreated === id ? 0 : -1;
     justCreated = null;
     hint.textContent = "";
-    input.placeholder = id ? "Something to fix or add?" : "Describe your idea…";
+    showPicked();
     send.textContent = id ? "Send" : "Build";
     render();
     if (!id) return;

@@ -55,6 +55,26 @@ describe("server", { timeout: 180_000 }, () => {
     expect(list).toEqual([expect.objectContaining({ id, status: "finished", running: false })]);
   });
 
+  it("offers the ready-made ideas and starts one with the person's changes", async () => {
+    const { k, call } = await start();
+    const starters = (await call("/api/starters")).json["starters"] as { id: string; title: string; idea: string }[];
+    expect(starters.length).toBeGreaterThanOrEqual(20);
+    const pharmacy = starters.find((s) => s.id === "pharmacy")!;
+    expect(pharmacy).toMatchObject({ title: expect.any(String), idea: expect.any(String) });
+    const created = await call("/api/projects", { method: "POST", body: JSON.stringify({ starter: "pharmacy", idea: "We have two branches, in Mirpur and Uttara." }) });
+    expect(created.status).toBe(201);
+    const id = created.json["projectId"] as string;
+    await k.idle();
+    expect((await call(`/api/projects/${id}`)).json["idea"]).toBe(`${pharmacy.idea}\n\nMy changes to this: We have two branches, in Mirpur and Uttara.`);
+    // as it is, with no changes
+    const plain = await call("/api/projects", { method: "POST", body: JSON.stringify({ starter: "samity" }) });
+    expect(plain.status).toBe(201);
+    await k.idle();
+    expect((await call(`/api/projects/${plain.json["projectId"] as string}`)).json["idea"]).toBe(starters.find((s) => s.id === "samity")!.idea);
+    const unknown = await call("/api/projects", { method: "POST", body: JSON.stringify({ starter: "spaceship" }) });
+    expect(unknown).toMatchObject({ status: 400, json: { error: expect.stringMatching(/no ready-made idea called "spaceship"/) } });
+  });
+
   it("feedback and corrections on a finished project start a fix round on their own", async () => {
     const { k, call } = await start();
     const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
