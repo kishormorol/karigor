@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
+import { FsStore } from "@karigor/store";
 import { createKarigorServer, type KarigorServer } from "../src/index.js";
 
 const open: KarigorServer[] = [];
@@ -98,6 +99,23 @@ describe("server", { timeout: 180_000 }, () => {
     expect(k.runs.has(id)).toBe(false);
     await rm(join(root, id, "run.lock"));
     expect((await call(`/api/projects/${id}`)).json).toMatchObject({ running: false });
+  });
+
+  it("a project paused for the usage allowance carries on by itself, even one paused before the server started", async () => {
+    const first = await start();
+    const id = (await first.call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await first.k.idle();
+    // Pretend it ran out of allowance: the log ends paused, and the next pass must carry on.
+    const store = await FsStore.open(first.root, id);
+    await store.appendEvent({ type: "project-reopened", by: "user", itemIds: [] });
+    await store.appendEvent({ type: "project-paused", by: "system", reason: "the model's usage allowance is used up" });
+    const k = createKarigorServer({ root: first.root, adapter: "demo", resumeEveryMs: 50 });
+    open.push(k);
+    const deadline = Date.now() + 60_000;
+    while (!k.runs.has(id) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 25));
+    expect(k.runs.has(id)).toBe(true);
+    await k.idle();
+    expect((await store.replay()).status).toBe("finished");
   });
 
   it("streams the project as it changes", async () => {

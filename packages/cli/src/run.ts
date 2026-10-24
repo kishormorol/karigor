@@ -645,3 +645,23 @@ function renderLedgerBody(m: MetaOf<"cost-ledger">): string {
 }
 
 export type { Usage };
+
+/** The project stopped only because the model's usage allowance ran out; nothing is wrong with the work. */
+export const pausedForAllowance = (s: ProjectState): boolean => s.status === "waiting" && Boolean(s.pausedReason);
+
+/**
+ * Run, and while the allowance is used up, wait and try again. The provider's stated reset time
+ * is not trusted (it has been wrong), so this simply retries on a fixed interval.
+ */
+export async function runWaiting(
+  make: () => Promise<RunOptions>,
+  o: { everyMs: number; log?: (line: string) => void; sleep?: (ms: number) => Promise<void> },
+): Promise<ProjectState> {
+  const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  for (;;) {
+    const state = await runProject(await make());
+    if (!pausedForAllowance(state)) return state;
+    o.log?.(`waiting ${Math.round(o.everyMs / 60_000)} minutes for the usage allowance, then trying again`);
+    await sleep(o.everyMs);
+  }
+}

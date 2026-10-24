@@ -77,7 +77,7 @@ karigor cost <id>         # what it has used
 
 | What you see | What to do |
 |---|---|
-| It paused because your Claude usage limit ran out | Wait for the reset, then `karigor resume <id>` |
+| It paused because your Claude usage limit ran out | `karigor resume <id> --wait` tries again every 30 minutes until it can carry on. The chat UI and `karigor serve` do this on their own |
 | Your computer slept, the terminal closed, or it crashed | `karigor resume <id>` |
 | `status` says it is waiting for a setting | `karigor setup <id>` (step 4) |
 | It stopped with pieces of work set aside ("parked") | `karigor reopen <id>`, then `karigor resume <id>` |
@@ -180,7 +180,7 @@ Not yet supported: file uploads (photos, documents), scheduled jobs (a reminder 
 |---|---|
 | `karigor new "<idea>" --run` | Start a new app and build it |
 | `karigor status <id>` | Where it stands |
-| `karigor resume <id>` | Continue after a pause, limit or crash |
+| `karigor resume <id> [--wait]` | Continue after a pause, limit or crash; `--wait` keeps retrying through usage limits |
 | `karigor setup <id>` | Give settings only you can provide |
 | `karigor serve <id> --port <n>` | Run it on this computer and keep it healthy |
 | `karigor feedback <id> "<text>"` | Ask for a change or report a problem |

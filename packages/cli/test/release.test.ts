@@ -131,6 +131,26 @@ describe("release: deploy, verify, promote", { timeout: 120_000 }, () => {
     for (const id of ["b1", "b2", "b3"]) expect(done.items[id]?.status).toBe("done");
   });
 
+  it("with waiting on, a pause for the allowance is retried on an interval until the project finishes", async () => {
+    const { QuotaError } = await import("@karigor/runtime");
+    const { runWaiting } = await import("../src/index.js");
+    const { root, projectId } = await fresh();
+    let limits = 2;
+    const agent = new MockAgent((req: AgentRequest) => {
+      const itemId = /"id": "([a-z0-9-]+)"/.exec(req.user)?.[1] ?? "x";
+      if (itemId === "b2" && limits > 0) {
+        limits--;
+        throw new QuotaError("You've hit your limit", undefined);
+      }
+      return { files: { [`src/${itemId}.js`]: `export const v = "${itemId}";\n`, "tests.json": JSON.stringify({ passed: 2, failed: 0, skipped: 0 }) }, summary: `Implemented ${itemId}.` };
+    });
+    const slept: number[] = [];
+    const done = await runWaiting(async () => opts(root, projectId, new FakeDeploy(), agent), { everyMs: 1_800_000, sleep: async (ms) => void slept.push(ms) });
+    expect(done.status, done.stopReason).toBe("finished");
+    expect(slept).toEqual([1_800_000, 1_800_000]);
+    expect(done.failures).toBe(0);
+  });
+
   it("reopen puts a stopped project's parked work back, with fresh retries, and it carries on to release", async () => {
     const { root, projectId } = await fresh();
     // b3 never changes anything, so it is shrunk and its replacement parked; then going live fails, so the project stops

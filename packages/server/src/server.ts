@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, operateOnce, provideSettings, recordSignals, runOptions, runProject } from "@karigor/cli";
+import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -25,6 +25,8 @@ export interface ServerOptions {
   token?: string;
   /** Builds running at once. */
   maxRuns?: number;
+  /** How long a project paused for the usage allowance waits before trying again (default 30 minutes). */
+  resumeEveryMs?: number;
   log?: (line: string) => void;
 }
 
@@ -107,8 +109,11 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
   const log = o.log ?? (() => {});
   const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}) };
 
+  const retries = new Map<string, ReturnType<typeof setTimeout>>();
   const startRun = (id: string, kind: "run" | "fix" | "grow", apiKey?: string): boolean => {
     if (runs.has(id)) return false;
+    clearTimeout(retries.get(id));
+    retries.delete(id);
     if (runs.size >= (o.maxRuns ?? 2)) throw new HttpError(429, "Karigor is busy with other projects; try again in a few minutes");
     problems.delete(id);
     const p = (async () => {
@@ -124,10 +129,37 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
         problems.set(id, e.message);
         log(`[${id}] stopped with an error: ${e.message}`);
       })
-      .finally(() => runs.delete(id));
+      .finally(() => {
+        runs.delete(id);
+        void retryIfPaused(id);
+      });
     runs.set(id, p);
     return true;
   };
+
+  /** A project paused for the usage allowance tries again on its own, on a fixed interval; the page shows it paused meanwhile. */
+  const retryIfPaused = async (id: string): Promise<void> => {
+    if (retries.has(id) || runs.has(id)) return;
+    const state = await FsStore.open(o.root, id).then((st) => st.replay()).catch(() => undefined);
+    if (!state || !pausedForAllowance(state)) return;
+    const t = setTimeout(() => {
+      retries.delete(id);
+      void (async () => {
+        try {
+          if (runs.has(id)) return;
+          if (await busyElsewhere(id)) return void retryIfPaused(id);
+          log(`[${id}] trying again after the usage allowance pause`);
+          startRun(id, "run");
+        } catch {
+          void retryIfPaused(id); // busy with other projects: wait another round
+        }
+      })();
+    }, o.resumeEveryMs ?? 30 * 60_000);
+    t.unref?.();
+    retries.set(id, t);
+  };
+  // Projects paused before this server started carry on too.
+  void listProjects(o.root).then((ps) => Promise.all(ps.filter((p) => p.status === "waiting").map((p) => retryIfPaused(p.id)))).catch(() => {});
 
   /** Another process (karigor serve, a CLI run or resume) is working on it. */
   const busyElsewhere = async (id: string) => !runs.has(id) && (await runningPid(join(o.root, id))) !== undefined;

@@ -6,7 +6,7 @@ import { FsStore, queueInbox, runningPid } from "@karigor/store";
 import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
-import { createProject, runProject } from "./run.js";
+import { createProject, runProject, runWaiting } from "./run.js";
 import { projectPort, runOptions as setupRun, type RunFlags } from "./setup.js";
 
 const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: (l) => console.log(l) });
@@ -40,8 +40,10 @@ runFlags(
     else console.log(`Next: karigor run ${projectId}`);
   });
 
-async function run(root: string, projectId: string, o: RunFlags) {
-  const state = await runProject(await runOptions(root, projectId, o));
+async function run(root: string, projectId: string, o: RunFlags & { wait?: string | boolean }) {
+  const everyMs = o.wait === undefined ? 0 : (o.wait === true ? 30 : Math.max(1, Number(o.wait) || 30)) * 60_000;
+  const make = () => runOptions(root, projectId, o);
+  const state = everyMs ? await runWaiting(make, { everyMs, log: (l) => console.log(l) }) : await runProject(await make());
   const store = await FsStore.open(root, projectId);
   console.log("");
   console.log(await renderStatus(store, state));
@@ -51,7 +53,8 @@ async function run(root: string, projectId: string, o: RunFlags) {
 for (const name of ["run", "resume"]) {
   runFlags(program.command(name).argument("<projectId>"))
     .description(name === "run" ? "build the project until it is finished or stopped" : "continue a project after an interruption")
-    .action(async (projectId: string, o: RunFlags) => {
+    .option("--wait [minutes]", "when the usage allowance runs out, wait and try again every this many minutes (default 30) instead of stopping")
+    .action(async (projectId: string, o: RunFlags & { wait?: string | boolean }) => {
       await run(program.opts<{ root: string }>().root, projectId, o);
     });
 }
