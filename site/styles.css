@@ -271,6 +271,22 @@ figcaption { margin-top: 12px; font-size: 13px; color: var(--muted); }
 }
 
 /* Stack list */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.vs { border-top: 1px solid var(--line); }
+.vs-row { display: grid; grid-template-columns: 12rem minmax(0, 1fr) minmax(0, 1fr); gap: 8px 32px; padding: 18px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.vs-row strong { font-weight: 600; color: var(--ink); }
+.vs-row p { font-size: 16px; }
+.vs-head { padding-block: 12px; font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.vs-head > :last-child { color: var(--accent); padding-left: 16px; }
+.vs-without { color: var(--muted); }
+.vs-with { color: var(--ink); padding-left: 14px; border-left: 2px solid var(--accent); }
+@media (max-width: 760px) {
+  .vs-head { display: none; }
+  .vs-row { grid-template-columns: minmax(0, 1fr); }
+  .vs-row p::before { content: attr(data-label); display: block; margin-bottom: 2px; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .vs-with::before { color: var(--accent); }
+}
+
 .starter-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .starter-list button { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); font: inherit; font-size: 15px; color: var(--ink-2); cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
 .starter-list button:hover { border-color: var(--ink-2); color: var(--ink); }

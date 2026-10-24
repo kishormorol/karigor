@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Hind+Siliguri:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -96,10 +96,17 @@
 <p class="eyebrow">Why it is different</p>
 <h2 class="h2">Plenty of tools write code from a prompt. Karigor runs the whole job.</h2>
 </div>
-<div class="grid" style="--min: 320px; gap: 24px">
-<article class="card"><span class="card-num">01</span><h3 class="h3" style="font-size: 28px">It owns the whole lifecycle</h3><p class="body">Specify, design, plan, build, verify, release, and then watch production and fix what breaks. Not “here is a repo, good luck”.</p></article>
-<article class="card"><span class="card-num">02</span><h3 class="h3" style="font-size: 28px">Reliability comes from process, not trust</h3><p class="body">A small, deterministic kernel runs a real software process. Nothing moves forward without mechanical evidence: tests green, security scan clean, a healthy preview, a verified rollback. Agents will make mistakes; the gates stop them reaching you.</p></article>
+<div class="vs" role="table" aria-label="A prompt-to-code tool compared with Karigor">
+<div class="vs-row vs-head" role="row"><span role="columnheader"><span class="sr">Moment</span></span><span role="columnheader">A prompt-to-code tool</span><span role="columnheader">Karigor</span></div>
+<div class="vs-row" role="row"><strong role="rowheader">You describe it</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">It starts writing code straight from your prompt.</p><p role="cell" class="vs-with" data-label="Karigor">It writes a specification first and records every assumption, so you can correct any of them in your own words.</p></div>
+<div class="vs-row" role="row"><strong role="rowheader">Questions</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">Which framework? Which database? Where should it be hosted?</p><p role="cell" class="vs-with" data-label="Karigor">None that are technical. It decides, and shows you each decision.</p></div>
+<div class="vs-row" role="row"><strong role="rowheader">Checking the work</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">It says it is done. You find out if that is true.</p><p role="cell" class="vs-with" data-label="Karigor">Nothing moves on an agent’s word: tests, lint, a security scan, a skeptic’s review and browser journeys at phone and desktop size must pass.</p></div>
+<div class="vs-row" role="row"><strong role="rowheader">When something fails</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">You paste the error back in and hope.</p><p role="cell" class="vs-with" data-label="Karigor">It retries, sends the work back, sets it aside, or stops, and tells you which in plain words.</p></div>
+<div class="vs-row" role="row"><strong role="rowheader">Putting it online</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">You get a repo. Hosting it is your job.</p><p role="cell" class="vs-with" data-label="Karigor">It releases it, checks the live app is healthy, and keeps the last good version to roll back to.</p></div>
+<div class="vs-row" role="row"><strong role="rowheader">After it is live</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">The conversation ends there.</p><p role="cell" class="vs-with" data-label="Karigor">It watches for errors and downtime, turns your messages into fix rounds, and builds the next stage when you say so.</p></div>
+<div class="vs-row" role="row"><strong role="rowheader">Cost</strong><p role="cell" class="vs-without" data-label="A prompt-to-code tool">It keeps spending until you stop it.</p><p role="cell" class="vs-with" data-label="Karigor">You pick a budget once. A meter shows what is used, and it never overspends.</p></div>
 </div>
+<p class="note" style="margin-top: 32px"><strong>Reliability comes from process, not trust.</strong> A small, deterministic kernel runs a real software process. Agents will make mistakes; the gates stop them reaching you.</p>
 </section>
 
 <section class="dark" id="gates">
