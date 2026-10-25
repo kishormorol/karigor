@@ -134,6 +134,19 @@ describe("machine: phase failures", () => {
     expect(r.state.phaseEntries["design"]).toBe(3);
   });
 
+  it("a different exit gate failing after an earlier one was fixed gets its own ladder, not the rest of the other's", async () => {
+    const t = await loadTemplate("iterative");
+    let scans = 0, journeys = 0;
+    const r = simulate(t, {
+      backlog: [item("b1")],
+      // as on a real run: the scan fails twice (retry, then back to plan for a fix), then the journeys fail once
+      gate: (a) => (a.gate === "security-scan-clean" && scans++ < 2) || (a.gate === "journeys-pass" && journeys++ < 1) ? "fail" : "pass",
+    });
+    expect(types(r.actions).filter((x) => ["retryPhase", "sendBack", "stop"].includes(x))).toEqual(["retryPhase", "sendBack", "retryPhase"]);
+    expect(r.state.status).toBe("finished");
+    expect(r.state.gateFails).toMatchObject({ "build:security-scan-clean": 2, "build:journeys-pass": 1 });
+  });
+
   it("a phase role that fails after its own retries counts as a phase failure", async () => {
     const t = await loadTemplate("linear");
     const r = simulate(t, {

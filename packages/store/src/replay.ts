@@ -61,6 +61,8 @@ export interface ProjectState {
   phaseEntries: Record<string, number>;
   /** Phase-level failures (worker or gate without an item), per phase, across entries. */
   phaseFails: Record<string, number>;
+  /** Failures of each phase exit gate, keyed "<phase>:<gate>": a different gate failing gets its own ladder. */
+  gateFails: Record<string, number>;
   items: Record<string, ItemState>;
   /** keyed by the worker's scope key. */
   workers: Record<string, WorkerState>;
@@ -100,6 +102,7 @@ export function emptyState(projectId: string): ProjectState {
     phaseHistory: [],
     phaseEntries: {},
     phaseFails: {},
+    gateFails: {},
     items: {},
     workers: {},
     gates: {},
@@ -185,7 +188,11 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       if (e.verdict === "fail") {
         s.failures += 1;
         if (e.itemId) item(s, e.itemId).failCount += 1;
-        else if (s.phase) s.phaseFails[s.phase] = (s.phaseFails[s.phase] ?? 0) + 1;
+        else if (s.phase) {
+          s.phaseFails[s.phase] = (s.phaseFails[s.phase] ?? 0) + 1;
+          const g = `${s.phase}:${e.gate}`;
+          s.gateFails[g] = (s.gateFails[g] ?? 0) + 1;
+        }
       }
       break;
     case "transition":
@@ -228,6 +235,7 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       // A new cycle gets a fresh failure budget; scope keys stay unique because phase entry counts are kept.
       s.failures = 0;
       s.phaseFails = {};
+      s.gateFails = {};
       s.downgradedPhases = [];
       for (const id of e.workItemIds) {
         const w = s.workItems[id];
@@ -262,6 +270,7 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       delete s.pausedReason;
       s.failures = 0;
       s.phaseFails = {};
+      s.gateFails = {};
       for (const id of e.itemIds) s.items[id] = { status: "todo", failCount: 0 };
       break;
     case "settings-provided":

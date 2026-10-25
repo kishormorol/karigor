@@ -17,7 +17,7 @@ phases:
     transitions:
       - to: design
         gates: [spec-complete, skeptic-review]
-        onFail:                   # walked by the phase's fail count
+        onFail:                   # walked by the failing gate's count (each gate has its own)
           - { action: retry, times: 2 }
           - { action: sendBack, phase: specify, times: 1 }
           - { action: stop }      # last rung must be stop or sendBack
@@ -49,7 +49,7 @@ Judged (a reviewer or skeptic with a rubric, must cite): `spec-complete`, `archi
 
 ## Failure ladders
 
-A ladder is walked by a fail count. Rungs with `times` absorb that many failures in order; the final rung absorbs the rest.
+A ladder is walked by a fail count. Rungs with `times` absorb that many failures in order; the final rung absorbs the rest. A phase ladder counts each exit gate on its own: if the security scan fails twice and is fixed, a later journey failure starts at the first rung instead of stopping the phase. A gate that keeps failing still reaches `stop`, and `limits.projectFailures` caps the total. A role that cannot produce valid work counts against the phase as a whole.
 
 - Phase ladders may use `retry`, `sendBack`, `stop`.
 - Item ladders may use `retry`, `shrink`, `park`. `shrink` re-invokes the planner to split the item; `park` sets it aside with a plain-language reason and the project continues.

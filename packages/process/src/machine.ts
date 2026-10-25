@@ -197,7 +197,8 @@ function findPhaseFailure(state: ProjectState, scope: string): PhaseFailure | un
 function phaseFailAction(template: Template, phase: Phase, phaseName: string, state: ProjectState, failure: PhaseFailure): Action {
   const tr = phase.transitions[0];
   if (!tr) throw new MachineError(`phase "${phaseName}" has no transition`);
-  const count = state.phaseFails[phaseName] ?? 0;
+  // A gate climbs its own ladder: one that fails again stops the phase, but a different gate failing after a fix starts afresh.
+  const count = failure.kind === "gate" ? (state.gateFails?.[`${phaseName}:${failure.name}`] ?? state.phaseFails[phaseName] ?? 0) : (state.phaseFails[phaseName] ?? 0);
   const why = failure.kind === "gate" ? `gate "${failure.name}" failed` : `${failure.name} could not produce valid work`;
   const rung = rungFor(tr.onFail, count);
   switch (rung.action) {
