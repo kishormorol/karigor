@@ -1,6 +1,7 @@
 import type { Judge, JudgeRequest } from "@karigor/gates";
 import { JudgedVerdictSchema } from "@karigor/gates";
 import type { ModelTier } from "@karigor/store";
+import { languageNote } from "@karigor/store";
 import type { ModelAdapter, Usage } from "./adapters/index.js";
 import { readPrompt, renderArtifact } from "./roles/index.js";
 
@@ -17,7 +18,7 @@ export interface JudgeBudget {
 export function makeJudge(adapter: ModelAdapter, budget: JudgeBudget): Judge {
   return async (req: JudgeRequest) => {
     const [preamble, prompt] = await Promise.all([readPrompt("preamble"), readPrompt(req.role)]);
-    const system = `${preamble}\n\n${prompt}\n\n${req.rubric}`;
+    const system = `${preamble}\n\n${prompt}\n\n${req.rubric}${languageNote(req.language)}`;
     const user = renderJudgeInputs(req);
     let tier: Exclude<ModelTier, "mock"> = "judgment";
     const allowance = budget.allow(tier);

@@ -1,4 +1,5 @@
 import type { Artifact, ModelTier } from "@karigor/store";
+import { ideaLanguage, languageNote } from "@karigor/store";
 import { readPrompt, renderFeedback, type RoleContext } from "./roles/index.js";
 import type { WorkerBudget } from "./worker.js";
 import type { AgentAdapter } from "./agents/types.js";
@@ -75,7 +76,7 @@ export async function runAgentWorker(c: AgentContract): Promise<AgentResult> {
   const itemId = c.ctx.itemId ?? c.ctx.phase;
   const maxAttempts = c.maxAttempts ?? 3;
   const [preamble, prompt] = await Promise.all([readPrompt("preamble"), readPrompt("developer-agent")]);
-  const system = `${preamble}\n\n${prompt}\n\n${c.stackGuide}`;
+  const system = `${preamble}\n\n${prompt}\n\n${c.stackGuide}${languageNote(await ideaLanguage(c.ctx.state, c.ctx.store))}`;
   const baseUser = await renderDeveloperTask(c.ctx);
   let tier: Exclude<ModelTier, "mock"> = c.tier ?? "routine";
   let downgraded = false;

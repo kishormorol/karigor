@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { CitationSchema, type Artifact, type GateName, type Role } from "@karigor/store";
+import { CitationSchema, type Artifact, type GateName, type PersonLanguage, type Role } from "@karigor/store";
 
 /** What a judged gate's worker must return. The engine turns "no citations" into a fail. */
 export const JudgedVerdictSchema = z.object({
@@ -26,6 +26,8 @@ export interface JudgeRequest {
   key: string;
   phase: string;
   itemId?: string;
+  /** The language the person reads, when not English: reasons and suggestions are written in it. */
+  language?: PersonLanguage;
 }
 
 /** Provided by the runtime: runs the role's prompt with the rubric and returns a validated verdict. */

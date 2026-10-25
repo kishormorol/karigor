@@ -80,5 +80,11 @@ describe("starters", () => {
     const idea = await store.readArtifact("idea", ideaId!);
     expect(idea.body).toContain("expiry date");
     expect(idea.body).toContain("My changes to this: Two branches.");
+    expect(idea.meta.kind === "idea" && idea.meta.locale).toBe("en");
+    // a Bangla idea is recorded as Bangla, so every agent writes for the person in Bangla
+    const bnId = await createProject(root, ideaFor("দুটি শাখা।", "pharmacy", "bn"), { clock: () => new Date("2026-10-24T00:00:00.000Z"), committer: noopCommitter, projectId: "p2" });
+    const bnStore = await FsStore.open(root, bnId);
+    const [bnIdeaId] = await bnStore.listArtifacts("idea");
+    expect((await bnStore.readArtifact("idea", bnIdeaId!)).meta).toMatchObject({ locale: "bn" });
   });
 });

@@ -5,3 +5,4 @@ export * from "./replay.js";
 export * from "./git.js";
 export * from "./fs-store.js";
 export * from "./lock.js";
+export * from "./language.js";

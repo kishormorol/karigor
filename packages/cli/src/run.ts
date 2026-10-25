@@ -3,6 +3,7 @@ import {
   acquireRunLock,
   applyEvent,
   drainInbox,
+  languageOf,
   makeId,
   makeProjectId,
   type Artifact,
@@ -68,7 +69,7 @@ export async function createProject(root: string, ideaText: string, opts: { cloc
   const projectId = opts.projectId ?? makeProjectId(clock());
   const store = await FsStore.create(root, projectId, { clock, ...(opts.committer ? { committer: opts.committer } : {}) });
   const idea: Artifact = {
-    meta: { id: makeId("idea", clock()), kind: "idea", createdAt: clock().toISOString(), createdBy: "user", text: ideaText.trim(), locale: "en" },
+    meta: { id: makeId("idea", clock()), kind: "idea", createdAt: clock().toISOString(), createdBy: "user", text: ideaText.trim(), locale: languageOf(ideaText) === "Bangla" ? "bn" : "en" },
     body: ideaText.trim() + "\n",
   };
   await store.writeArtifact(idea);

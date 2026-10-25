@@ -21,6 +21,22 @@ describe("runWorker", () => {
     expect(adapter.calls[0]?.role).toBe("product-owner");
   });
 
+  it("tells the role to write for the person in Bangla when the idea is in Bangla, and says nothing for English", async () => {
+    const store = await freshStore();
+    const state = emptyState("p1");
+    const bangla = { ...idea, meta: { ...idea.meta, id: "idea-bn", text: "প্রতিবেশীরা যেন যন্ত্রপাতি ধার দিতে পারে", locale: "bn" } } as typeof idea;
+    await seed(store, state, [bangla]);
+    state.ideaId = "idea-bn";
+    const systems: string[] = [];
+    const adapter = new MockAdapter((req) => (systems.push(req.system), fakeSpecOutput));
+    await runWorker({ role: "product-owner", key: "k", ctx: await roleContext(store, state), adapter, budget: openBudget() });
+    expect(systems[0]).toMatch(/## Language\n\nThe person reads Bangla/);
+    await seed(store, state, [idea]);
+    state.ideaId = "idea-1";
+    await runWorker({ role: "product-owner", key: "k2", ctx: await roleContext(store, state), adapter, budget: openBudget() });
+    expect(systems[1]).not.toMatch(/## Language/);
+  });
+
   it("retries once with the validation error quoted, then succeeds", async () => {
     const store = await freshStore();
     const state = emptyState("p1");

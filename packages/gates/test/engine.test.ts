@@ -179,6 +179,16 @@ describe("judged gates", () => {
     expect(seen["skeptic-review"]).toBeUndefined();
   });
 
+  it("asks judges to write their reasons in the person's language", async () => {
+    const seen: (string | undefined)[] = [];
+    const judge: Judge = async (req) => ((seen.push(req.language)), { verdict: "pass", citations: [{ ref: { kind: "spec", id: "spec-1" }, quote: "ToolShare" }], reasons: [], minor: [] });
+    await evaluate(await ctx("spec-complete", {}, judge));
+    await store.writeArtifact({ meta: { id: "idea-bn", kind: "idea", createdAt: at, createdBy: "user", text: "প্রতিবেশীদের যন্ত্রপাতি ধার", locale: "bn" }, body: "" });
+    state.ideaId = "idea-bn";
+    await evaluate(await ctx("spec-complete", {}, judge));
+    expect(seen).toEqual([undefined, "Bangla"]);
+  });
+
   it("hands the spec and architecture reviewers what the kind of software can do, and its rubric holds the spec to it", async () => {
     let seen: Record<string, string> = {};
     let rubric = "";

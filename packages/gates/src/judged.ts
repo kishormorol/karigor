@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Artifact, ArtifactMeta, GateName, Role } from "@karigor/store";
+import { ideaLanguage, type Artifact, type ArtifactMeta, type GateName, type Role } from "@karigor/store";
 import type { GateContext } from "./context.js";
 import type { GateOutcome } from "./engine.js";
 
@@ -108,6 +108,7 @@ export async function runJudged(ctx: GateContext): Promise<GateOutcome> {
       "The author has revised the work in response. Check whether each earlier objection is now addressed. Raise a NEW blocking objection only if it is material and could not have been raised before; anything else goes in `minor`.",
     ].filter(Boolean).join("\n\n");
   }
+  const language = await ideaLanguage(ctx.state, ctx.store);
   const v = await ctx.judge({
     gate: ctx.gate,
     role: JUDGED[ctx.gate],
@@ -117,6 +118,7 @@ export async function runJudged(ctx: GateContext): Promise<GateOutcome> {
     key: ctx.key,
     phase: ctx.phase,
     ...(ctx.itemId !== undefined ? { itemId: ctx.itemId } : {}),
+    ...(language ? { language } : {}),
   });
   const evidence: GateOutcome["evidence"] = inputs.map((a) => ({ type: "artifact" as const, ref: { kind: a.meta.kind, id: a.meta.id } }));
   if (v.citations.length === 0) {

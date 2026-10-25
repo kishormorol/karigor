@@ -1,5 +1,5 @@
 import type { Artifact, ModelTier, Role } from "@karigor/store";
-import { ArtifactSchema } from "@karigor/store";
+import { ArtifactSchema, ideaLanguage, languageNote } from "@karigor/store";
 import type { ModelAdapter, ModelResponse, Usage } from "./adapters/types.js";
 import { ROLE_DEFINITIONS, readPrompt, type ProducingRole, type RoleContext, type RoleDefinition } from "./roles/index.js";
 
@@ -60,7 +60,7 @@ export async function runWorker(c: WorkerContract): Promise<WorkerResult> {
   const def = ROLE_DEFINITIONS[c.role] as RoleDefinition<unknown>;
   const maxAttempts = c.maxAttempts ?? 4;
   const [preamble, prompt] = await Promise.all([readPrompt("preamble"), readPrompt(def.role)]);
-  const system = `${preamble}\n\n${prompt}`;
+  const system = `${preamble}\n\n${prompt}${languageNote(await ideaLanguage(c.ctx.state, c.ctx.store))}`;
   const user = await def.inputs(c.ctx);
 
   let tier: Exclude<ModelTier, "mock"> = c.tier ?? def.tier;
