@@ -178,6 +178,7 @@ li.fail { color: var(--bad); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 footer { position: sticky; bottom: 0; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+[hidden] { display: none !important; }
 .composer { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
 .composer textarea { flex: 1; min-width: 0; resize: none; border: 1px solid var(--line); background: var(--surface); border-radius: 16px; padding: 11px 14px; max-height: 40vh; min-height: 46px; outline: none; }
 .composer textarea:focus { border-color: var(--accent); }
@@ -192,6 +193,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow: auto; }
 .plist button { width: 100%; text-align: left; display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
 .plist .who { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.plist .who button { width: auto; flex: none; padding: 6px 12px; }
+.plist .who .meta { flex: none; padding: 0; }
 .plist .who span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link { font: 13px/1.4 ui-monospace, monospace; word-break: break-all; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; user-select: all; }
 .plist .idea { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -703,6 +706,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   // ---- people: whoever runs it hands out links; with sign-ups open, anyone joins with a name ----
   const linkFor = (token) => `${location.origin}/?token=${token}`;
   function signUp() {
+    $("composer").hidden = $("projectsBtn").hidden = true;
     const name = el("input", { maxlength: "80", autocomplete: "name", required: true });
     const problem = el("p", { class: "meta" });
     const form = el("form", { class: "row", onsubmit: async (e) => {
@@ -722,7 +726,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     const list = $("peopleList");
     try {
       const { people } = await api("/api/people");
-      list.replaceChildren(...(people.length ? people.map((p) => el("li", { class: "who" }, el("span", {}, p.name), el("span", { class: "meta", style: "flex:0" }, t("personProjects", p.projects)), el("button", { class: "btn quiet", type: "button", "aria-label": t("removeX", p.name), onclick: async () => { await api(`/api/people/${p.id}`, { method: "DELETE" }).catch(() => {}); showPeople(); } }, t("remove")))) : [el("li", { class: "meta" }, t("noPeople"))]));
+      list.replaceChildren(...(people.length ? people.map((p) => el("li", { class: "who" }, el("span", {}, p.name), el("span", { class: "meta" }, t("personProjects", p.projects)), el("button", { class: "btn quiet", type: "button", "aria-label": t("removeX", p.name), onclick: async () => { await api(`/api/people/${p.id}`, { method: "DELETE" }).catch(() => {}); showPeople(); } }, t("remove")))) : [el("li", { class: "meta" }, t("noPeople"))]));
     } catch (err) { list.replaceChildren(el("li", { class: "meta" }, err.message)); }
   }
   $("peopleBtn").addEventListener("click", showPeople);
@@ -740,7 +744,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   });
 
   function start() {
-    api("/api/config").then((c) => { config = c; $("keyBtn").hidden = !c.needsKey; $("peopleBtn").hidden = !(c.me && c.me.admin && c.me.people); route(); }).catch((err) => {
+    api("/api/config").then((c) => { config = c; $("composer").hidden = $("projectsBtn").hidden = false; $("keyBtn").hidden = !c.needsKey; $("peopleBtn").hidden = !(c.me && c.me.admin && c.me.people); route(); }).catch((err) => {
       if (err.status === 401 && err.data && err.data.signup) return signUp();
       main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, t("cantReach")), el("p", {}, err.message)));
     });
