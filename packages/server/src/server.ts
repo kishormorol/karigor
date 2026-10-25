@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS } from "@karigor/cli";
+import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -86,10 +86,10 @@ function text(b: Record<string, unknown>, key: string, max = 4000): string {
   return v.trim();
 }
 
-function ideaForStarter(starter: string, changes: string | undefined): string {
+function ideaForStarter(starter: string, changes: string | undefined, lang: Lang): string {
   if (changes && changes.length > 4000) throw new HttpError(400, "idea is too long (at most 4000 characters)");
   try {
-    return ideaFor(changes, starter);
+    return ideaFor(changes, starter, lang);
   } catch (e) {
     throw new HttpError(400, (e as Error).message);
   }
@@ -220,13 +220,13 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     }
     if (method === "GET" && path === "/api/projects") return send(res, 200, { projects: await Promise.all((await listProjects(o.root)).map(async (p) => ({ ...p, running: await isRunning(p.id) }))) });
     if (method === "GET" && path === "/api/starters") {
-      return send(res, 200, { starters: STARTERS.map((s) => ({ id: s.id, title: s.title, for: s.for, idea: s.idea, basedOn: s.basedOn.map((x) => x.name) })) });
+      return send(res, 200, { starters: STARTERS.map((s) => ({ id: s.id, title: s.title, for: s.for, idea: s.idea, basedOn: s.basedOn.map((x) => x.name), ...(STARTERS_BN[s.id] ? { bn: STARTERS_BN[s.id] } : {}) })) });
     }
     if (method === "POST" && path === "/api/projects") {
       const b = await body(req);
       // Their own idea, or a ready-made one with their changes in `idea`.
       const starter = typeof b["starter"] === "string" ? b["starter"] : undefined;
-      const idea = starter === undefined ? text(b, "idea") : ideaForStarter(starter, typeof b["idea"] === "string" ? b["idea"] : undefined);
+      const idea = starter === undefined ? text(b, "idea") : ideaForStarter(starter, typeof b["idea"] === "string" ? b["idea"] : undefined, isLang(b["lang"]) ? b["lang"] : "en");
       if (o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"] && !optionalKey(b)) throw new HttpError(400, "this Karigor uses your own Anthropic key; add it first");
       const id = await createProject(o.root, idea);
       startRun(id, "run", optionalKey(b));

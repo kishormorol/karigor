@@ -57,7 +57,7 @@ karigor starters samity           # read one in full
 karigor new --starter samity "We collect every month, not every week. Members can also save for Eid." --run
 ```
 
-What you write after the starter's name is added to it as your changes, so say only what is different for you. In the chat UI, pick one under **Or start from a ready-made idea**, then type what is different for you, or send it as it is.
+What you write after the starter's name is added to it as your changes, so say only what is different for you. In the chat UI, pick one under **Or start from a ready-made idea**, then type what is different for you, or send it as it is. The chat UI also speaks Bangla (the **বাংলা** button, chosen on its own for a Bangla browser): its screens, the progress messages and every ready-made idea are in Bangla, and a Bangla idea is built as written.
 
 ## 3. Start the build
 

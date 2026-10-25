@@ -4,4 +4,5 @@ export * from "./demo.js";
 export * from "./operate.js";
 export * from "./setup.js";
 export * from "./starters.js";
+export * from "./starters-bn.js";
 export * from "./words.js";

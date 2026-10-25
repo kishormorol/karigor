@@ -4,6 +4,9 @@
  * bKash or Nagad are recorded, not taken inside the app. Each credits the open-source app its features are modelled on;
  * no code is taken from them.
  */
+import { STARTERS_BN } from "./starters-bn.js";
+import type { Lang } from "./words.js";
+
 export interface Starter {
   id: string;
   title: string;
@@ -300,21 +303,23 @@ export function findStarter(id: string): Starter | undefined {
   return STARTERS.find((s) => s.id === id);
 }
 
-/** The starter's idea, followed by the person's own changes when they give any. */
-export function starterIdea(starter: Starter, changes?: string): string {
+/** The starter's idea, followed by the person's own changes when they give any; in Bangla when asked and written. */
+export function starterIdea(starter: Starter, changes?: string, lang: Lang = "en"): string {
   const own = changes?.trim();
+  const bn = lang === "bn" ? STARTERS_BN[starter.id] : undefined;
+  if (bn) return own ? `${bn.idea}\n\nআমার পরিবর্তন: ${own}` : bn.idea;
   return own ? `${starter.idea}\n\nMy changes to this: ${own}` : starter.idea;
 }
 
 /** The idea a new project starts from: the person's own words, or a starter with their changes. */
-export function ideaFor(idea: string | undefined, starterId: string | undefined): string {
+export function ideaFor(idea: string | undefined, starterId: string | undefined, lang: Lang = "en"): string {
   if (starterId === undefined) {
     if (!idea?.trim()) throw new Error("describe your idea in your own words, or start from a ready-made one with --starter <id> (see karigor starters)");
     return idea;
   }
   const starter = findStarter(starterId);
   if (!starter) throw new Error(`there is no ready-made idea called "${starterId}"; karigor starters lists them`);
-  return starterIdea(starter, idea);
+  return starterIdea(starter, idea, lang);
 }
 
 export function renderStarters(): string {

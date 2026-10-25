@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FsStore, noopCommitter } from "@karigor/store";
-import { STARTERS, createProject, findStarter, ideaFor, renderStarter, renderStarters, starterIdea } from "../src/index.js";
+import { STARTERS, STARTERS_BN, createProject, findStarter, ideaFor, renderStarter, renderStarters, starterIdea } from "../src/index.js";
 
 describe("starters", () => {
   it("has at least twenty, each with a unique id", () => {
@@ -25,6 +25,27 @@ describe("starters", () => {
 
   it("never asks the app to take a payment inside it, which a web app cannot do yet", () => {
     for (const s of STARTERS) expect(s.idea, s.id).not.toMatch(/pay(s|ment)? online|payment gateway|checkout with (card|bkash)|whatsapp/i);
+  });
+
+  it("every starter is written in Bangla too, the same way: who may not do what, and what comes later", () => {
+    expect(Object.keys(STARTERS_BN).sort()).toEqual(STARTERS.map((s) => s.id).sort());
+    for (const s of STARTERS) {
+      const bn = STARTERS_BN[s.id]!;
+      expect(bn.title.trim(), s.id).not.toBe("");
+      expect(bn.for, s.id).toMatch(/জন্য$/);
+      expect(bn.idea.length, s.id).toBeGreaterThan(250);
+      expect(bn.idea, s.id).toMatch(/পরে: /);
+      expect(bn.idea, s.id).toMatch(/পারে না|পারেন না|পারবেন না|পারি না|শুধু/);
+      expect(bn.idea, s.id).toMatch(/[\u0980-\u09FF]/);
+      expect(bn.idea, s.id).not.toMatch(/whatsapp|হোয়াটসঅ্যাপ/i);
+    }
+  });
+
+  it("starts from the Bangla idea when the person reads Bangla, with their changes after it", () => {
+    const shop = findStarter("shop-counter")!;
+    expect(starterIdea(shop, undefined, "bn")).toBe(STARTERS_BN["shop-counter"]!.idea);
+    expect(ideaFor("আমাদের দুটি শাখা।", "shop-counter", "bn")).toBe(`${STARTERS_BN["shop-counter"]!.idea}\n\nআমার পরিবর্তন: আমাদের দুটি শাখা।`);
+    expect(ideaFor(undefined, "shop-counter")).toBe(shop.idea);
   });
 
   it("adds the person's changes after the ready-made idea", () => {

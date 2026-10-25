@@ -71,6 +71,12 @@ describe("server", { timeout: 180_000 }, () => {
     expect(plain.status).toBe(201);
     await k.idle();
     expect((await call(`/api/projects/${plain.json["projectId"] as string}`)).json["idea"]).toBe(starters.find((s) => s.id === "samity")!.idea);
+    // a Bangla reader builds from the Bangla idea they read
+    const bnStarter = (starters.find((s) => s.id === "samity") as unknown as { bn: { title: string; idea: string } }).bn;
+    expect(bnStarter.title).toBe("সমিতির সঞ্চয় আর ঋণ");
+    const bn = await call("/api/projects", { method: "POST", body: JSON.stringify({ starter: "samity", idea: "আমরা প্রতি মাসে আদায় করি।", lang: "bn" }) });
+    await k.idle();
+    expect((await call(`/api/projects/${bn.json["projectId"] as string}`)).json["idea"]).toBe(`${bnStarter.idea}\n\nআমার পরিবর্তন: আমরা প্রতি মাসে আদায় করি।`);
     const unknown = await call("/api/projects", { method: "POST", body: JSON.stringify({ starter: "spaceship" }) });
     expect(unknown).toMatchObject({ status: 400, json: { error: expect.stringMatching(/no ready-made idea called "spaceship"/) } });
   });

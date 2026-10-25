@@ -38,7 +38,7 @@ The packages:
 | `@karigor/deploy` | Where releases go. `local` (this computer, no account): each release is built into its own directory, previewed on a spare port, health-checked, then promoted; rollback is a pointer move, and verifying it starts the live release on a spare port. `vercel` (free hobby tier, `VERCEL_TOKEN`): deploy, promote and rollback through the Vercel CLI. |
 | `@karigor/budget` | Prices, a three-tier estimate (free, cheap, best), a running meter, and the overspend ladder: downgrade the model, then park optional work, then stop. Fix rounds get their own budget slice. |
 | `@karigor/cli` | `karigor new` (from your own idea or a ready-made one in `karigor starters`), `run`, `resume`, `status`, `cost`, `explain`, `park`, `unpark`, plus `feedback`, `correct`, `fix`, `watch` and `serve` for life after release. Plain language throughout. |
-| `@karigor/server` | The chat UI: a phone-first page where an idea is the first message, progress arrives as plain sentences, every decision can be corrected, and messages after release become fixes. No framework, no build step. |
+| `@karigor/server` | The chat UI, in English or Bangla: a phone-first page where an idea is the first message, progress arrives as plain sentences, every decision can be corrected, and messages after release become fixes. No framework, no build step. |
 
 **New here?** [Building an app with Karigor](docs/guide.md) walks through it step by step: describing your idea, the build, settings, using the app, asking for changes, and putting it online.
 
