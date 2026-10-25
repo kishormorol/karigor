@@ -1,0 +1,41 @@
+# Karigor as a public platform on one server: people sign up in the browser, build by chatting,
+# and use their apps at their own addresses. Started by setup.sh, which writes .env beside this file.
+services:
+  karigor:
+    build: ..
+    environment:
+      KARIGOR_TOKEN: ${KARIGOR_TOKEN:?run setup.sh, which makes it}
+      KARIGOR_URL: https://${KARIGOR_DOMAIN}
+      KARIGOR_APPS_URL: https://a{port}.${KARIGOR_APPS_DOMAIN}
+      KARIGOR_SIGNUP: ${KARIGOR_SIGNUP:-open}
+      KARIGOR_ADAPTER: ${KARIGOR_ADAPTER:-ollama}
+      KARIGOR_OLLAMA_MODEL: ${KARIGOR_OLLAMA_MODEL:-qwen2.5:7b}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      KARIGOR_DEPLOY: local
+    volumes:
+      - karigor-data:/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+  ollama:
+    image: ollama/ollama:0.12.6
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+  caddy:
+    image: caddy:2.10.2
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      KARIGOR_DOMAIN: ${KARIGOR_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - karigor
+    restart: unless-stopped
+volumes:
+  karigor-data:
+  ollama:
+  caddy-data:

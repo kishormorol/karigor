@@ -1,0 +1,24 @@
+# The chat page at KARIGOR_DOMAIN; each app at a<port>.<apps domain>, where Karigor keeps it running.
+{
+	on_demand_tls {
+		# Certificates only for addresses of apps Karigor actually hosts.
+		ask http://karigor:4321/tls-ok
+	}
+}
+
+{$KARIGOR_DOMAIN} {
+	reverse_proxy karigor:4321
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	@app header_regexp app Host ^a(3[1-9][0-9][0-9])\.
+	handle @app {
+		reverse_proxy karigor:{re.app.1}
+	}
+	handle {
+		respond "No app here." 404
+	}
+}

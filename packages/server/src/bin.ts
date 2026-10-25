@@ -33,7 +33,11 @@ Set KARIGOR_TOKEN to require an access link (/?token=...). Required when the hos
 That link sees every project. To give someone their own sign-in, which sees only their projects:
 
   karigor-server add-person "<name>"   prints their link (KARIGOR_URL sets its address)
-  KARIGOR_SIGNUP=open                  anyone who opens the page signs up with a name`);
+  KARIGOR_SIGNUP=open                  anyone who opens the page signs up with a name
+
+To host everyone's apps from here, each on its own port and kept running:
+  KARIGOR_APPS_URL=https://a{port}.example.com   the address people use for each app
+  KARIGOR_SERVE_APPS=1                           the same, at http://localhost:<port>`);
   process.exit(0);
 }
 
@@ -64,6 +68,7 @@ const { server } = createKarigorServer({
   appPort: Number(v["app-port"]),
   ...(token ? { token } : {}),
   signup: process.env["KARIGOR_SIGNUP"] === "open",
+  ...(process.env["KARIGOR_APPS_URL"] || process.env["KARIGOR_SERVE_APPS"] === "1" ? { apps: process.env["KARIGOR_APPS_URL"] ? { url: process.env["KARIGOR_APPS_URL"] } : {} } : {}),
   log: (l) => console.log(l),
 });
 server.listen(Number(v.port), host, () => {

@@ -124,6 +124,18 @@ The image defaults to Ollama (free); set `KARIGOR_ADAPTER=claude` and `ANTHROPIC
 
 The `KARIGOR_TOKEN` link sees every project, so keep it for yourself. Give everyone else their own sign-in, which opens only the projects they start: add them from **People** in the page, or run `docker compose exec karigor node packages/server/dist/bin.js add-person "Rahima"` and send them the link it prints. To let anyone who opens the page join with just a name, set `KARIGOR_SIGNUP=open`. Builds run code the AI wrote on your server, so open sign-ups only where you trust who can reach it.
 
+## Run it as a public platform
+
+To let anyone use Karigor with nothing to install, run [`hosting/setup.sh`](hosting/setup.sh) on a fresh Ubuntu server. An Oracle Cloud "Always Free" Ampere machine (4 cores, 24 GB) is enough, so the whole platform can cost nothing:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kishormorol/karigor/main/hosting/setup.sh | bash
+```
+
+It installs Docker and starts Karigor, a free open-source model (Ollama) and Caddy for HTTPS. People open the address it prints, sign up with a name and build by chatting. Each app stays running at its own address (`https://a3100.<your-ip>.sslip.io` and so on), and certificates are made only for apps Karigor actually hosts. Without a domain it uses `sslip.io`, which needs no setup. Running the script again updates Karigor and keeps every project.
+
+The free model on a CPU is slow, and weaker than Claude: expect a build to take many hours and more of the work to be set aside. Builds run code the AI wrote on that server, so keep nothing else on it.
+
 ## How it works
 
 ```

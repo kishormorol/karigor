@@ -21,7 +21,8 @@
   "dependencies": {
     "@karigor/budget": "workspace:*",
     "@karigor/cli": "workspace:*",
-    "@karigor/store": "workspace:*",
-    "@karigor/profiles": "workspace:*"
+    "@karigor/deploy": "workspace:*",
+    "@karigor/profiles": "workspace:*",
+    "@karigor/store": "workspace:*"
   }
 }

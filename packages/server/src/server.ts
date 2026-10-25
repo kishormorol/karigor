@@ -8,6 +8,7 @@ import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, 
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
 import { People, type Person } from "./people.js";
+import { AppPorts, LiveApps, publicAppUrl } from "./apps.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Works from both `src/` (tests) and `dist/` (build). */
@@ -29,6 +30,12 @@ export interface ServerOptions {
   signup?: boolean;
   /** Most people a sign-up may create. */
   maxPeople?: number;
+  /**
+   * Host every project's live app from here, each on its own port, kept running and switched to
+   * each new release. `url` is the address people use for it, with `{port}` in it, such as
+   * `https://a{port}.example.com`; without it they get http://localhost:<port>.
+   */
+  apps?: { url?: string };
   /** Builds running at once. */
   maxRuns?: number;
   /** How long a project paused for the usage allowance waits before trying again (default 30 minutes). */
@@ -42,6 +49,8 @@ export interface KarigorServer {
   runs: Map<string, Promise<void>>;
   /** Resolves when no run is in progress. */
   idle(): Promise<void>;
+  /** The live apps this server keeps running, when it hosts them. */
+  live?: LiveApps;
 }
 
 const ID = /^[a-z0-9][a-z0-9-]{0,80}$/;
@@ -131,9 +140,20 @@ function send(res: ServerResponse, status: number, data: unknown): void {
 /** The chat UI and its API over the kernel. Bring-your-own keys live only in the memory of the run they were sent with. */
 export function createKarigorServer(o: ServerOptions): KarigorServer {
   const runs = new Map<string, Promise<void>>();
-  const people = new People(o.root);
-  const problems = new Map<string, string>();
   const log = o.log ?? (() => {});
+  const people = new People(o.root);
+  const ports = new AppPorts(o.root);
+  const live = o.apps ? new LiveApps({ root: o.root, profile: o.profile ?? "web-app", ports, ...(o.apps.url ? { publicUrl: o.apps.url } : {}), log }) : undefined;
+  /** Run flags for one project: when this server hosts the apps, each has its own port. */
+  const flagsFor = async (id: string) => (o.apps ? { ...flags, port: String(await ports.portFor(id)) } : flags);
+  /** Local addresses of hosted apps, written as the address people use. */
+  const publicUrls = async <T>(v: T): Promise<T> => {
+    if (!o.apps?.url) return v;
+    const hosted = new Set(Object.values(await ports.all()));
+    const json = JSON.stringify(v).replace(/http:\/\/(?:localhost|127\.0\.0\.1):(\d{2,5})\/?/g, (m, p: string) => (hosted.has(Number(p)) ? `${publicAppUrl(o.apps!.url!, Number(p))}/` : m));
+    return JSON.parse(json) as T;
+  };
+  const problems = new Map<string, string>();
   const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}) };
 
   const retries = new Map<string, ReturnType<typeof setTimeout>>();
@@ -144,7 +164,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     if (runs.size >= (o.maxRuns ?? 2)) throw new HttpError(429, "Karigor is busy with other projects; try again in a few minutes");
     problems.delete(id);
     const p = (async () => {
-      const opts = await runOptions(o.root, id, flags, { ...(apiKey ? { apiKey } : {}), log: (l) => log(`[${id}] ${l}`) });
+      const opts = await runOptions(o.root, id, await flagsFor(id), { ...(apiKey ? { apiKey } : {}), log: (l) => log(`[${id}] ${l}`) });
       if (kind === "fix") await operateOnce(opts);
       else if (kind === "grow") {
         const r = await growOnce(opts);
@@ -196,7 +216,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     const store = await FsStore.open(o.root, id).catch(() => {
       throw new HttpError(404, "no such project");
     });
-    const v = await projectView(store, await isRunning(id), isLang(lang) ? lang : "en");
+    const v = await publicUrls(await projectView(store, await isRunning(id), isLang(lang) ? lang : "en"));
     const problem = problems.get(id);
     return problem ? { ...v, problem } : v;
   };
@@ -237,6 +257,12 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       return;
     }
     if (method === "GET" && path === "/healthz") return send(res, 200, { ok: true });
+    // The web server in front asks before it gets a certificate for an app's address.
+    if (method === "GET" && path === "/tls-ok") {
+      const domain = url.searchParams.get("domain") ?? "";
+      const known = o.apps?.url ? Object.values(await ports.all()).some((p) => new URL(publicAppUrl(o.apps!.url!, p)).hostname === domain) : false;
+      return send(res, known ? 200 : 404, {});
+    }
     if (!path.startsWith("/api/")) throw new HttpError(404, "not found");
     if (method === "POST" && path === "/api/signup") {
       if (!o.signup || !o.token) throw new HttpError(403, "this Karigor does not take sign-ups; ask whoever runs it for a link");
@@ -377,7 +403,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       const store = await FsStore.open(o.root, id).catch(() => {
         throw new HttpError(404, "no such project");
       });
-      const opts = await runOptions(o.root, id, flags, { log: (l) => log(`[${id}] ${l}`) });
+      const opts = await runOptions(o.root, id, await flagsFor(id), { log: (l) => log(`[${id}] ${l}`) });
       if (!opts.deploy) throw new HttpError(400, "this Karigor does not put apps online, so there is nowhere to store settings");
       // Applying settings rebuilds the live app; it is tracked like a run so nothing else starts meanwhile.
       let result: Awaited<ReturnType<typeof provideSettings>> | undefined;
@@ -408,9 +434,13 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     });
   });
 
+  live?.start();
+  server.on("close", () => void live?.stop());
+
   return {
     server,
     runs,
+    ...(live ? { live } : {}),
     idle: async () => {
       while (runs.size) await Promise.all([...runs.values()]);
     },

@@ -150,6 +150,9 @@ importers:
       '@karigor/cli':
         specifier: workspace:*
         version: link:../cli
+      '@karigor/deploy':
+        specifier: workspace:*
+        version: link:../deploy
       '@karigor/profiles':
         specifier: workspace:*
         version: link:../profiles
