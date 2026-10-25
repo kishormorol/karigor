@@ -56,6 +56,7 @@ Systems (many sections, many roles): the signed-in layout uses \`SidebarShell\` 
 
 Conventions:
 - Every backlog item adds or changes tests for its acceptance criteria; test pure logic directly and route handlers by calling the exported function with a \`Request\`.
+- Fake secrets in tests look plainly fake (\`"test-api-key"\`, \`"not-a-real-token"\`), never like a real key (\`sk_live_…\`, \`AKIA…\`, \`ghp_…\`): the security scan before every release cannot tell them apart and stops the release.
 - Forms work without JavaScript first (server actions), then get enhanced.
 - \`app/api/health/route.ts\` is how deployments know the app is up. Keep it answering 200 and cheap; do not make it depend on the database.
 - Never hard-code secrets. Read configuration from \`process.env\` and document new variables in \`.env.example\`: a comment line saying what it is in plain words (the person may read it), then a line \`# karigor: generate\` (a secret nobody needs to know, such as a signing key; Karigor makes one), \`# karigor: ask\` (a choice only the person can make, such as a passcode; Karigor asks them using your comment as the question), or \`# karigor: service <name>\` (a connection to an outside service with its own account; the person creates that account themselves, so never write that Karigor sets it up), then \`NAME=\` with an empty value. Start the comment with "Optional:" when the app works without it.

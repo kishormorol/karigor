@@ -32,6 +32,8 @@ describe("profiles", () => {
     expect(webApp.stackGuide).toMatch(/src\/db\/schema.ts/);
     // what the guide tells the developer to use is really there, and the scheduler can reach it
     for (const m of ["sendEmail", "sendSms", "saveUpload", "JOBS"]) expect(webApp.stackGuide).toContain(m);
+    // a fake key shaped like a real one stops the release at the security scan
+    expect(webApp.stackGuide).toMatch(/Fake secrets in tests look plainly fake/);
     expect(JSON.parse(await readFile(join(dir, "vercel.json"), "utf8")).crons).toEqual([{ path: "/api/jobs", schedule: expect.any(String) }]);
     expect(await readFile(join(dir, "src/lib/session-cookie.ts"), "utf8")).toContain("api\\/jobs");
     expect(await readFile(join(dir, ".env.example"), "utf8")).toMatch(/# karigor: generate\nCRON_SECRET=/);
