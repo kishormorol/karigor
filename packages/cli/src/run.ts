@@ -19,7 +19,7 @@ import {
   type Role,
 } from "@karigor/store";
 import { eventsFor, listTemplates, loadTemplate, next, scopeOf, workerStartEvent, type Action, type Outcome, type Template } from "@karigor/process";
-import { evaluate, type GateContext, type Sandbox } from "@karigor/gates";
+import { evaluate, isJudged, type GateContext, type Sandbox } from "@karigor/gates";
 import { generateSettingValue, renderCapabilities, type Profile } from "@karigor/profiles";
 import { LocalSandbox, Workspace, clip } from "@karigor/sandbox";
 import { releaseVersion, type DeployAdapter, type LiveRelease } from "@karigor/deploy";
@@ -554,6 +554,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
             },
             ...(previousReview ? { previousReview } : {}),
             ...(capabilities ? { capabilities } : {}),
+            ...(action.itemId !== undefined ? { checks: itemChecks(template.phases[action.phase], action.gate) } : {}),
             ...(action.itemId !== undefined ? { itemId: action.itemId } : {}),
             ...(action.round !== undefined ? { round: action.round } : {}),
             ...(action.transitionTo !== undefined ? { transitionTo: action.transitionTo } : {}),
@@ -611,6 +612,16 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
   }
   if (state.status !== "finished" && state.status !== "stopped" && state.status !== "waiting") throw new RunError(`run did not settle within ${maxSteps} steps`);
   return state;
+}
+
+/**
+ * What a judge of an item may take as already checked: the mechanical item gates before it (item gates run in order and
+ * stop at the first failure, so reaching this one means they passed), and the mechanical gates on the phase's way out.
+ */
+export function itemChecks(phase: Template["phases"][string] | undefined, gate: GateContext["gate"]): NonNullable<GateContext["checks"]> {
+  const itemGates = phase?.loop?.itemGates ?? [];
+  const before = itemGates.slice(0, Math.max(0, itemGates.indexOf(gate)));
+  return { passed: before.filter((g) => !isJudged(g)), later: (phase?.transitions[0]?.gates ?? []).filter((g) => !isJudged(g)) };
 }
 
 export function describeAction(a: Action): string {

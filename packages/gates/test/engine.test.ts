@@ -165,6 +165,20 @@ describe("judged gates", () => {
     expect(sandbox.calls).toContain("diff:b1");
   });
 
+  it("tells item reviewers what the kernel already checked and what it checks before release", async () => {
+    const seen: Record<string, string | undefined> = {};
+    const judge: Judge = async (req) => ((seen[req.gate] = req.extras["checks"]), { verdict: "pass", citations: [{ ref: { kind: "spec", id: "spec-1" }, quote: "ToolShare" }], reasons: [], minor: [] });
+    const checks = { passed: ["tests-pass", "lint-clean"] as GateName[], later: ["build-succeeds", "journeys-pass"] as GateName[] };
+    await evaluate(await ctx("skeptic-review", { itemId: "b1", checks }, judge));
+    await evaluate(await ctx("diff-matches-spec", { itemId: "b1", checks }, judge));
+    for (const g of ["skeptic-review", "diff-matches-spec"]) {
+      expect(seen[g]).toMatch(/Already passed for this item in this round.*tests-pass, lint-clean/);
+      expect(seen[g]).toMatch(/before this phase can end.*build-succeeds, journeys-pass.*do not object that they are missing/);
+    }
+    await evaluate(await ctx("skeptic-review", { itemId: "b1" }, judge));
+    expect(seen["skeptic-review"]).toBeUndefined();
+  });
+
   it("hands the spec and architecture reviewers what the kind of software can do, and its rubric holds the spec to it", async () => {
     let seen: Record<string, string> = {};
     let rubric = "";

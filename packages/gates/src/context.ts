@@ -26,6 +26,8 @@ export interface GateContext {
   previousReview?: { verdict: "pass" | "fail"; reasons: string[]; minor: string[] };
   /** What the kind of software being built can and cannot do yet, rendered; specs and designs are judged against it. */
   capabilities?: string;
+  /** For an item gate: mechanical gates this item already passed in this round, and the whole-app gates that run before the phase ends. */
+  checks?: { passed: GateName[]; later: GateName[] };
   /** Injected by the orchestrator from the budget package. */
   budgetCheck?: () => { ok: boolean; reason: string };
   clock: () => Date;

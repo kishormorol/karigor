@@ -190,3 +190,14 @@ describe("runProject: retries carry feedback", () => {
     expect(round1Prompt).toMatch(/Your previous change \(revise this\)/);
   });
 });
+
+describe("what item reviewers may take as checked", () => {
+  it("counts the mechanical item gates before the judge as passed, and names the phase's exit checks", async () => {
+    const { itemChecks } = await import("../src/index.js");
+    const { loadTemplate } = await import("@karigor/process");
+    const build = (await loadTemplate("iterative")).phases["build"];
+    expect(itemChecks(build, "skeptic-review")).toEqual({ passed: ["tests-pass", "lint-clean"], later: ["build-succeeds", "security-scan-clean", "journeys-pass"] });
+    expect(itemChecks(build, "tests-pass").passed).toEqual([]);
+    expect(itemChecks(undefined, "skeptic-review")).toEqual({ passed: [], later: [] });
+  });
+});

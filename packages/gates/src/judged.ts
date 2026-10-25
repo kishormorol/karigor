@@ -43,6 +43,17 @@ async function latestTestReport(ctx: GateContext): Promise<Artifact | undefined>
   return undefined;
 }
 
+/**
+ * What the kernel has already checked for this item and what it checks later, so a judge does not object that
+ * evidence it was never meant to see is missing (a lint run, or the build and journeys that run once per phase).
+ */
+function checksNote(checks: NonNullable<GateContext["checks"]>): string {
+  return [
+    checks.passed.length ? `Already passed for this item in this round, checked by the kernel itself: ${checks.passed.join(", ")}. Treat these as evidenced.` : "",
+    checks.later.length ? `Run by the kernel on the whole app before this phase can end, and a failure there stops the release: ${checks.later.join(", ")}. Their results cannot exist yet for a single item; do not object that they are missing, but do object if the work itself would make them fail.` : "",
+  ].filter(Boolean).join("\n");
+}
+
 /** Which artifacts and extras each judged gate sees. */
 async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: Record<string, string> }> {
   const inputs: Artifact[] = [];
@@ -65,6 +76,7 @@ async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: R
       inputs.push(...(await producedArtifacts(ctx)));
       push(await latestTestReport(ctx));
       if (ctx.backlogItem) extras["backlog-item"] = JSON.stringify(ctx.backlogItem, null, 2);
+      if (ctx.checks) extras["checks"] = checksNote(ctx.checks);
       extras["diff"] = await ctx.sandbox.diff(ctx.itemId);
       break;
     case "skeptic-review":
@@ -73,6 +85,7 @@ async function gather(ctx: GateContext): Promise<{ inputs: Artifact[]; extras: R
       if (ctx.itemId) {
         push(await latestTestReport(ctx));
         if (ctx.backlogItem) extras["backlog-item"] = JSON.stringify(ctx.backlogItem, null, 2);
+        if (ctx.checks) extras["checks"] = checksNote(ctx.checks);
         extras["diff"] = await ctx.sandbox.diff(ctx.itemId);
       }
       break;
