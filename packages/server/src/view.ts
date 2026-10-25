@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FsStore, type BacklogItem, type ProjectState } from "@karigor/store";
 import { meter } from "@karigor/budget";
-import { liveRecord, renderExplain, stagePlan, storyWords, type Lang } from "@karigor/cli";
+import { liveRecord, reasonIn, renderExplain, stagePlan, storyWords, type Lang } from "@karigor/cli";
 import { readSettings } from "@karigor/profiles";
 
 /** Everything the chat page shows about one project, in plain language. */
@@ -46,7 +46,7 @@ const HEADLINES: Record<Lang, { starting: string; notStarted: string; working: s
     starting: "শুরু হচ্ছে।", notStarted: "শুরুর অপেক্ষায়।", working: "কাজ চলছে", paused: "বিরতি",
     adding: (name) => `${name ?? "পরের অংশ"} যোগ হচ্ছে`, fixRound: (n) => `ঠিক করার রাউন্ড ${n}`,
     waiting: "তৈরি হয়ে গেছে। শুধু আপনিই দিতে পারেন এমন কয়েকটি জিনিসের অপেক্ষায়।", finished: "শেষ হয়েছে।",
-    stopped: (why) => `থেমে গেছে: ${why ?? "কোনো কারণ লেখা নেই"}`,
+    stopped: (why) => `থেমে গেছে: ${why ? reasonIn("bn", why) : "কোনো কারণ লেখা নেই"}`,
   },
 };
 
@@ -99,7 +99,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
     work: {
       done: items.filter((b) => st(b) === "done").length,
       open: items.filter((b) => ["todo", "in-progress"].includes(st(b))).length,
-      parked: items.filter((b) => st(b) === "parked").map((b) => ({ title: b.title, reason: state.items[b.id]?.reason ?? "" })),
+      parked: items.filter((b) => st(b) === "parked").map((b) => ({ title: b.title, reason: reasonIn(lang, state.items[b.id]?.reason ?? "") })),
     },
     decisions: ledger.map((a) => ({ id: a.id, topic: a.topic, decision: a.decision, ...(state.corrections[a.id] ?? a.correctedTo ? { correctedTo: state.corrections[a.id] ?? a.correctedTo! } : {}) })),
     ...(m ? { cost: { currency: m.currency, spent: m.total, budget: m.budgetTotal, tier: m.tier, apiEquivalent: m.apiEquivalent } } : {}),

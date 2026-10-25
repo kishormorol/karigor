@@ -128,9 +128,9 @@ export const BANGLA: StoryWords = {
   workerFailed: (r, i, o, err) => `${role(r)}${on(i)} সফল হয়নি (${o}${err ? `: ${err}` : ""})।`,
   gate: (g, i, pass, reasons) => `যাচাই "${g}"${on(i)}: ${pass ? "পাস করেছে" : "ব্যর্থ"}।${reasons}`,
   transition: (f, t) => `${f} → ${t}`,
-  itemStatus: (i, s, r) => `${i} এখন ${BN.status[s] ?? s}${r ? ` (${r})` : ""}।`,
+  itemStatus: (i, s, r) => `${i} এখন ${BN.status[s] ?? s}${r ? ` (${reasonIn("bn", r)})` : ""}।`,
   downgraded: (p) => `${p}-এর বাজেট কম; সস্তা মডেলে বদলানো হলো।`,
-  stopped: (r) => `থেমে গেছে: ${r}`,
+  stopped: (r) => `থেমে গেছে: ${reasonIn("bn", r)}`,
   finished: () => "শেষ হয়েছে।",
   deployed: (v, preview, url) => `${v} ${preview ? "একটি প্রিভিউতে" : "চালু অ্যাপে"} তোলা হলো${url ? `: ${url}` : ""}।`,
   deployFailed: (v, preview) => `${v} ${preview ? "প্রিভিউতে" : "চালু অ্যাপে"} তোলা যায়নি।`,
@@ -140,7 +140,7 @@ export const BANGLA: StoryWords = {
   fixRound: (c, n) => `ঠিক করার রাউন্ড ${c} শুরু হলো, ${n}টি সমস্যা বা অনুরোধের জন্য।`,
   waiting: (n) => `আপনার কাছ থেকে দরকার: ${n}।`,
   resumed: () => "আবার কাজ চলছে।",
-  paused: (r) => `বিরতি: ${r}।`,
+  paused: (r) => `বিরতি: ${reasonIn("bn", r)}।`,
   dismissed: (r) => `একটি কাজ বন্ধ করা হলো: ${r}।`,
   reopened: (n) => `আবার কাজে ফেরানো হলো${n ? `, ${n}টি কাজ আবার তালিকায়` : ""}।`,
   settings: (made, names) => `${made ? "তৈরি করে রাখা হলো" : "রাখা হলো"}: ${names.join(", ")}। অ্যাপ এখান থেকেই পড়বে।`,
@@ -211,8 +211,8 @@ export const STATUS_BN: StatusWords = {
   idea: (t) => `আইডিয়া: ${t}`,
   created: () => "অবস্থা: তৈরি হয়েছে, এখনো শুরু হয়নি।",
   running: (p, s) => `অবস্থা: কাজ চলছে, ${p}${s ? `, স্প্রিন্ট ${s}` : ""}।`,
-  stopped: (r) => `অবস্থা: থেমে গেছে। ${r ?? ""}`.trim(),
-  paused: (r) => `অবস্থা: বিরতি। ${r}।`,
+  stopped: (r) => `অবস্থা: থেমে গেছে। ${r ? reasonIn("bn", r) : ""}`.trim(),
+  paused: (r) => `অবস্থা: বিরতি। ${reasonIn("bn", r)}।`,
   waiting: () => "অবস্থা: আপনার অপেক্ষায়। তৈরি হয়ে গেছে, শুধু আপনিই দিতে পারেন এমন কয়েকটি জিনিস দরকার:",
   giveWith: (id) => `এগুলো দিন এভাবে: karigor setup ${id}`,
   finished: (stage, c, h) => `অবস্থা: ${stage ? `একটি নতুন অংশ যোগ হয়েছে (রাউন্ড ${c})` : c > 0 ? `হালনাগাদ হয়েছে (ঠিক করার রাউন্ড ${c})` : "শেষ হয়েছে"}। ${h ?? ""}`.trim(),
@@ -228,10 +228,43 @@ export const STATUS_BN: StatusWords = {
   process: (t, p) => `পদ্ধতি: ${t}; তৈরি হচ্ছে একটি ${BN.profile[p] ?? p}।`,
   budget: (t) => `বাজেট: ${BN.tier[t] ?? t} স্তর।`,
   work: (d, i, t, p, x) => `কাজ: ${d}টি শেষ, ${i}টি চলছে, ${t}টি বাকি, ${p}টি আলাদা করে রাখা, ${x}টি ছোট ভাগে ভাঙা।`,
-  parked: (t, r) => `আলাদা করে রাখা: ${t}। ${r ?? ""}`.trim(),
+  parked: (t, r) => `আলাদা করে রাখা: ${t}। ${r ? reasonIn("bn", r) : ""}`.trim(),
   failures: (n) => `এ পর্যন্ত যাচাইয়ে ধরা পড়া সমস্যা: ${n}টি।`,
   decisions: () => "আপনার হয়ে নেওয়া সিদ্ধান্ত (কোনোটি ভুল হলে জানান):",
   corrected: (t) => `${t} (আপনি বদলেছেন)`,
 };
 
 export const statusWords = (lang: Lang = "en"): StatusWords => (lang === "bn" ? STATUS_BN : STATUS_EN);
+
+const PHASE_NOUN_BN: Record<string, string> = {
+  specify: "লেখার", design: "নকশার", plan: "পরিকল্পনার", spike: "পরীক্ষার", build: "তৈরির", verify: "যাচাইয়ের", release: "চালু করার", triage: "বাছাইয়ের",
+};
+const phaseNoun = (p: string) => PHASE_NOUN_BN[p] ?? p;
+
+/** Reasons the kernel writes when it stops, pauses or sets work aside, in Bangla. Unknown reasons are shown as written. */
+const REASONS_BN: [RegExp, (...m: string[]) => string][] = [
+  [/^gate "([^"]+)" failed in (\S+) after (\d+) failures$/, (g, p, n) => `যাচাই "${g}" ${phaseNoun(p!)} ধাপে ${n} বার ব্যর্থ হওয়ায় কাজ থামানো হলো`],
+  [/^(\S+) could not produce valid work in (\S+) after (\d+) failures$/, (r, p, n) => `${role(r!)} ঠিকমতো কাজ দিতে পারেনি; ${phaseNoun(p!)} ধাপে ${n} বার চেষ্টার পর কাজ থামানো হলো`],
+  [/^gate "([^"]+)" failed \(attempt (\d+)\)$/, (g, n) => `যাচাই "${g}" ব্যর্থ হয়েছে (চেষ্টা ${n})`],
+  [/^gate "([^"]+)" failed; going back to (\S+)$/, (g, p) => `যাচাই "${g}" ব্যর্থ হয়েছে; ${phaseNoun(p!)} ধাপে ফেরত যাওয়া হচ্ছে`],
+  [/^too many failures \((\d+)\); the failure budget is (\d+)$/, (n, m) => `অনেক বেশি ব্যর্থতা (${n}টি); সর্বোচ্চ ${m}টি চলে`],
+  [/^there is no healthy preview to put live$/, () => "চালু করার মতো সুস্থ কোনো প্রিভিউ নেই"],
+  [/^the new version failed after going live; the previous version \((\S+)\) is back and a fix is queued$/, (v) => `নতুন সংস্করণ চালু হওয়ার পর সমস্যা করছিল; আগের সংস্করণ (${v}) ফিরিয়ে আনা হয়েছে আর ঠিক করার কাজ তালিকায় রাখা হয়েছে`],
+  [/^the new version failed after going live; it was taken offline and a fix is queued$/, () => "নতুন সংস্করণ চালু হওয়ার পর সমস্যা করছিল; এটি অফলাইনে নেওয়া হয়েছে আর ঠিক করার কাজ তালিকায় রাখা হয়েছে"],
+  [/^out of budget: ?(.*)$/, (x) => `বাজেট শেষ${x ? `: ${x}` : ""}`],
+  [/^the model's usage allowance is used up(?: \(it resets (.+?)\))?; nothing failed, and the work carries on with karigor resume after that$/, (at) => `মডেলের ব্যবহারের সীমা শেষ${at ? ` (আবার পাওয়া যাবে ${at})` : ""}; কিছু ব্যর্থ হয়নি, সীমা ফিরলে karigor resume দিলে কাজ চলবে`],
+  [/^failed (\d+) times; retry budget exhausted$/, (n) => `${n} বার ব্যর্থ; আর চেষ্টার সুযোগ নেই`],
+  [/^blocked: depends on "([^"]+)", which is not in the backlog$/, (d) => `আটকে আছে: "${d}"-এর ওপর নির্ভর করে, যা তালিকায় নেই`],
+  [/^blocked: depends on "([^"]+)", which was (parked|dropped)$/, (d, s) => `আটকে আছে: "${d}"-এর ওপর নির্ভর করে, যা ${s === "parked" ? "আলাদা করে রাখা হয়েছে" : "বাদ দেওয়া হয়েছে"}`],
+  [/^blocked: its dependencies form a cycle$/, () => "আটকে আছে: এর নির্ভরতাগুলো ঘুরে ঘুরে একে অপরের ওপর নির্ভর করে"],
+];
+
+/** A reason the kernel wrote, in the person's language. */
+export function reasonIn(lang: Lang, reason: string): string {
+  if (lang !== "bn") return reason;
+  for (const [re, bn] of REASONS_BN) {
+    const m = re.exec(reason);
+    if (m) return bn(...m.slice(1));
+  }
+  return reason;
+}
