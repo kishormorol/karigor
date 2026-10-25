@@ -357,7 +357,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     return e;
   };
   const api = async (path, opts = {}) => {
-    const res = await fetch(path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
+    const res = await fetch(path, { ...opts, headers: { "content-type": "application/json", "x-karigor-lang": lang, ...(opts.headers || {}) } });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || t("wrong", res.status));
     return data;

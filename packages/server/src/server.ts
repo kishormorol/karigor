@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
 import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
+import { errorIn } from "./errors.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Works from both `src/` (tests) and `dist/` (build). */
@@ -212,8 +213,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       return;
     }
     if (method === "GET" && path === "/healthz") return send(res, 200, { ok: true });
-    if (!path.startsWith("/api/")) return send(res, 404, { error: "not found" });
-    if (!authed(req)) return send(res, 401, { error: "this Karigor needs an access link; ask whoever runs it" });
+    if (!path.startsWith("/api/")) throw new HttpError(404, "not found");
+    if (!authed(req)) throw new HttpError(401, "this Karigor needs an access link; ask whoever runs it");
 
     if (method === "GET" && path === "/api/config") {
       return send(res, 200, { adapter: o.adapter, demo: o.adapter === "demo", deploy: o.deploy ?? "local", needsKey: o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"] });
@@ -234,7 +235,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     }
 
     const m = /^\/api\/projects\/([^/]+)(?:\/([a-z]+))?$/.exec(path);
-    if (!m) return send(res, 404, { error: "not found" });
+    if (!m) throw new HttpError(404, "not found");
     const id = m[1]!;
     if (!ID.test(id)) throw new HttpError(404, "no such project");
     const action = m[2];
@@ -338,16 +339,19 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       if (result!.resumed) startRun(id, "run");
       return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null, resumed: !!result!.resumed });
     }
-    return send(res, 404, { error: "not found" });
+    throw new HttpError(404, "not found");
   };
 
   const server = createServer((req, res) => {
+    // Errors are written in the page's language; the page names it in a header.
+    const h = req.headers["x-karigor-lang"];
+    const lang: Lang = isLang(h) ? h : "en";
     handle(req, res).catch((e: Error) => {
       if (res.headersSent) return res.end();
-      if (e instanceof HttpError) send(res, e.status, { error: e.message });
+      if (e instanceof HttpError) send(res, e.status, { error: errorIn(lang, e.message) });
       else {
         log(`error: ${e.stack ?? e.message}`);
-        send(res, 500, { error: "something went wrong on the server" });
+        send(res, 500, { error: errorIn(lang, "something went wrong on the server") });
       }
     });
   });

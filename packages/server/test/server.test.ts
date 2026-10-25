@@ -99,6 +99,16 @@ describe("server", { timeout: 180_000 }, () => {
     expect((await call(`/api/projects/${id}?lang=xx`)).json["story"]).toEqual(en["story"]);
   });
 
+  it("writes its errors in Bangla when the page asks, and in English otherwise", async () => {
+    const { call } = await start();
+    const bn = { "x-karigor-lang": "bn" };
+    expect((await call("/api/projects/p-nope-1", { headers: bn })).json["error"]).toBe("এমন কোনো প্রকল্প নেই");
+    expect((await call("/api/projects/p-nope-1")).json["error"]).toBe("no such project");
+    expect((await call("/api/projects", { method: "POST", body: JSON.stringify({}), headers: bn })).json["error"]).toBe("আইডিয়া দেওয়া হয়নি");
+    expect((await call("/api/projects", { method: "POST", body: JSON.stringify({ starter: "spaceship" }), headers: bn })).json["error"]).toBe('"spaceship" নামে কোনো তৈরি আইডিয়া নেই');
+    expect((await call("/api/nothing", { headers: bn })).json["error"]).toBe("পাওয়া যায়নি");
+  });
+
   it("feedback and corrections on a finished project start a fix round on their own", async () => {
     const { k, call } = await start();
     const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
