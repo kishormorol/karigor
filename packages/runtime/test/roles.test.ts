@@ -208,3 +208,14 @@ describe("stages in the spec", () => {
     expect(out([], features).success).toBe(false);
   });
 });
+
+describe("the summary's headings", () => {
+  it("follow the language the summary is written in", async () => {
+    const { summaryArtifact } = await import("../src/index.js");
+    const meta = { id: "summary-1", createdAt: "2026-10-25T00:00:00.000Z", createdBy: "releaser" as const };
+    const en = summaryArtifact({ headline: "ToolShare is live", whatItDoes: "Neighbours lend tools.", howToUse: "Open it and sign in.", whatWasParked: ["Reminders"] }, meta, "https://x.test");
+    expect(en.body).toMatch(/## How to use it[\s\S]*Open it: https:\/\/x\.test[\s\S]*## Left out for now/);
+    const bn = summaryArtifact({ headline: "টুলশেয়ার চালু হয়েছে", whatItDoes: "প্রতিবেশীরা যন্ত্রপাতি ধার দেন।", howToUse: "খুলে সাইন ইন করুন।", whatWasParked: ["মনে করিয়ে দেওয়া"] }, meta, "https://x.test");
+    expect(bn.body).toMatch(/## যেভাবে ব্যবহার করবেন[\s\S]*খুলুন: https:\/\/x\.test[\s\S]*## আপাতত বাদ রাখা হয়েছে/);
+  });
+});

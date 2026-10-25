@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod/v4";
 import type { Artifact, ArtifactKind, ArtifactOf, BacklogItem, MetaOf, ProjectState, Role, Stage, TargetProfile } from "@karigor/store";
-import { TARGET_PROFILES, TARGET_PROFILES_BN, ideaLanguage } from "@karigor/store";
+import { TARGET_PROFILES, TARGET_PROFILES_BN, ideaLanguage, languageOf } from "@karigor/store";
 import type { Template } from "@karigor/process";
 import { ArchitectOutput, DeveloperOutput, PlannerOutput, ProductOwnerOutput, ReleaserOutput, SelectorOutput, type AssumptionInput } from "./schemas.js";
 
@@ -437,9 +437,12 @@ export const releaser: RoleDefinition<ReleaserOutput> = {
 
 /** The person's summary. Also rewritten by the kernel with the production link after promotion. */
 export function summaryArtifact(s: ReleaserOutput["summary"], baseMeta: { id: string; createdAt: string; createdBy: Role | "system"; phase?: string }, url?: string): Artifact {
+  // The headings follow the language the releaser wrote the summary in.
+  const bn = languageOf(`${s.headline} ${s.whatItDoes}`) === "Bangla";
+  const [howTo, openIt, leftOut] = bn ? ["যেভাবে ব্যবহার করবেন", "খুলুন", "আপাতত বাদ রাখা হয়েছে"] : ["How to use it", "Open it", "Left out for now"];
   return {
     meta: { ...baseMeta, kind: "summary", headline: s.headline, whatItDoes: s.whatItDoes, howToUse: s.howToUse, whatWasParked: s.whatWasParked, ...(url ? { url } : {}) },
-    body: [`# ${s.headline}`, "", s.whatItDoes, "", "## How to use it", "", s.howToUse, "", ...(url ? [`Open it: ${url}`, ""] : []), ...(s.whatWasParked.length ? ["## Left out for now", "", ...s.whatWasParked.map((p) => `- ${p}`)] : [])].join("\n") + "\n",
+    body: [`# ${s.headline}`, "", s.whatItDoes, "", `## ${howTo}`, "", s.howToUse, "", ...(url ? [`${openIt}: ${url}`, ""] : []), ...(s.whatWasParked.length ? [`## ${leftOut}`, "", ...s.whatWasParked.map((p) => `- ${p}`)] : [])].join("\n") + "\n",
   };
 }
 
