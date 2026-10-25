@@ -61,7 +61,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Bengali", sans-serif;
+  font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Bengali", "Nirmala UI", "Bangla Sangam MN", sans-serif;
   -webkit-font-smoothing: antialiased;
   display: flex;
   flex-direction: column;
@@ -201,6 +201,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <div class="brand"><div class="mark" aria-hidden="true">K</div><span>Karigor</span></div>
   <div class="title" id="title"></div>
   <button class="chip" id="cost" hidden></button>
+  <button class="iconbtn" id="langBtn" type="button" lang="bn">বাংলা</button>
   <button class="iconbtn" id="projectsBtn" aria-haspopup="dialog">Projects</button>
 </header>
 
@@ -218,7 +219,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
 <dialog id="projects">
   <div class="sheet">
-    <h2>Your projects</h2>
+    <h2 id="projectsTitle">Your projects</h2>
     <ul class="plist" id="plist"></ul>
     <div class="row">
       <button class="btn" id="newBtn">New idea</button>
@@ -230,10 +231,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
 <dialog id="keyDialog">
   <form class="sheet" method="dialog" id="keyForm">
-    <h2>Your Anthropic key</h2>
-    <p style="margin:0;color:var(--muted);font-size:14px">This Karigor uses your own key. It stays in this browser tab and is sent only with the requests that need it; it is never saved on the server.</p>
-    <label class="field">Key <input id="keyInput" type="password" autocomplete="off" placeholder="sk-ant-…"></label>
-    <div class="row"><button class="btn" value="save">Save</button><button class="btn quiet" value="cancel">Cancel</button></div>
+    <h2 id="keyTitle">Your Anthropic key</h2>
+    <p id="keyText" style="margin:0;color:var(--muted);font-size:14px">This Karigor uses your own key. It stays in this browser tab and is sent only with the requests that need it; it is never saved on the server.</p>
+    <label class="field" id="keyLabel">Key <input id="keyInput" type="password" autocomplete="off" placeholder="sk-ant-…"></label>
+    <div class="row"><button class="btn" value="save" id="keySave">Save</button><button class="btn quiet" value="cancel" id="keyCancel">Cancel</button></div>
   </form>
 </dialog>
 
@@ -255,6 +256,96 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch {} },
   };
+
+  // ---- language: English or Bangla, remembered in this browser; what the agents wrote is shown as written ----
+  const WORDS = {
+    en: {
+      message: "Message", ideaPh: "Describe your idea…", fixPh: "Something to fix or add?", changesPh: "What is different for you? (optional)",
+      send: "Send", build: "Build", projects: "Projects", yourProjects: "Your projects", newIdea: "New idea", yourKey: "Your key", close: "Close",
+      keyTitle: "Your Anthropic key", keyText: "This Karigor uses your own key. It stays in this browser tab and is sent only with the requests that need it; it is never saved on the server.",
+      key: "Key", save: "Save", cancel: "Cancel", otherLang: "বাংলা", otherLangName: "Switch to Bangla",
+      wrong: (s) => `Something went wrong (${s})`, noExtra: "No extra cost", free: "Free", costOf: (c, s, b) => `${c} ${s} of ${b}`,
+      demoLong: "Demo mode: the steps are real, the work is pretend. Nothing is actually built or put online.", demoShort: "Demo mode: the steps are real, the work is pretend.",
+      steps: (n) => `${n} step${n === 1 ? "" : "s"}`, working: "Working", inTheWay: "Something got in the way", tryAgain: "Try again",
+      piecesDone: (d, t, p) => `${d} of ${t} pieces done${p ? `, ${p} set aside` : ""}`, setAside: "Set aside for now", toHandle: (n) => `Waiting to be handled (${n})`,
+      stepLabels: ["Spec", "Design", "Plan", "Build", "Release"], progressLabel: "Progress through the process",
+      howToUse: "How to use it: ", openIt: "Open it", planParts: "The plan, part by part", partState: { built: "Built", building: "Being built", later: "Later" },
+      buildNext: (n) => `Build the next part: ${n}`, tryFirst: "Try what is there first; you can still send fixes.", writeBelow: "Something not right, or something to add? Write it below and a fix round starts on its own.",
+      buildingNext: (s) => `Building the next part: ${s}.`,
+      needsBefore: "Built. It needs a few things from you before it goes online", needsLive: "Online, but it needs a few things from you",
+      onlyYou: "Only you can choose or provide these. They are stored privately where the app runs, never shown again, and never saved by Karigor.", hidden: "It needs a couple of hidden settings. Karigor can make them for you.",
+      serviceNote: (svc) => `This comes from ${svc ? `a free ${svc} account` : "an outside service"} you create yourself.`, saveUpdate: "Save and update the app", makeThem: "Make them for me",
+      saving: "Saving and updating the live app. This can take a few minutes.", stillNeeded: (x) => `Saved. Still needed: ${x}.`, allSet: "Saved. Everything it needs is in place.",
+      notRight: "Not right?", shouldBe: "What should it be?", correct: (t) => `Correct: ${t}`, fix: "Fix", fixStarted: "Thanks. A fix round has started to apply it.", willFollow: "Thanks. Every step from now on will follow it.",
+      decisions: (n) => `Decisions made for you (${n})`, notAsked: "You were not asked anything technical. If one of these is wrong for you, say so.",
+      examples: ["A site where neighbours on my street lend each other tools", "A booking page for my tailoring shop, with reminders", "A simple tracker for my tuition students and their fees"],
+      hello: "Tell me your idea. I'll build it, put it online, and keep it working.", helloText: "No technical questions. Describe what you want in your own words; I decide the rest and show you every decision so you can change it.",
+      how: "How it works", how1: ["You describe it", "In your own words, once."], how2: ["Karigor builds it", "Every step is checked: tests, reviews, a security scan."], how3: ["It goes live", "And stays working: problems become fixes."],
+      startersTitle: "Or start from a ready-made idea", startersText: "Common needs in Bangladesh, written out in full. Pick one, then tell me what is different for you.",
+      forWhom: (f) => `For ${f}`, fewer: "Show fewer", showAll: (n) => `Show all ${n}`, startingFrom: "Starting from ", addOrSend: "Add what is different for you, or send as it is.",
+      readIt: "Read it", hide: "Hide", remove: "Remove", removeX: (t) => `Remove ${t}`, modelledOn: (x) => `Modelled on ${x}.`,
+      fixRound: "Thanks. A fix round has started.", onList: "Thanks. It's on the list for the next fix round.", already: "That's already on the list.", tryingAgain: "Trying again.",
+      cantLoad: "Could not load that project.", loading: "Loading…", noProjects: "No projects yet.", cantReach: "Can't reach Karigor",
+      tierNames: { free: "free", cheap: "cheap", best: "best" },
+      costHint: (tier, c, s, b, api) => `${tier} tier: spent ${c} ${s} of ${b}${api ? ` (covered by a subscription; about ${c} ${api} at API prices)` : ""}.`,
+    },
+    bn: {
+      message: "বার্তা", ideaPh: "আপনার আইডিয়াটি লিখুন…", fixPh: "কিছু ঠিক করতে বা যোগ করতে চান?", changesPh: "আপনার ক্ষেত্রে কী আলাদা? (ইচ্ছা হলে)",
+      send: "পাঠান", build: "তৈরি করুন", projects: "প্রকল্প", yourProjects: "আপনার প্রকল্পগুলো", newIdea: "নতুন আইডিয়া", yourKey: "আপনার কী", close: "বন্ধ করুন",
+      keyTitle: "আপনার Anthropic কী", keyText: "এই Karigor আপনার নিজের কী ব্যবহার করে। কী-টি এই ব্রাউজার ট্যাবেই থাকে, শুধু যে অনুরোধগুলোর দরকার সেগুলোর সঙ্গে পাঠানো হয়, আর সার্ভারে কখনো রাখা হয় না।",
+      key: "কী", save: "সংরক্ষণ করুন", cancel: "বাতিল", otherLang: "English", otherLangName: "Switch to English",
+      wrong: (s) => `কিছু একটা গোলমাল হয়েছে (${s})`, noExtra: "বাড়তি খরচ নেই", free: "বিনা খরচে", costOf: (c, s, b) => `${c} ${b}-এর মধ্যে ${s}`,
+      demoLong: "ডেমো মোড: ধাপগুলো আসল, কাজটা অভিনয়। আসলে কিছু তৈরি হয় না বা অনলাইনে যায় না।", demoShort: "ডেমো মোড: ধাপগুলো আসল, কাজটা অভিনয়।",
+      steps: (n) => `${n}টি ধাপ`, working: "কাজ চলছে", inTheWay: "কাজে একটা বাধা এসেছে", tryAgain: "আবার চেষ্টা করুন",
+      piecesDone: (d, t, p) => `${t}টির মধ্যে ${d}টি অংশ শেষ${p ? `, ${p}টি আলাদা করে রাখা` : ""}`, setAside: "আপাতত আলাদা করে রাখা", toHandle: (n) => `যা করা বাকি (${n})`,
+      stepLabels: ["লেখা", "নকশা", "পরিকল্পনা", "তৈরি", "চালু"], progressLabel: "প্রক্রিয়ার কোন ধাপে আছে",
+      howToUse: "যেভাবে ব্যবহার করবেন: ", openIt: "খুলুন", planParts: "পরিকল্পনা, অংশ অনুযায়ী", partState: { built: "তৈরি হয়েছে", building: "তৈরি হচ্ছে", later: "পরে" },
+      buildNext: (n) => `পরের অংশ তৈরি করুন: ${n}`, tryFirst: "যা আছে আগে ব্যবহার করে দেখুন; ঠিক করার কথা এখনো পাঠাতে পারবেন।", writeBelow: "কিছু ঠিক নেই, বা কিছু যোগ করতে চান? নিচে লিখুন, ঠিক করার রাউন্ড নিজে থেকেই শুরু হবে।",
+      buildingNext: (s) => `পরের অংশ তৈরি হচ্ছে: ${s}।`,
+      needsBefore: "তৈরি হয়ে গেছে। অনলাইনে যাওয়ার আগে আপনার কাছ থেকে কয়েকটি জিনিস দরকার", needsLive: "অনলাইনে আছে, তবে আপনার কাছ থেকে কয়েকটি জিনিস দরকার",
+      onlyYou: "এগুলো শুধু আপনিই বাছাই করতে বা দিতে পারেন। অ্যাপ যেখানে চলে সেখানে গোপনে রাখা হয়, আর কখনো দেখানো হয় না, Karigor-ও রাখে না।", hidden: "এর কয়েকটি গোপন সেটিং দরকার। Karigor আপনার হয়ে এগুলো তৈরি করে দিতে পারে।",
+      serviceNote: (svc) => `এটি আসে ${svc ? `একটি বিনা খরচের ${svc} অ্যাকাউন্ট` : "একটি বাইরের সেবা"} থেকে, যা আপনি নিজে খুলবেন।`, saveUpdate: "সংরক্ষণ করে অ্যাপ হালনাগাদ করুন", makeThem: "আমার হয়ে তৈরি করে দিন",
+      saving: "সংরক্ষণ করে চালু অ্যাপটি হালনাগাদ করা হচ্ছে। কয়েক মিনিট লাগতে পারে।", stillNeeded: (x) => `সংরক্ষণ হয়েছে। এখনো দরকার: ${x}।`, allSet: "সংরক্ষণ হয়েছে। যা যা দরকার সব আছে।",
+      notRight: "ঠিক নয়?", shouldBe: "কী হওয়া উচিত?", correct: (t) => `সংশোধন: ${t}`, fix: "ঠিক করুন", fixStarted: "ধন্যবাদ। এটি প্রয়োগ করতে একটি ঠিক করার রাউন্ড শুরু হয়েছে।", willFollow: "ধন্যবাদ। এখন থেকে প্রতিটি ধাপ এটি মেনে চলবে।",
+      decisions: (n) => `আপনার হয়ে নেওয়া সিদ্ধান্ত (${n})`, notAsked: "আপনাকে কোনো কারিগরি প্রশ্ন করা হয়নি। এর কোনোটি আপনার জন্য ঠিক না হলে জানান।",
+      examples: ["আমার এলাকার প্রতিবেশীরা যেন একে অপরকে যন্ত্রপাতি ধার দিতে পারে, এমন একটি সাইট", "আমার দর্জির দোকানের জন্য একটি বুকিং পেজ, মনে করিয়ে দেওয়ার ব্যবস্থাসহ", "আমার টিউশনের ছাত্রছাত্রী আর তাদের বেতনের একটি সহজ হিসাব"],
+      hello: "আপনার আইডিয়াটি বলুন। আমি সেটি তৈরি করব, অনলাইনে তুলব, আর চালু রাখব।", helloText: "কোনো কারিগরি প্রশ্ন নেই। যা চান নিজের ভাষায় লিখুন; বাকিটা আমি ঠিক করব, আর প্রতিটি সিদ্ধান্ত দেখাব যাতে আপনি বদলাতে পারেন।",
+      how: "যেভাবে কাজ করে", how1: ["আপনি বলবেন", "নিজের ভাষায়, একবার।"], how2: ["Karigor তৈরি করবে", "প্রতিটি ধাপ যাচাই হয়: টেস্ট, পর্যালোচনা, নিরাপত্তা পরীক্ষা।"], how3: ["অ্যাপ চালু হবে", "আর চালু থাকবে: সমস্যা ধরা পড়লে ঠিক করা হবে।"],
+      startersTitle: "অথবা তৈরি করা একটি আইডিয়া থেকে শুরু করুন", startersText: "বাংলাদেশের সাধারণ প্রয়োজনগুলো, পুরোটা লেখা। একটি বেছে নিন, তারপর বলুন আপনার ক্ষেত্রে কী আলাদা।",
+      forWhom: (f) => f, fewer: "কম দেখান", showAll: (n) => `সবগুলো দেখান (${n})`, startingFrom: "শুরু হবে: ", addOrSend: "আপনার ক্ষেত্রে কী আলাদা লিখুন, অথবা যেমন আছে তেমন পাঠান।",
+      readIt: "পড়ুন", hide: "লুকান", remove: "সরান", removeX: (t) => `${t} সরান`, modelledOn: (x) => `${x}-এর আদলে।`,
+      fixRound: "ধন্যবাদ। একটি ঠিক করার রাউন্ড শুরু হয়েছে।", onList: "ধন্যবাদ। পরের ঠিক করার রাউন্ডের তালিকায় রাখা হলো।", already: "এটি আগেই তালিকায় আছে।", tryingAgain: "আবার চেষ্টা করা হচ্ছে।",
+      cantLoad: "প্রকল্পটি খোলা যায়নি।", loading: "খোলা হচ্ছে…", noProjects: "এখনো কোনো প্রকল্প নেই।", cantReach: "Karigor-এর সঙ্গে যোগাযোগ করা যাচ্ছে না",
+      tierNames: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" },
+      costHint: (tier, c, s, b, api) => `${tier} স্তর: ${c} ${b}-এর মধ্যে খরচ ${s}${api ? ` (সাবস্ক্রিপশনে ঢাকা; API দামে প্রায় ${c} ${api})` : ""}।`,
+    },
+  };
+  const prefs = {
+    get() { try { return localStorage.getItem("karigor_lang"); } catch { return null; } },
+    set(v) { try { localStorage.setItem("karigor_lang", v); } catch {} },
+  };
+  let lang = prefs.get() || ((navigator.languages || [navigator.language]).some((l) => /^bn\b/i.test(l || "")) ? "bn" : "en");
+  if (!WORDS[lang]) lang = "en";
+  const t = (k, ...a) => { const w = WORDS[lang][k] ?? WORDS.en[k]; return typeof w === "function" ? w(...a) : w; };
+  /** A starter's words in the page's language, when it has them. */
+  const sw = (s, k) => (lang === "bn" && s.bn && s.bn[k]) || s[k];
+  function applyStatic() {
+    document.documentElement.lang = lang;
+    $("langBtn").textContent = t("otherLang");
+    $("langBtn").setAttribute("aria-label", t("otherLangName"));
+    $("langBtn").lang = lang === "bn" ? "en" : "bn";
+    $("projectsBtn").textContent = t("projects");
+    document.querySelector('label[for="input"]').textContent = t("message");
+    $("projectsTitle").textContent = t("yourProjects");
+    $("newBtn").textContent = t("newIdea");
+    $("keyBtn").textContent = t("yourKey");
+    $("closeBtn").textContent = t("close");
+    $("keyTitle").textContent = t("keyTitle");
+    $("keyText").textContent = t("keyText");
+    $("keyLabel").firstChild.textContent = `${t("key")} `;
+    $("keySave").textContent = t("save");
+    $("keyCancel").textContent = t("cancel");
+  }
   const el = (tag, attrs = {}, ...kids) => {
     const e = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs)) {
@@ -268,7 +359,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   const api = async (path, opts = {}) => {
     const res = await fetch(path, { ...opts, headers: { "content-type": "application/json", ...(opts.headers || {}) } });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Something went wrong (${res.status})`);
+    if (!res.ok) throw new Error(data.error || t("wrong", res.status));
     return data;
   };
   const withKey = (b) => { const k = store.get("karigor_key"); return k ? { ...b, apiKey: k } : b; };
@@ -281,7 +372,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       const m = /^(\d\d:\d\d:\d\d) (\s*)(.*)$/.exec(raw);
       if (!m) continue;
       const [, time, indent, textLine] = m;
-      if (/^Moved from \S+ to \S+\.$/.test(textLine)) continue;
+      if (/^Moved from \S+ to \S+\.$/.test(textLine) || /^\S+ → \S+$/.test(textLine)) continue;
       if (indent.length === 0 || !out.length) out.push({ time, text: textLine, details: [] });
       else out[out.length - 1].details.push(textLine);
     }
@@ -298,9 +389,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     $("title").textContent = view.idea;
     const c = view.cost;
     $("cost").hidden = !c;
-    if (c) $("cost").textContent = c.spent === 0 && c.apiEquivalent > 0 ? "No extra cost" : c.budget === 0 ? "Free" : `${c.currency} ${c.spent.toFixed(2)} of ${c.budget.toFixed(2)}`;
+    if (c) $("cost").textContent = c.spent === 0 && c.apiEquivalent > 0 ? t("noExtra") : c.budget === 0 ? t("free") : t("costOf", c.currency, c.spent.toFixed(2), c.budget.toFixed(2));
 
-    if (config.demo) main.append(el("div", { class: "banner" }, "Demo mode: the steps are real, the work is pretend. Nothing is actually built or put online."));
+    if (config.demo) main.append(el("div", { class: "banner" }, t("demoLong")));
     main.append(el("div", { class: "msg me" }, el("div", { class: "bubble" }, view.idea)));
 
     // Only messages that arrived since the last render slide in; reopening a project shows its history still.
@@ -309,18 +400,18 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     const arrived = messages.length > shown;
     messages.forEach((s, i) => {
       const cls = i >= from ? " new" : "";
-      const fb = /^Feedback received: (.*)\.$/.exec(s.text);
+      const fb = /^Feedback received: (.*)\.$/.exec(s.text) || /^আপনার মতামত: (.*)।$/.exec(s.text);
       if (fb) { main.append(el("div", { class: `msg me${cls}` }, el("div", { class: "bubble" }, fb[1]), el("div", { class: "meta" }, s.time))); return; }
       const details = s.details.length
-        ? el("details", { class: "more" }, el("summary", {}, `${s.details.length} step${s.details.length === 1 ? "" : "s"}`), el("ul", {}, s.details.map((d) => el("li", { class: /FAILED|did not succeed/.test(d) ? "fail" : "" }, d))))
+        ? el("details", { class: "more" }, el("summary", {}, t("steps", s.details.length)), el("ul", {}, s.details.map((d) => el("li", { class: /FAILED|did not succeed|ব্যর্থ|সফল হয়নি/.test(d) ? "fail" : "" }, d))))
         : null;
       main.append(el("div", { class: `msg them${cls}` }, el("div", { class: "bubble" }, friendly(s.text)), el("div", { class: "metarow" }, el("span", { class: "meta" }, s.time), details)));
     });
     shown = messages.length;
-    if (view.running) main.append(el("div", { class: "msg them typing", role: "status" }, el("div", { class: "bubble" }, el("i"), el("i"), el("i"), el("span", { class: "sr" }, "Working"))));
+    if (view.running) main.append(el("div", { class: "msg them typing", role: "status" }, el("div", { class: "bubble" }, el("i"), el("i"), el("i"), el("span", { class: "sr" }, t("working")))));
 
     if (view.decisions.length) main.append(decisionsCard());
-    if (view.problem) main.append(el("div", { class: "card problem" }, el("h2", {}, "Something got in the way"), el("p", {}, view.problem), el("div", { class: "row" }, el("button", { class: "btn", onclick: resume }, "Try again"))));
+    if (view.problem) main.append(el("div", { class: "card problem" }, el("h2", {}, t("inTheWay")), el("p", {}, view.problem), el("div", { class: "row" }, el("button", { class: "btn", onclick: resume }, t("tryAgain")))));
     if (view.status === "finished" && view.summary) main.append(resultCard());
     if (view.waitingFor && view.waitingFor.length) main.append(settingsCard(view.waitingFor, true));
     else if (view.live && view.live.missingSettings && view.live.missingSettings.length) main.append(settingsCard(view.live.missingSettings));
@@ -336,20 +427,20 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       el("div", { class: "status" }, el("span", { class: `dot ${view.running ? "running" : view.status}` }), el("strong", {}, view.headline)),
       stepper(),
       total ? el("div", { class: "progress", role: "progressbar", "aria-valuenow": pct, "aria-valuemin": 0, "aria-valuemax": 100 }, el("div", { style: `width:${pct}%` })) : null,
-      total ? el("p", { class: "meta" }, `${view.work.done} of ${total} pieces done${view.work.parked.length ? `, ${view.work.parked.length} set aside` : ""}`) : null,
-      view.work.parked.length ? el("details", { class: "more" }, el("summary", {}, "Set aside for now"), el("ul", {}, view.work.parked.map((p) => el("li", {}, `${p.title}${p.reason ? `: ${p.reason}` : ""}`)))) : null,
-      open.length ? el("details", { class: "more", open: true }, el("summary", {}, `Waiting to be handled (${open.length})`), el("ul", {}, open.map((w) => el("li", {}, w.title)))) : null,
-      view.status === "stopped" && !view.running && !view.problem ? el("div", { class: "row" }, el("button", { class: "btn quiet", onclick: resume }, "Try again")) : null,
+      total ? el("p", { class: "meta" }, t("piecesDone", view.work.done, total, view.work.parked.length)) : null,
+      view.work.parked.length ? el("details", { class: "more" }, el("summary", {}, t("setAside")), el("ul", {}, view.work.parked.map((p) => el("li", {}, `${p.title}${p.reason ? `: ${p.reason}` : ""}`)))) : null,
+      open.length ? el("details", { class: "more", open: true }, el("summary", {}, t("toHandle", open.length)), el("ul", {}, open.map((w) => el("li", {}, w.title)))) : null,
+      view.status === "stopped" && !view.running && !view.problem ? el("div", { class: "row" }, el("button", { class: "btn quiet", onclick: resume }, t("tryAgain"))) : null,
     );
   }
 
   /** Where the run is in the process: spec, design, plan, build, release. */
   function stepper() {
-    const STEPS = [["specify", "Spec"], ["design", "Design"], ["plan", "Plan"], ["build", "Build"], ["release", "Release"]];
+    const STEPS = ["specify", "design", "plan", "build", "release"].map((k, i) => [k, t("stepLabels")[i]]);
     const SAME = { spike: "plan", verify: "release", triage: "build" };
     const at = STEPS.findIndex(([k]) => k === (SAME[view.phaseKey] || view.phaseKey));
     const finished = view.status === "finished";
-    return el("ol", { class: "steps", "aria-label": "Progress through the process" }, STEPS.map(([, label], i) => {
+    return el("ol", { class: "steps", "aria-label": t("progressLabel") }, STEPS.map(([, label], i) => {
       // The current phase moves while a run works on it and holds still while paused; it is never shown as done early.
       const state = finished || (at >= 0 && i < at) ? "done" : i === at ? (view.running ? "now" : "at") : "";
       return el("li", { class: state, "aria-current": state === "now" || state === "at" ? "step" : null }, label);
@@ -362,16 +453,16 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     return el("div", { class: "card result" },
       el("h2", {}, s.headline),
       el("p", {}, s.whatItDoes),
-      el("p", {}, el("strong", {}, "How to use it: "), s.howToUse),
-      url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, "Open it"), el("span", { class: "meta" }, url)) : null,
-      view.stages ? el("details", { class: "more", open: true }, el("summary", {}, "The plan, part by part"), el("ul", {}, view.stages.map((p) => el("li", {}, `${p.state === "built" ? "Built" : p.state === "building" ? "Being built" : "Later"}: ${p.name}. ${p.goal}`)))) : null,
-      view.nextStage && !view.running ? el("div", { class: "row" }, el("button", { class: "btn", onclick: growNext }, `Build the next part: ${view.nextStage.name}`), el("span", { class: "meta" }, "Try what is there first; you can still send fixes.")) : null,
-      el("p", { class: "meta" }, "Something not right, or something to add? Write it below and a fix round starts on its own."),
+      el("p", {}, el("strong", {}, t("howToUse")), s.howToUse),
+      url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, t("openIt")), el("span", { class: "meta" }, url)) : null,
+      view.stages ? el("details", { class: "more", open: true }, el("summary", {}, t("planParts")), el("ul", {}, view.stages.map((p) => el("li", {}, `${t("partState")[p.state]}: ${p.name}. ${p.goal}`)))) : null,
+      view.nextStage && !view.running ? el("div", { class: "row" }, el("button", { class: "btn", onclick: growNext }, t("buildNext", view.nextStage.name)), el("span", { class: "meta" }, t("tryFirst"))) : null,
+      el("p", { class: "meta" }, t("writeBelow")),
     );
   }
 
   async function growNext() {
-    try { const r = await api(`/api/projects/${current}/grow`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = `Building the next part: ${r.stage}.`; }
+    try { const r = await api(`/api/projects/${current}/grow`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = t("buildingNext", r.stage); }
     catch (err) { hint.textContent = err.message; }
   }
 
@@ -379,28 +470,28 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   function settingsCard(missing, beforeRelease) {
     const needed = missing.filter((m) => m.kind !== "generate");
     const form = el("form", { class: "card problem", style: "gap:12px" },
-      el("h2", {}, beforeRelease ? "Built. It needs a few things from you before it goes online" : "Online, but it needs a few things from you"),
-      el("p", {}, needed.length ? "Only you can choose or provide these. They are stored privately where the app runs, never shown again, and never saved by Karigor." : "It needs a couple of hidden settings. Karigor can make them for you."));
+      el("h2", {}, beforeRelease ? t("needsBefore") : t("needsLive")),
+      el("p", {}, needed.length ? t("onlyYou") : t("hidden")));
     const inputs = [];
     for (const m of needed) {
       const field = el("input", { type: "password", autocomplete: "off", name: m.name, "aria-label": m.note || m.name });
       inputs.push(field);
       form.append(el("label", { class: "field" },
         el("span", {}, m.note || m.name),
-        m.kind === "service" ? el("span", { class: "meta" }, `This comes from ${m.service ? `a free ${m.service} account` : "an outside service"} you create yourself.`) : null,
+        m.kind === "service" ? el("span", { class: "meta" }, t("serviceNote", m.service)) : null,
         field));
     }
-    const btn = el("button", { class: "btn" }, needed.length ? "Save and update the app" : "Make them for me");
+    const btn = el("button", { class: "btn" }, needed.length ? t("saveUpdate") : t("makeThem"));
     form.append(el("div", { class: "row" }, btn));
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const values = {};
       for (const f of inputs) if (f.value.trim()) values[f.name] = f.value;
       btn.disabled = true;
-      hint.textContent = "Saving and updating the live app. This can take a few minutes.";
+      hint.textContent = t("saving");
       try {
         const r = await api(`/api/projects/${current}/settings`, { method: "POST", body: JSON.stringify({ values }) });
-        hint.textContent = r.stillMissing.length ? `Saved. Still needed: ${r.stillMissing.map((m) => m.note || m.name).join("; ")}.` : "Saved. Everything it needs is in place.";
+        hint.textContent = r.stillMissing.length ? t("stillNeeded", r.stillMissing.map((m) => m.note || m.name).join("; ")) : t("allSet");
       } catch (err) { hint.textContent = err.message; btn.disabled = false; }
     });
     return form;
@@ -415,16 +506,16 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
         d.correctedTo ? el("span", { class: "was" }, d.decision) : null,
       );
       if (!d.correctedTo) {
-        const btn = el("button", { class: "linkbtn", type: "button" }, "Not right?");
+        const btn = el("button", { class: "linkbtn", type: "button" }, t("notRight"));
         btn.addEventListener("click", () => {
-          const field = el("input", { placeholder: "What should it be?", "aria-label": `Correct: ${d.topic}` });
-          const form = el("form", { class: "inline-form" }, field, el("button", { class: "btn" }, "Fix"));
+          const field = el("input", { placeholder: t("shouldBe"), "aria-label": t("correct", d.topic) });
+          const form = el("form", { class: "inline-form" }, field, el("button", { class: "btn" }, t("fix")));
           form.addEventListener("submit", async (e) => {
             e.preventDefault();
             if (!field.value.trim()) return;
             try {
               const r = await api(`/api/projects/${current}/corrections`, { method: "POST", body: JSON.stringify(withKey({ decisionId: d.id, text: field.value })) });
-              hint.textContent = r.fixing ? "Thanks. A fix round has started to apply it." : "Thanks. Every step from now on will follow it.";
+              hint.textContent = r.fixing ? t("fixStarted") : t("willFollow");
             } catch (err) { hint.textContent = err.message; }
           });
           btn.replaceWith(form);
@@ -434,23 +525,23 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       }
       list.append(li);
     }
-    return el("details", { class: "card" }, el("summary", { style: "cursor:pointer;font-weight:600" }, `Decisions made for you (${view.decisions.length})`), el("p", { class: "meta" }, "You were not asked anything technical. If one of these is wrong for you, say so."), list);
+    return el("details", { class: "card" }, el("summary", { style: "cursor:pointer;font-weight:600" }, t("decisions", view.decisions.length)), el("p", { class: "meta" }, t("notAsked")), list);
   }
 
   function renderWelcome() {
     $("title").textContent = "";
     $("cost").hidden = true;
-    const ideas = ["A site where neighbours on my street lend each other tools", "A booking page for my tailoring shop, with reminders", "A simple tracker for my tuition students and their fees"];
+    const ideas = t("examples");
     main.append(
-      config.demo ? el("div", { class: "banner" }, "Demo mode: the steps are real, the work is pretend.") : null,
+      config.demo ? el("div", { class: "banner" }, t("demoShort")) : null,
       el("div", { class: "welcome" },
-        el("h1", {}, "Tell me your idea. I'll build it, put it online, and keep it working."),
-        el("p", {}, "No technical questions. Describe what you want in your own words; I decide the rest and show you every decision so you can change it."),
+        el("h1", {}, t("hello")),
+        el("p", {}, t("helloText")),
         el("div", { class: "examples" }, ideas.map((t) => el("button", { type: "button", onclick: () => { input.value = t; input.focus(); grow(); } }, t))),
-        el("ol", { class: "how", "aria-label": "How it works" },
-          el("li", {}, el("span", { class: "n" }, "1"), el("b", {}, "You describe it"), "In your own words, once."),
-          el("li", {}, el("span", { class: "n" }, "2"), el("b", {}, "Karigor builds it"), "Every step is checked: tests, reviews, a security scan."),
-          el("li", {}, el("span", { class: "n" }, "3"), el("b", {}, "It goes live"), "And stays working: problems become fixes.")),
+        el("ol", { class: "how", "aria-label": t("how") },
+          el("li", {}, el("span", { class: "n" }, "1"), el("b", {}, t("how1")[0]), t("how1")[1]),
+          el("li", {}, el("span", { class: "n" }, "2"), el("b", {}, t("how2")[0]), t("how2")[1]),
+          el("li", {}, el("span", { class: "n" }, "3"), el("b", {}, t("how3")[0]), t("how3")[1])),
         startersSection(),
       ),
     );
@@ -463,10 +554,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       if (!starters || !starters.length) return box.replaceChildren();
       const list = allStarters ? starters : starters.slice(0, 6);
       box.replaceChildren(
-        el("h2", { id: "startersTitle" }, "Or start from a ready-made idea"),
-        el("p", { class: "meta" }, "Common needs in Bangladesh, written out in full. Pick one, then tell me what is different for you."),
-        el("div", { class: "sgrid" }, list.map((s) => el("button", { type: "button", "aria-pressed": picked && picked.id === s.id ? "true" : "false", "data-starter": s.id, onclick: () => pick(s) }, el("b", {}, s.title), el("span", {}, `For ${s.for}`)))),
-        starters.length > 6 ? el("button", { type: "button", class: "linkbtn", onclick: () => { allStarters = !allStarters; fill(); } }, allStarters ? "Show fewer" : `Show all ${starters.length}`) : null,
+        el("h2", { id: "startersTitle" }, t("startersTitle")),
+        el("p", { class: "meta" }, t("startersText")),
+        el("div", { class: "sgrid" }, list.map((s) => el("button", { type: "button", "aria-pressed": picked && picked.id === s.id ? "true" : "false", "data-starter": s.id, onclick: () => pick(s) }, el("b", {}, sw(s, "title")), el("span", {}, t("forWhom", sw(s, "for")))))),
+        starters.length > 6 ? el("button", { type: "button", class: "linkbtn", onclick: () => { allStarters = !allStarters; fill(); } }, allStarters ? t("fewer") : t("showAll", starters.length)) : null,
       );
     };
     if (starters) fill();
@@ -484,14 +575,14 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     const on = !!(picked && !current);
     box.hidden = !on;
     for (const b of document.querySelectorAll("[data-starter]")) b.setAttribute("aria-pressed", String(on && b.dataset.starter === picked.id));
-    input.placeholder = current ? "Something to fix or add?" : on ? "What is different for you? (optional)" : "Describe your idea…";
+    input.placeholder = current ? t("fixPh") : on ? t("changesPh") : t("ideaPh");
     if (!on) return box.replaceChildren();
-    const full = el("p", { hidden: true }, picked.idea, el("br"), el("br"), `Modelled on ${picked.basedOn.join(", ")}.`);
+    const full = el("p", { hidden: true }, sw(picked, "idea"), el("br"), el("br"), t("modelledOn", picked.basedOn.join(", ")));
     box.replaceChildren(
       el("div", { class: "top" },
-        el("span", { class: "what" }, el("span", {}, "Starting from ", el("b", {}, picked.title)), el("span", { class: "meta" }, "Add what is different for you, or send as it is.")),
-        el("button", { type: "button", class: "linkbtn", onclick: (e) => { full.hidden = !full.hidden; e.target.textContent = full.hidden ? "Read it" : "Hide"; } }, "Read it"),
-        el("button", { type: "button", class: "linkbtn", "aria-label": `Remove ${picked.title}`, onclick: () => { picked = null; showPicked(); input.focus(); } }, "Remove")),
+        el("span", { class: "what" }, el("span", {}, t("startingFrom"), el("b", {}, sw(picked, "title"))), el("span", { class: "meta" }, t("addOrSend"))),
+        el("button", { type: "button", class: "linkbtn", onclick: (e) => { full.hidden = !full.hidden; e.target.textContent = full.hidden ? t("readIt") : t("hide"); } }, t("readIt")),
+        el("button", { type: "button", class: "linkbtn", "aria-label": t("removeX", sw(picked, "title")), onclick: () => { picked = null; showPicked(); input.focus(); } }, t("remove"))),
       full,
     );
   }
@@ -499,22 +590,22 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   // ---- actions ----
   async function submit(e) {
     e.preventDefault();
-    const t = input.value.trim();
+    const text = input.value.trim();
     const starter = !current && picked ? picked.id : null;
-    if (!t && !starter) return;
+    if (!text && !starter) return;
     if (config.needsKey && !store.get("karigor_key")) { $("keyDialog").showModal(); return; }
     send.disabled = true;
     try {
       if (!current) {
-        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey(starter ? { starter, idea: t } : { idea: t })) });
+        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey(starter ? { starter, idea: text, lang } : { idea: text })) });
         input.value = "";
         picked = null;
         justCreated = r.projectId;
         location.hash = `#/p/${r.projectId}`;
       } else {
-        const r = await api(`/api/projects/${current}/feedback`, { method: "POST", body: JSON.stringify(withKey({ text: t })) });
+        const r = await api(`/api/projects/${current}/feedback`, { method: "POST", body: JSON.stringify(withKey({ text })) });
         input.value = "";
-        hint.textContent = r.fixing ? "Thanks. A fix round has started." : r.workItemId ? "Thanks. It's on the list for the next fix round." : "That's already on the list.";
+        hint.textContent = r.fixing ? t("fixRound") : r.workItemId ? t("onList") : t("already");
       }
       grow();
     } catch (err) {
@@ -524,7 +615,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     }
   }
   async function resume() {
-    try { await api(`/api/projects/${current}/resume`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = "Trying again."; }
+    try { await api(`/api/projects/${current}/resume`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = t("tryingAgain"); }
     catch (err) { hint.textContent = err.message; }
   }
 
@@ -536,22 +627,22 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     justCreated = null;
     hint.textContent = "";
     showPicked();
-    send.textContent = id ? "Send" : "Build";
+    send.textContent = id ? t("send") : t("build");
     render();
     if (!id) return;
-    stream = new EventSource(`/api/projects/${id}/stream`);
+    stream = new EventSource(`/api/projects/${id}/stream?lang=${lang}`);
     stream.onmessage = (ev) => { view = JSON.parse(ev.data); render(); };
-    stream.onerror = () => { hint.textContent = view ? "" : "Could not load that project."; };
+    stream.onerror = () => { hint.textContent = view ? "" : t("cantLoad"); };
   }
   const route = () => { const m = /^#\/p\/([a-z0-9-]+)$/.exec(location.hash); open(m ? m[1] : null); };
 
   async function showProjects() {
     const list = $("plist");
-    list.replaceChildren(el("li", { class: "meta" }, "Loading…"));
+    list.replaceChildren(el("li", { class: "meta" }, t("loading")));
     $("projects").showModal();
     try {
       const { projects } = await api("/api/projects");
-      list.replaceChildren(...(projects.length ? projects.map((p) => el("li", {}, el("button", { type: "button", onclick: () => { $("projects").close(); location.hash = `#/p/${p.id}`; } }, el("span", { class: `dot ${p.running ? "running" : p.status}` }), el("span", { class: "idea" }, p.idea || p.id)))) : [el("li", { class: "meta" }, "No projects yet.")]));
+      list.replaceChildren(...(projects.length ? projects.map((p) => el("li", {}, el("button", { type: "button", onclick: () => { $("projects").close(); location.hash = `#/p/${p.id}`; } }, el("span", { class: `dot ${p.running ? "running" : p.status}` }), el("span", { class: "idea" }, p.idea || p.id)))) : [el("li", { class: "meta" }, t("noProjects"))]));
     } catch (err) { list.replaceChildren(el("li", { class: "meta" }, err.message)); }
   }
 
@@ -564,10 +655,18 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   $("newBtn").addEventListener("click", () => { $("projects").close(); location.hash = ""; input.focus(); });
   $("keyBtn").addEventListener("click", () => { $("projects").close(); $("keyDialog").showModal(); });
   $("keyForm").addEventListener("submit", (e) => { if (e.submitter && e.submitter.value === "save") store.set("karigor_key", $("keyInput").value.trim()); });
-  $("cost").addEventListener("click", () => { if (view && view.cost) hint.textContent = `${view.cost.tier} tier: spent ${view.cost.currency} ${view.cost.spent.toFixed(4)} of ${view.cost.budget.toFixed(2)}${view.cost.apiEquivalent ? ` (covered by a subscription; about ${view.cost.currency} ${view.cost.apiEquivalent.toFixed(2)} at API prices)` : ""}.`; });
+  $("cost").addEventListener("click", () => { if (view && view.cost) hint.textContent = t("costHint", t("tierNames")[view.cost.tier] ?? view.cost.tier, view.cost.currency, view.cost.spent.toFixed(4), view.cost.budget.toFixed(2), view.cost.apiEquivalent ? view.cost.apiEquivalent.toFixed(2) : ""); });
+  $("langBtn").addEventListener("click", () => {
+    lang = lang === "bn" ? "en" : "bn";
+    prefs.set(lang);
+    applyStatic();
+    shown = -1;
+    open(current);
+  });
+  applyStatic();
   window.addEventListener("hashchange", route);
 
-  api("/api/config").then((c) => { config = c; $("keyBtn").hidden = !c.needsKey; route(); }).catch((err) => { main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, "Can't reach Karigor"), el("p", {}, err.message))); });
+  api("/api/config").then((c) => { config = c; $("keyBtn").hidden = !c.needsKey; route(); }).catch((err) => { main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, t("cantReach")), el("p", {}, err.message))); });
 })();
 </script>
 </body>
