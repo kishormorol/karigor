@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod/v4";
 import type { Artifact, ArtifactKind, ArtifactOf, BacklogItem, MetaOf, ProjectState, Role, Stage, TargetProfile } from "@karigor/store";
-import { TARGET_PROFILES } from "@karigor/store";
+import { TARGET_PROFILES, TARGET_PROFILES_BN, ideaLanguage } from "@karigor/store";
 import type { Template } from "@karigor/process";
 import { ArchitectOutput, DeveloperOutput, PlannerOutput, ProductOwnerOutput, ReleaserOutput, SelectorOutput, type AssumptionInput } from "./schemas.js";
 
@@ -138,12 +138,19 @@ export const selector: RoleDefinition<SelectorOutput> = {
   },
   async write(out, ctx) {
     const { target, fellBack } = buildableTarget(out.targetProfile, ctx.buildable);
+    // Written by Karigor itself, so in the person's language here; the selector's own reasons follow the language note.
+    const bn = (await ideaLanguage(ctx.state, ctx.store)) === "Bangla";
+    const why = out.reasons.join(" ");
     const l = await ledgerWith(ctx, "selector", [
-      { topic: "process", decision: `Work will follow the "${out.template}" process.`, reason: out.reasons.join(" ") },
+      { topic: bn ? "কাজের পদ্ধতি" : "process", decision: bn ? `কাজ চলবে "${out.template}" পদ্ধতিতে।` : `Work will follow the "${out.template}" process.`, reason: why },
       {
-        topic: "kind of software",
-        decision: `This will be built as: ${TARGET_PROFILES[target]}`,
-        reason: fellBack ? `The best fit would be ${TARGET_PROFILES[out.targetProfile].charAt(0).toLowerCase()}${TARGET_PROFILES[out.targetProfile].slice(1, -1)}, which Karigor cannot build yet, so this is the closest kind it can. ${out.reasons.join(" ")}` : out.reasons.join(" "),
+        topic: bn ? "সফটওয়্যারের ধরন" : "kind of software",
+        decision: bn ? `যা তৈরি হবে: ${TARGET_PROFILES_BN[target]}` : `This will be built as: ${TARGET_PROFILES[target]}`,
+        reason: !fellBack
+          ? why
+          : bn
+            ? `সবচেয়ে মানানসই হতো ${TARGET_PROFILES_BN[out.targetProfile].slice(0, -1)}, যা Karigor এখনো তৈরি করতে পারে না, তাই এটিই সবচেয়ে কাছের ধরন। ${why}`
+            : `The best fit would be ${TARGET_PROFILES[out.targetProfile].charAt(0).toLowerCase()}${TARGET_PROFILES[out.targetProfile].slice(1, -1)}, which Karigor cannot build yet, so this is the closest kind it can. ${why}`,
       },
       ...out.assumptions,
     ]);

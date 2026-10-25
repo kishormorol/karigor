@@ -193,6 +193,7 @@ Not yet supported: files over 4 MB, WhatsApp, anything that updates on screen wi
 | `karigor new "<idea>" --run` | Start a new app and build it |
 | `karigor starters [id]` | List ready-made ideas, or read one in full |
 | `karigor new --starter <id> "<changes>" --run` | Start from a ready-made idea, with your changes |
+| `karigor --lang bn <command>` | Talk to you in Bangla (`KARIGOR_LANG=bn` does the same). A project whose idea is in Bangla gets Bangla on its own, in `status`, `explain` and from every agent |
 | `karigor status <id>` | Where it stands |
 | `karigor resume <id> [--wait]` | Continue after a pause, limit or crash; `--wait` keeps retrying through usage limits |
 | `karigor setup <id>` | Give settings only you can provide |

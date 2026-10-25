@@ -16,6 +16,24 @@ async function fresh(idea = "A site where neighbours lend tools") {
   return { root: r, projectId };
 }
 
+describe("runProject: a person who reads Bangla", () => {
+  it("records a Bangla idea as Bangla, tells every agent, and writes Karigor's own decisions and story in Bangla", async () => {
+    const { root: r, projectId } = await fresh("আমার এলাকার প্রতিবেশীরা যেন যন্ত্রপাতি ধার দিতে পারে");
+    const systems: string[] = [];
+    const adapter = scriptedAdapter({ override: (req) => void systems.push(req.system) });
+    const state = await runProject({ root: r, projectId, adapter, sandbox: new FakeSandbox(), clock: NOW, committer: noopCommitter });
+    expect(state.status).toBe("finished");
+    expect(systems.length).toBeGreaterThan(5);
+    expect(systems.every((s) => s.includes("The person reads Bangla"))).toBe(true);
+    const store = await FsStore.open(r, projectId, { committer: noopCommitter });
+    const ledger = await store.readArtifact("ledger", state.artifacts.ledger!.at(-1)!);
+    expect(ledger.meta.assumptions.slice(0, 2).map((a) => a.decision)).toEqual([`কাজ চলবে "iterative" পদ্ধতিতে।`, expect.stringMatching(/^যা তৈরি হবে: একটি ওয়েবসাইট বা ওয়েব অ্যাপ/)]);
+    const { renderExplain, renderStatus } = await import("../src/index.js");
+    expect(await renderStatus(store, state, "bn")).toMatch(/^প্রকল্প p1\nআইডিয়া: /);
+    expect(await renderExplain(store, await store.readEvents(), "bn")).toMatch(/পেয়েছি। এখান থেকে আমি দেখছি।/);
+  });
+});
+
 describe("runProject: golden path", () => {
   for (const template of ["iterative", "linear", "spike-then-build"]) {
     it(`${template}: idea to released on the mock adapter at zero cost`, async () => {

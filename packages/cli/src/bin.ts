@@ -2,13 +2,14 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
-import { FsStore, queueInbox, runningPid } from "@karigor/store";
+import { FsStore, ideaLanguage, languageOf, queueInbox, runningPid, type ProjectState } from "@karigor/store";
 import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject, runWaiting } from "./run.js";
 import { projectPort, runOptions as setupRun, type RunFlags } from "./setup.js";
 import { findStarter, ideaFor, renderStarter, renderStarters } from "./starters.js";
+import { isLang, type Lang } from "./words.js";
 
 const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: (l) => console.log(l) });
 
@@ -17,6 +18,18 @@ const defaultRoot = process.env["KARIGOR_ROOT"] ?? join(homedir(), ".karigor", "
 
 program.name("karigor").description("Software agents that take an idea to deployed, maintained software.").version("0.0.1");
 program.option("--root <dir>", "where projects live", defaultRoot);
+program.option("--lang <lang>", "en or bn: the language Karigor writes to you in (default: the project's own language; KARIGOR_LANG)", process.env["KARIGOR_LANG"]);
+
+/** The language asked for with --lang or KARIGOR_LANG, if any. */
+const askedLang = (): Lang | undefined => {
+  const l = program.opts<{ lang?: string }>().lang;
+  if (l === undefined) return undefined;
+  if (!isLang(l)) throw new Error(`--lang is en or bn, not "${l}"`);
+  return l;
+};
+/** The language to write to the person in about one project: what they asked for, else the language of their idea. */
+const langFor = async (store: FsStore, state?: ProjectState): Promise<Lang> =>
+  askedLang() ?? ((await ideaLanguage(state ?? (await store.replay()), store)) === "Bangla" ? "bn" : "en");
 
 const runFlags = (c: Command) =>
   c
@@ -36,10 +49,12 @@ runFlags(
   .description("record an idea as a new project")
   .action(async (idea: string | undefined, o: RunFlags & { run: boolean; starter?: string }) => {
     const root = program.opts<{ root: string }>().root;
-    const projectId = await createProject(root, ideaFor(idea, o.starter));
-    console.log(`Created project ${projectId}`);
+    // Changes written in Bangla start from the Bangla idea.
+    const lang = askedLang() ?? (idea && languageOf(idea) === "Bangla" ? "bn" : "en");
+    const projectId = await createProject(root, ideaFor(idea, o.starter, lang));
+    console.log(lang === "bn" ? `প্রকল্প তৈরি হলো: ${projectId}` : `Created project ${projectId}`);
     if (o.run) await run(root, projectId, o);
-    else console.log(`Next: karigor run ${projectId}`);
+    else console.log(lang === "bn" ? `এরপর: karigor run ${projectId}` : `Next: karigor run ${projectId}`);
   });
 
 program
@@ -47,10 +62,11 @@ program
   .argument("[id]", "a ready-made idea to show in full")
   .description("list ready-made ideas for common needs, or show one in full")
   .action((id?: string) => {
-    if (id === undefined) return console.log(renderStarters());
+    const lang = askedLang() ?? "en";
+    if (id === undefined) return console.log(renderStarters(lang));
     const starter = findStarter(id);
     if (!starter) throw new Error(`there is no ready-made idea called "${id}"; karigor starters lists them`);
-    console.log(renderStarter(starter));
+    console.log(renderStarter(starter, lang));
   });
 
 async function run(root: string, projectId: string, o: RunFlags & { wait?: string | boolean }) {
@@ -59,7 +75,7 @@ async function run(root: string, projectId: string, o: RunFlags & { wait?: strin
   const state = everyMs ? await runWaiting(make, { everyMs, log: (l) => console.log(l) }) : await runProject(await make());
   const store = await FsStore.open(root, projectId);
   console.log("");
-  console.log(await renderStatus(store, state));
+  console.log(await renderStatus(store, state, await langFor(store, state)));
   console.log(await renderCost(store, state));
 }
 
@@ -79,13 +95,20 @@ program
   .description("tell Karigor about a problem or a wish; it becomes work for the next fix round")
   .action(async (projectId: string, text: string) => {
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
+    const bn = (await langFor(store)) === "bn";
     if (await runningPid(store.dir)) {
       await queueInbox(store.dir, { kind: "feedback", text });
-      console.log("Thanks. Karigor is working on this project right now, so your message is saved and will be read as soon as this round finishes.");
+      console.log(bn ? "ধন্যবাদ। Karigor এখন এই প্রকল্পে কাজ করছে, তাই আপনার বার্তাটি রাখা হলো; এই রাউন্ড শেষ হলেই পড়া হবে।" : "Thanks. Karigor is working on this project right now, so your message is saved and will be read as soon as this round finishes.");
       return;
     }
     const [id] = await recordSignals(store, [feedbackSignal(text)]);
-    console.log(id ? `Thanks. Noted as ${id}. Run karigor fix ${projectId} to handle it now, or leave karigor serve / watch running and it will be picked up.` : "That is already on the list.");
+    console.log(
+      id
+        ? bn
+          ? `ধন্যবাদ। ${id} হিসেবে রাখা হলো। এখনই ঠিক করাতে karigor fix ${projectId} চালান, অথবা karigor serve / watch চালু রাখলে নিজে থেকেই ধরা হবে।`
+          : `Thanks. Noted as ${id}. Run karigor fix ${projectId} to handle it now, or leave karigor serve / watch running and it will be picked up.`
+        : bn ? "এটি আগেই তালিকায় আছে।" : "That is already on the list.",
+    );
   });
 
 program
@@ -303,7 +326,8 @@ program
   .description("where the project stands, in plain language")
   .action(async (projectId: string) => {
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
-    console.log(await renderStatus(store, await store.replay()));
+    const state = await store.replay();
+    console.log(await renderStatus(store, state, await langFor(store, state)));
   });
 
 program
@@ -323,7 +347,7 @@ program
   .action(async (projectId: string, artifactId?: string) => {
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
     if (!artifactId) {
-      console.log(await renderExplain(store, await store.readEvents()));
+      console.log(await renderExplain(store, await store.readEvents(), await langFor(store)));
       return;
     }
     const state = await store.replay();

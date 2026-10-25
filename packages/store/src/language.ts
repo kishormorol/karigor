@@ -1,4 +1,5 @@
 import type { ProjectState } from "./replay.js";
+import type { TargetProfile } from "./schemas/index.js";
 
 /** A language the person may read, other than English. */
 export type PersonLanguage = "Bangla";
@@ -33,3 +34,13 @@ export function languageNote(lang: PersonLanguage | undefined): string {
   if (!lang) return "";
   return `\n\n## Language\n\nThe person reads ${lang}. Write everything they will read in ${lang}: titles, goals and descriptions, assumptions and decisions, the reasons for a verdict, summaries, work-item and backlog titles, and anything else in plain words. Code, identifiers, ids, file names, commit messages, test names and other technical text stay in English. The app's own screens use the language the spec chose.`;
 }
+
+/** Each kind of software, described in Bangla for the decisions the person reads. */
+export const TARGET_PROFILES_BN: Record<TargetProfile, string> = {
+  "web-app": "একটি ওয়েবসাইট বা ওয়েব অ্যাপ, ব্যাকএন্ড আর ডেটাবেসসহ, যা ফোন বা কম্পিউটারের ব্রাউজারে চলে।",
+  "static-site": "ব্যাকএন্ড ছাড়া একটি সাইট: ল্যান্ডিং পেজ, পোর্টফোলিও, তথ্যপাতা, অন্য সেবার মাধ্যমে সহজ ফর্ম।",
+  api: "একটি ব্যাকএন্ড সেবা যা অন্য প্রোগ্রাম ব্যবহার করে; কোনো স্ক্রিন নেই।",
+  cli: "টার্মিনালে চালানোর একটি কমান্ড-লাইন টুল।",
+  "mobile-app": "ফোনে ইনস্টল করার একটি অ্যাপ (আইওএস বা অ্যান্ড্রয়েড)।",
+  "ml-model": "একটি প্রশিক্ষিত মডেল বা ডেটা পাইপলাইন, ব্যবহারের জন্য ছোট একটি স্ক্রিনসহ।",
+};

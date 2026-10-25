@@ -148,3 +148,90 @@ export const BANGLA: StoryWords = {
 };
 
 export const storyWords = (lang: Lang = "en"): StoryWords => (lang === "bn" ? BANGLA : EN);
+
+/** The fixed sentences of `karigor status`. */
+export interface StatusWords {
+  project(id: string): string;
+  idea(text: string): string;
+  created(): string;
+  running(phase: string, sprint?: number): string;
+  stopped(reason?: string): string;
+  paused(reason: string): string;
+  waiting(): string;
+  giveWith(id: string): string;
+  finished(stage: boolean, cycle: number, headline?: string): string;
+  link(url: string): string;
+  roundGrow(cycle: number): string;
+  roundFix(cycle: number): string;
+  stages(): string;
+  stageMark(state: "built" | "building" | "later"): string;
+  growWith(id: string): string;
+  liveVersion(version: string, url?: string): string;
+  missingSettings(): string;
+  openItems(n: number): string;
+  process(template: string, profile: string): string;
+  budget(tier: string): string;
+  work(done: number, doing: number, todo: number, parked: number, dropped: number): string;
+  parked(title: string, reason?: string): string;
+  failures(n: number): string;
+  decisions(): string;
+  corrected(text: string): string;
+}
+
+export const STATUS_EN: StatusWords = {
+  project: (id) => `Project ${id}`,
+  idea: (t) => `Idea: ${t}`,
+  created: () => "Status: created, not started yet.",
+  running: (p, s) => `Status: in progress, ${p}${s ? `, sprint ${s}` : ""}.`,
+  stopped: (r) => `Status: stopped. ${r ?? ""}`.trim(),
+  paused: (r) => `Status: paused. ${r.charAt(0).toUpperCase()}${r.slice(1)}.`,
+  waiting: () => "Status: waiting for you. It is built, and only needs a few things that only you can give:",
+  giveWith: (id) => `Give them with: karigor setup ${id}`,
+  finished: (stage, c, h) => `Status: ${stage ? `a stage was added (round ${c})` : c > 0 ? `updated (fix round ${c})` : "finished"}. ${h ?? ""}`.trim(),
+  link: (u) => `Link: ${u}`,
+  roundGrow: (c) => `Round ${c} builds the next stage on top of what is live.`,
+  roundFix: (c) => `This is fix round ${c}: problems seen after release are being fixed.`,
+  stages: () => "Stages:",
+  stageMark: (s) => (s === "built" ? "[built]   " : s === "building" ? "[building]" : "[later]   "),
+  growWith: (id) => `Build the next one with: karigor grow ${id}`,
+  liveVersion: (v, u) => `Live version: ${v}${u ? ` at ${u}` : ""}.`,
+  missingSettings: () => "It is online but cannot be used until these settings are added where it is hosted:",
+  openItems: (n) => `Problems and requests waiting to be handled: ${n}.`,
+  process: (t, p) => `Process: ${t}; building a ${p}.`,
+  budget: (t) => `Budget tier: ${t}.`,
+  work: (d, i, t, p, x) => `Work: ${d} done, ${i} in progress, ${t} to do, ${p} parked, ${x} replaced by smaller pieces.`,
+  parked: (t, r) => `Parked: ${t}. ${r ?? ""}`.trim(),
+  failures: (n) => `Problems caught by checks so far: ${n}.`,
+  decisions: () => "Decisions made on your behalf (tell us if any is wrong):",
+  corrected: (t) => `${t} (you corrected this)`,
+};
+
+export const STATUS_BN: StatusWords = {
+  project: (id) => `প্রকল্প ${id}`,
+  idea: (t) => `আইডিয়া: ${t}`,
+  created: () => "অবস্থা: তৈরি হয়েছে, এখনো শুরু হয়নি।",
+  running: (p, s) => `অবস্থা: কাজ চলছে, ${p}${s ? `, স্প্রিন্ট ${s}` : ""}।`,
+  stopped: (r) => `অবস্থা: থেমে গেছে। ${r ?? ""}`.trim(),
+  paused: (r) => `অবস্থা: বিরতি। ${r}।`,
+  waiting: () => "অবস্থা: আপনার অপেক্ষায়। তৈরি হয়ে গেছে, শুধু আপনিই দিতে পারেন এমন কয়েকটি জিনিস দরকার:",
+  giveWith: (id) => `এগুলো দিন এভাবে: karigor setup ${id}`,
+  finished: (stage, c, h) => `অবস্থা: ${stage ? `একটি নতুন অংশ যোগ হয়েছে (রাউন্ড ${c})` : c > 0 ? `হালনাগাদ হয়েছে (ঠিক করার রাউন্ড ${c})` : "শেষ হয়েছে"}। ${h ?? ""}`.trim(),
+  link: (u) => `লিংক: ${u}`,
+  roundGrow: (c) => `রাউন্ড ${c}: চালু অ্যাপের ওপর পরের অংশ তৈরি হচ্ছে।`,
+  roundFix: (c) => `এটি ঠিক করার রাউন্ড ${c}: চালু হওয়ার পর পাওয়া সমস্যাগুলো ঠিক করা হচ্ছে।`,
+  stages: () => "অংশগুলো:",
+  stageMark: (s) => (s === "built" ? "[তৈরি হয়েছে]" : s === "building" ? "[তৈরি হচ্ছে]" : "[পরে]"),
+  growWith: (id) => `পরের অংশ তৈরি করুন এভাবে: karigor grow ${id}`,
+  liveVersion: (v, u) => `চালু সংস্করণ: ${v}${u ? `, ${u}` : ""}।`,
+  missingSettings: () => "এটি অনলাইনে আছে, কিন্তু যেখানে চলে সেখানে এই সেটিংগুলো না দেওয়া পর্যন্ত ব্যবহার করা যাবে না:",
+  openItems: (n) => `যেসব সমস্যা আর অনুরোধ এখনো বাকি: ${n}টি।`,
+  process: (t, p) => `পদ্ধতি: ${t}; তৈরি হচ্ছে একটি ${BN.profile[p] ?? p}।`,
+  budget: (t) => `বাজেট: ${BN.tier[t] ?? t} স্তর।`,
+  work: (d, i, t, p, x) => `কাজ: ${d}টি শেষ, ${i}টি চলছে, ${t}টি বাকি, ${p}টি আলাদা করে রাখা, ${x}টি ছোট ভাগে ভাঙা।`,
+  parked: (t, r) => `আলাদা করে রাখা: ${t}। ${r ?? ""}`.trim(),
+  failures: (n) => `এ পর্যন্ত যাচাইয়ে ধরা পড়া সমস্যা: ${n}টি।`,
+  decisions: () => "আপনার হয়ে নেওয়া সিদ্ধান্ত (কোনোটি ভুল হলে জানান):",
+  corrected: (t) => `${t} (আপনি বদলেছেন)`,
+};
+
+export const statusWords = (lang: Lang = "en"): StatusWords => (lang === "bn" ? STATUS_BN : STATUS_EN);

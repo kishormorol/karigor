@@ -322,8 +322,16 @@ export function ideaFor(idea: string | undefined, starterId: string | undefined,
   return starterIdea(starter, idea, lang);
 }
 
-export function renderStarters(): string {
+export function renderStarters(lang: Lang = "en"): string {
   const width = Math.max(...STARTERS.map((s) => s.id.length));
+  if (lang === "bn") {
+    return [
+      "তৈরি করা আইডিয়া। একটি থেকে শুরু করুন: karigor new --starter <id> \"আপনার পরিবর্তন, নিজের ভাষায়\"",
+      "একটি পুরোটা পড়ুন: karigor starters <id>",
+      "",
+      ...STARTERS.map((s) => `  ${s.id.padEnd(width)}  ${STARTERS_BN[s.id]?.title ?? s.title}, ${STARTERS_BN[s.id]?.for ?? s.for}`),
+    ].join("\n");
+  }
   return [
     "Ready-made ideas. Start one with: karigor new --starter <id> \"your changes, in your own words\"",
     "Read one in full with: karigor starters <id>",
@@ -332,7 +340,20 @@ export function renderStarters(): string {
   ].join("\n");
 }
 
-export function renderStarter(starter: Starter): string {
+export function renderStarter(starter: Starter, lang: Lang = "en"): string {
+  const bn = lang === "bn" ? STARTERS_BN[starter.id] : undefined;
+  if (bn) {
+    return [
+      `${bn.title}, ${bn.for}`,
+      "",
+      bn.idea,
+      "",
+      `যার আদলে: ${starter.basedOn.map((b) => `${b.name} (github.com/${b.repo})`).join(", ")}`,
+      "",
+      `যেমন আছে তেমন শুরু করুন:   karigor new --starter ${starter.id} --lang bn --run`,
+      `অথবা পরিবর্তনসহ:          karigor new --starter ${starter.id} "আপনার ক্ষেত্রে কী আলাদা, নিজের ভাষায়" --run`,
+    ].join("\n");
+  }
   return [
     `${starter.title}, for ${starter.for}`,
     "",

@@ -1,84 +1,85 @@
 import { stagePlan } from "./stages.js";
 import type { FsStore, ProjectState, Event, BacklogItem, MetaOf } from "@karigor/store";
 import { meter, renderMeter } from "@karigor/budget";
-import { EN, storyWords, type Lang } from "./words.js";
+import { statusWords, storyWords, type Lang } from "./words.js";
 
 /** Plain-language project status for a non-technical reader. */
-export async function renderStatus(store: FsStore, state: ProjectState): Promise<string> {
+export async function renderStatus(store: FsStore, state: ProjectState, lang: Lang = "en"): Promise<string> {
+  const w = statusWords(lang);
   const lines: string[] = [];
   const idea = state.ideaId ? await store.readArtifact("idea", state.ideaId) : undefined;
-  lines.push(`Project ${state.projectId}`);
-  if (idea) lines.push(`Idea: ${idea.meta.text}`);
+  lines.push(w.project(state.projectId));
+  if (idea) lines.push(w.idea(idea.meta.text));
   lines.push("");
   switch (state.status) {
     case "created":
-      lines.push("Status: created, not started yet.");
+      lines.push(w.created());
       break;
     case "running":
-      lines.push(`Status: in progress, ${phaseWords(state.phase)}${state.sprint ? `, sprint ${state.sprint}` : ""}.`);
+      lines.push(w.running(storyWords(lang).phase(state.phase), state.sprint));
       break;
     case "stopped":
-      lines.push(`Status: stopped. ${state.stopReason ?? ""}`.trim());
+      lines.push(w.stopped(state.stopReason));
       break;
     case "waiting": {
       if (state.pausedReason) {
-        lines.push(`Status: paused. ${state.pausedReason.charAt(0).toUpperCase()}${state.pausedReason.slice(1)}.`);
+        lines.push(w.paused(state.pausedReason));
         break;
       }
-      lines.push("Status: waiting for you. It is built, and only needs a few things that only you can give:");
+      lines.push(w.waiting());
       const all = state.waitingFor ?? [];
-      lines.push(...all.map((n) => `  - ${n}`), `Give them with: karigor setup ${state.projectId}`);
+      lines.push(...all.map((n) => `  - ${n}`), w.giveWith(state.projectId));
       break;
     }
     case "finished": {
       const ids = state.artifacts.summary ?? [];
       const summary = ids.length ? await store.readArtifact("summary", ids[ids.length - 1]!) : undefined;
-      lines.push(`Status: ${state.stage ? `a stage was added (round ${state.cycle})` : state.cycle > 0 ? `updated (fix round ${state.cycle})` : "finished"}. ${summary?.meta.headline ?? ""}`.trim());
-      if (summary?.meta.url) lines.push(`Link: ${summary.meta.url}`);
+      lines.push(w.finished(!!state.stage, state.cycle, summary?.meta.headline));
+      if (summary?.meta.url) lines.push(w.link(summary.meta.url));
       break;
     }
   }
-  if (state.cycle > 0 && state.status === "running") lines.push(state.stage ? `Round ${state.cycle} builds the next stage on top of what is live.` : `This is fix round ${state.cycle}: problems seen after release are being fixed.`);
+  if (state.cycle > 0 && state.status === "running") lines.push(state.stage ? w.roundGrow(state.cycle) : w.roundFix(state.cycle));
   const plan = await stagePlan(store, state);
   if (plan.stages.length > 1) {
-    lines.push("", "Stages:");
-    for (const s of plan.stages) lines.push(`  ${plan.built.has(s.id) ? "[built]   " : s.id === plan.current?.id ? "[building]" : "[later]   "} ${s.name}: ${s.goal}`);
-    if (state.status === "finished" && plan.next) lines.push(`Build the next one with: karigor grow ${state.projectId}`);
+    lines.push("", w.stages());
+    for (const s of plan.stages) lines.push(`  ${w.stageMark(plan.built.has(s.id) ? "built" : s.id === plan.current?.id ? "building" : "later")} ${s.name}: ${s.goal}`);
+    if (state.status === "finished" && plan.next) lines.push(w.growWith(state.projectId));
   }
   const live = await liveRecord(store, state);
-  if (live && state.status !== "finished") lines.push(`Live version: ${live.version}${live.url ? ` at ${live.url}` : ""}.`);
+  if (live && state.status !== "finished") lines.push(w.liveVersion(live.version, live.url));
   if (live?.missingSettings?.length) {
-    lines.push("", "It is online but cannot be used until these settings are added where it is hosted:");
+    lines.push("", w.missingSettings());
     for (const m of live.missingSettings) lines.push(`  - ${m.name}${m.note ? `: ${m.note}` : ""}`);
   }
   const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done");
   if (open.length) {
-    lines.push("", `Problems and requests waiting to be handled: ${open.length}.`);
+    lines.push("", w.openItems(open.length));
     for (const [id] of open.slice(0, 10)) {
       const w = await store.readArtifact("work-item", id).catch(() => undefined);
       if (w) lines.push(`  - ${w.meta.title ?? w.meta.description.split("\n")[0]}`);
     }
   }
-  if (state.template) lines.push(`Process: ${state.template}; building a ${state.targetProfile ?? "?"}.`);
-  if (state.budgetTier) lines.push(`Budget tier: ${state.budgetTier}.`);
+  if (state.template) lines.push(w.process(state.template, state.targetProfile ?? "?"));
+  if (state.budgetTier) lines.push(w.budget(state.budgetTier));
 
   const backlogId = state.artifacts.backlog?.at(-1);
   if (backlogId) {
     const items = (await store.readArtifact("backlog", backlogId)).meta.items;
     const st = (b: BacklogItem) => state.items[b.id]?.status ?? b.status;
     const count = (s: string) => items.filter((b) => st(b) === s).length;
-    lines.push("", `Work: ${count("done")} done, ${count("in-progress")} in progress, ${count("todo")} to do, ${count("parked")} parked, ${count("dropped")} replaced by smaller pieces.`);
+    lines.push("", w.work(count("done"), count("in-progress"), count("todo"), count("parked"), count("dropped")));
     for (const b of items) {
-      if (st(b) === "parked") lines.push(`  Parked: ${b.title}. ${state.items[b.id]?.reason ?? ""}`.trim());
+      if (st(b) === "parked") lines.push(`  ${w.parked(b.title, state.items[b.id]?.reason)}`);
     }
   }
-  if (state.failures > 0) lines.push("", `Problems caught by checks so far: ${state.failures}.`);
+  if (state.failures > 0) lines.push("", w.failures(state.failures));
 
   const ledgerId = state.artifacts.ledger?.at(-1);
   if (ledgerId) {
     const ledger = await store.readArtifact("ledger", ledgerId);
-    lines.push("", "Decisions made on your behalf (tell us if any is wrong):");
-    for (const a of ledger.meta.assumptions) lines.push(`  - ${a.id}: ${state.corrections[a.id] ? `${state.corrections[a.id]} (you corrected this)` : a.decision}`);
+    lines.push("", w.decisions());
+    for (const a of ledger.meta.assumptions) lines.push(`  - ${a.id}: ${state.corrections[a.id] ? w.corrected(state.corrections[a.id]!) : a.decision}`);
   }
   return lines.join("\n") + "\n";
 }
@@ -200,6 +201,3 @@ export async function renderExplain(store: FsStore, events: Event[], lang: Lang 
   return lines.join("\n") + "\n";
 }
 
-function phaseWords(phase?: string): string {
-  return EN.phase(phase);
-}
