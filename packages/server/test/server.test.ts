@@ -75,6 +75,24 @@ describe("server", { timeout: 180_000 }, () => {
     expect(unknown).toMatchObject({ status: 400, json: { error: expect.stringMatching(/no ready-made idea called "spaceship"/) } });
   });
 
+  it("tells the story in Bangla when the page asks for it, keeping what the agents wrote as written", async () => {
+    const { k, call } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "A site where neighbours lend tools" }) })).json["projectId"] as string;
+    await k.idle();
+    const en = (await call(`/api/projects/${id}`)).json;
+    const bn = (await call(`/api/projects/${id}?lang=bn`)).json;
+    const story = (bn["story"] as string[]).join("\n");
+    expect(story).toMatch(/পেয়েছি। এখান থেকে আমি দেখছি।/);
+    expect(story).toMatch(/শুরু হলো: কী বানাতে হবে তা লিখে রাখা।/);
+    expect(story).toMatch(/যাচাই "spec-complete": পাস করেছে।/);
+    expect(story).toMatch(/শেষ হয়েছে।/);
+    expect(story).not.toMatch(/Project created|Started writing/);
+    // the summary the releaser wrote is the same in both
+    expect(bn["headline"]).toBe(en["headline"]);
+    expect((en["story"] as string[]).join("\n")).toMatch(/Project created\./);
+    expect((await call(`/api/projects/${id}?lang=xx`)).json["story"]).toEqual(en["story"]);
+  });
+
   it("feedback and corrections on a finished project start a fix round on their own", async () => {
     const { k, call } = await start();
     const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;

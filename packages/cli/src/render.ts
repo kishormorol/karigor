@@ -1,6 +1,7 @@
 import { stagePlan } from "./stages.js";
 import type { FsStore, ProjectState, Event, BacklogItem, MetaOf } from "@karigor/store";
 import { meter, renderMeter } from "@karigor/budget";
+import { EN, storyWords, type Lang } from "./words.js";
 
 /** Plain-language project status for a non-technical reader. */
 export async function renderStatus(store: FsStore, state: ProjectState): Promise<string> {
@@ -101,29 +102,31 @@ export async function renderCost(store: FsStore, state: ProjectState): Promise<s
 }
 
 /** The event log as a story, one line per thing that happened. */
-export async function renderExplain(store: FsStore, events: Event[]): Promise<string> {
+/** The story of a project, one line per event; `lang` picks the language of the fixed sentences (the chat page offers Bangla). */
+export async function renderExplain(store: FsStore, events: Event[], lang: Lang = "en"): Promise<string> {
+  const w = storyWords(lang);
   const lines: string[] = [];
   for (const e of events) {
     const t = e.at.slice(11, 19);
     switch (e.type) {
       case "project-created":
-        lines.push(`${t} Project created.`);
+        lines.push(`${t} ${w.created()}`);
         break;
       case "template-selected":
-        lines.push(`${t} Chose the "${e.template}" process; building a ${e.targetProfile}.`);
+        lines.push(`${t} ${w.template(e.template, e.targetProfile)}`);
         break;
       case "budget-chosen":
-        lines.push(`${t} Budget tier: ${e.tier}.`);
+        lines.push(`${t} ${w.budget(e.tier)}`);
         break;
       case "phase-entered":
         if (e.phase === "done") break; // "Finished." follows
-        lines.push(`${t} ${e.sprint ? `Sprint ${e.sprint} started with ${e.itemIds?.join(", ") ?? ""}` : `Started ${phaseWords(e.phase)}`}.`);
+        lines.push(`${t} ${e.sprint ? w.sprint(e.sprint, e.itemIds?.join(", ") ?? "") : w.phaseStarted(e.phase)}`);
         break;
       case "worker-started":
-        lines.push(`${t}   ${e.role}${e.itemId ? ` on ${e.itemId}` : ""} started (attempt ${e.attempt}, ${e.tier} model).`);
+        lines.push(`${t}   ${w.workerStarted(e.role, e.itemId, e.attempt, e.tier)}`);
         break;
       case "worker-finished":
-        lines.push(`${t}   ${e.role}${e.itemId ? ` on ${e.itemId}` : ""} ${e.outcome === "ok" ? `produced ${e.artifacts.map((a) => a.kind).join(", ") || "nothing new"}` : `did not succeed (${e.outcome}${e.error ? `: ${e.error}` : ""})`}.`);
+        lines.push(`${t}   ${e.outcome === "ok" ? w.workerOk(e.role, e.itemId, e.artifacts.map((a) => a.kind).join(", ")) : w.workerFailed(e.role, e.itemId, e.outcome, e.error)}`);
         break;
       case "gate-evaluated": {
         let reasons = "";
@@ -133,63 +136,64 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
         } catch {
           /* artifact missing; still report the verdict */
         }
-        lines.push(`${t}   Check "${e.gate}"${e.itemId ? ` on ${e.itemId}` : ""}: ${e.verdict === "pass" ? "passed" : "FAILED"}.${reasons}`);
+        lines.push(`${t}   ${w.gate(e.gate, e.itemId, e.verdict === "pass", reasons)}`);
         break;
       }
       case "transition":
-        lines.push(`${t} Moved from ${e.from} to ${e.to}.`);
+        lines.push(`${t} ${w.transition(e.from, e.to)}`);
         break;
       case "item-status":
-        lines.push(`${t}   ${e.itemId} is now ${e.status}${e.reason ? ` (${e.reason})` : ""}.`);
+        lines.push(`${t}   ${w.itemStatus(e.itemId, e.status, e.reason)}`);
         break;
       case "budget-downgraded":
-        lines.push(`${t} Budget for ${e.phase} is tight; switched to the cheaper model.`);
+        lines.push(`${t} ${w.downgraded(e.phase)}`);
         break;
       case "project-stopped":
-        lines.push(`${t} Stopped: ${e.reason}`);
+        lines.push(`${t} ${w.stopped(e.reason)}`);
         break;
       case "project-finished":
-        lines.push(`${t} Finished.`);
+        lines.push(`${t} ${w.finished()}`);
         break;
       case "artifact-written":
         if (e.kind === "deploy-record") {
           try {
             const r = (await store.readArtifact("deploy-record", e.id)).meta;
-            const where = r.environment === "preview" ? "a preview" : "production";
-            lines.push(`${t}   ${r.status === "deployed" ? `Put ${r.version} on ${where}${r.url ? ` at ${r.url}` : ""}` : r.status === "failed" ? `Could not put ${r.version} on ${where}` : `${r.version} failed after going live and was taken back`}.`);
+            const preview = r.environment === "preview";
+            lines.push(`${t}   ${r.status === "deployed" ? w.deployed(r.version, preview, r.url) : r.status === "failed" ? w.deployFailed(r.version, preview) : w.rolledBack(r.version)}`);
           } catch {
             /* artifact missing */
           }
         }
         break;
       case "signal-received": {
-        const w = await store.readArtifact("work-item", e.workItemId).catch(() => undefined);
-        lines.push(`${t} ${e.source === "feedback" ? "Feedback received" : `Noticed a problem (${e.source}, ${e.severity})`}: ${w?.meta.title ?? w?.meta.description.split("\n")[0] ?? e.workItemId}.`);
+        const a = await store.readArtifact("work-item", e.workItemId).catch(() => undefined);
+        const title = a?.meta.title ?? a?.meta.description.split("\n")[0] ?? e.workItemId;
+        lines.push(`${t} ${e.source === "feedback" ? w.feedback(title) : w.problem(e.source, e.severity, title)}`);
         break;
       }
       case "maintenance-started":
-        lines.push(`${t} Started fix round ${e.cycle} for ${e.workItemIds.length} problem${e.workItemIds.length === 1 ? "" : "s"} or request${e.workItemIds.length === 1 ? "" : "s"}.`);
+        lines.push(`${t} ${w.fixRound(e.cycle, e.workItemIds.length)}`);
         break;
       case "project-waiting":
-        lines.push(`${t} Waiting for you to give: ${e.needs.join(", ")}.`);
+        lines.push(`${t} ${w.waiting(e.needs.join(", "))}`);
         break;
       case "project-resumed":
-        lines.push(`${t} Carrying on.`);
+        lines.push(`${t} ${w.resumed()}`);
         break;
       case "project-paused":
-        lines.push(`${t} Paused: ${e.reason}.`);
+        lines.push(`${t} ${w.paused(e.reason)}`);
         break;
       case "work-item-dismissed":
-        lines.push(`${t} Closed a work item: ${e.reason}.`);
+        lines.push(`${t} ${w.dismissed(e.reason)}`);
         break;
       case "project-reopened":
-        lines.push(`${t} Put back to work${e.itemIds.length ? ` with ${e.itemIds.length} item${e.itemIds.length === 1 ? "" : "s"} back on the list` : ""}.`);
+        lines.push(`${t} ${w.reopened(e.itemIds.length)}`);
         break;
       case "settings-provided":
-        lines.push(`${t} ${e.by === "system" ? "Made and stored" : "Stored"} the setting${e.names.length === 1 ? "" : "s"} ${e.names.join(", ")} where the app reads ${e.names.length === 1 ? "it" : "them"}.`);
+        lines.push(`${t} ${w.settings(e.by === "system", e.names)}`);
         break;
       case "assumption-corrected":
-        lines.push(`${t} You corrected decision ${e.assumptionId}: ${e.correctedTo}.`);
+        lines.push(`${t} ${w.corrected(e.assumptionId, e.correctedTo)}`);
         break;
     }
   }
@@ -197,26 +201,5 @@ export async function renderExplain(store: FsStore, events: Event[]): Promise<st
 }
 
 function phaseWords(phase?: string): string {
-  switch (phase) {
-    case "specify":
-      return "writing down what to build";
-    case "design":
-      return "deciding how to build it";
-    case "plan":
-      return "breaking the work into pieces";
-    case "spike":
-      return "testing the riskiest part first";
-    case "build":
-      return "building";
-    case "verify":
-      return "checking the whole thing";
-    case "release":
-      return "putting it online";
-    case "triage":
-      return "sorting out what needs fixing";
-    case "done":
-      return "done";
-    default:
-      return phase ?? "not started";
-  }
+  return EN.phase(phase);
 }

@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS } from "@karigor/cli";
+import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -174,11 +174,11 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
   const busyElsewhere = async (id: string) => !runs.has(id) && (await runningPid(join(o.root, id))) !== undefined;
   const isRunning = async (id: string) => runs.has(id) || (await busyElsewhere(id));
 
-  const view = async (id: string) => {
+  const view = async (id: string, lang?: string | null) => {
     const store = await FsStore.open(o.root, id).catch(() => {
       throw new HttpError(404, "no such project");
     });
-    const v = await projectView(store, await isRunning(id));
+    const v = await projectView(store, await isRunning(id), isLang(lang) ? lang : "en");
     const problem = problems.get(id);
     return problem ? { ...v, problem } : v;
   };
@@ -239,7 +239,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     if (!ID.test(id)) throw new HttpError(404, "no such project");
     const action = m[2];
 
-    if (method === "GET" && !action) return send(res, 200, await view(id));
+    const lang = url.searchParams.get("lang");
+    if (method === "GET" && !action) return send(res, 200, await view(id, lang));
     if (method === "GET" && action === "stream") {
       await view(id);
       res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive", ...SECURITY_HEADERS });
@@ -253,7 +254,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
           const sig = `${s.size}:${s.mtimeMs}:${await isRunning(id)}:${problems.get(id) ?? ""}`;
           if (sig !== last) {
             last = sig;
-            res.write(`data: ${JSON.stringify(await view(id))}\n\n`);
+            res.write(`data: ${JSON.stringify(await view(id, lang))}\n\n`);
           }
         } catch {
           /* the next tick tries again */

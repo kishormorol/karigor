@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FsStore, type BacklogItem, type ProjectState } from "@karigor/store";
 import { meter } from "@karigor/budget";
-import { liveRecord, renderExplain, stagePlan } from "@karigor/cli";
+import { liveRecord, renderExplain, stagePlan, storyWords, type Lang } from "@karigor/cli";
 import { readSettings } from "@karigor/profiles";
 
 /** Everything the chat page shows about one project, in plain language. */
@@ -34,18 +34,23 @@ export interface ProjectView {
   updatedAt: string;
 }
 
-const PHASE_WORDS: Record<string, string> = {
-  specify: "writing down what to build",
-  design: "deciding how to build it",
-  plan: "breaking the work into pieces",
-  spike: "testing the riskiest part first",
-  build: "building",
-  verify: "checking the whole thing",
-  release: "putting it online",
-  triage: "sorting out what needs fixing",
+/** The one-sentence headline, in the page's language; what the agents wrote (a stop reason, the summary) stays as written. */
+const HEADLINES: Record<Lang, { starting: string; notStarted: string; working: string; paused: string; adding: (name?: string) => string; fixRound: (n: number) => string; waiting: string; finished: string; stopped: (why?: string) => string }> = {
+  en: {
+    starting: "Starting.", notStarted: "Waiting to start.", working: "Working", paused: "Paused",
+    adding: (name) => `adding ${name ?? "the next part"}`, fixRound: (n) => `fix round ${n}`,
+    waiting: "Built. Waiting for a few things only you can give.", finished: "Finished.",
+    stopped: (why) => `Stopped: ${why ?? "no reason recorded"}`,
+  },
+  bn: {
+    starting: "শুরু হচ্ছে।", notStarted: "শুরুর অপেক্ষায়।", working: "কাজ চলছে", paused: "বিরতি",
+    adding: (name) => `${name ?? "পরের অংশ"} যোগ হচ্ছে`, fixRound: (n) => `ঠিক করার রাউন্ড ${n}`,
+    waiting: "তৈরি হয়ে গেছে। শুধু আপনিই দিতে পারেন এমন কয়েকটি জিনিসের অপেক্ষায়।", finished: "শেষ হয়েছে।",
+    stopped: (why) => `থেমে গেছে: ${why ?? "কোনো কারণ লেখা নেই"}`,
+  },
 };
 
-export async function projectView(store: FsStore, running: boolean): Promise<ProjectView> {
+export async function projectView(store: FsStore, running: boolean, lang: Lang = "en"): Promise<ProjectView> {
   const events = await store.readEvents();
   const state = await store.replay();
   const idea = state.ideaId ? (await store.readArtifact("idea", state.ideaId)).meta.text : "";
@@ -65,19 +70,21 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
       return { id, title: a?.meta.title ?? a?.meta.description.split("\n")[0] ?? id, status: w.status, source: a?.meta.source ?? "manual" };
     }),
   );
-  const phase = state.phase ? PHASE_WORDS[state.phase] ?? state.phase : undefined;
+  const phase = state.phase && state.phase !== "done" ? storyWords(lang).phase(state.phase) : undefined;
+  const h = HEADLINES[lang];
+  const end = lang === "bn" ? "।" : ".";
   const plan = await stagePlan(store, state);
   const stages = plan.stages.length > 1 ? plan.stages.map((s) => ({ name: s.name, goal: s.goal, state: plan.built.has(s.id) ? ("built" as const) : s.id === plan.current?.id ? ("building" as const) : ("later" as const) })) : undefined;
   const headline =
     state.status === "created"
-      ? running ? "Starting." : "Waiting to start."
+      ? running ? h.starting : h.notStarted
       : state.status === "running"
-        ? `${running ? "Working" : "Paused"}: ${phase ?? "starting"}${state.stage ? ` (adding ${plan.current?.name ?? "the next part"})` : state.cycle ? ` (fix round ${state.cycle})` : ""}.`
+        ? `${running ? h.working : h.paused}: ${phase ?? h.starting.slice(0, -1)}${state.stage ? ` (${h.adding(plan.current?.name)})` : state.cycle ? ` (${h.fixRound(state.cycle)})` : ""}${end}`
         : state.status === "waiting"
-          ? "Built. Waiting for a few things only you can give."
+          ? h.waiting
           : state.status === "finished"
-          ? summary?.headline ?? "Finished."
-          : `Stopped: ${state.stopReason ?? "no reason recorded"}`;
+          ? summary?.headline ?? h.finished
+          : h.stopped(state.stopReason);
   const last = events.at(-1);
   const waitingFor = state.status === "waiting" ? (await readSettings(join(store.dir, "workspace"))).filter((s) => state.waitingFor?.includes(s.name)).map((s) => ({ name: s.name, note: s.note, kind: s.kind, ...(s.service ? { service: s.service } : {}) })) : [];
   return {
@@ -102,7 +109,7 @@ export async function projectView(store: FsStore, running: boolean): Promise<Pro
     workItems,
     ...(stages ? { stages } : {}),
     ...(state.status === "finished" && plan.next && plan.stages.length > 1 ? { nextStage: { name: plan.next.name, goal: plan.next.goal } } : {}),
-    story: (await renderExplain(store, events)).split("\n").filter(Boolean),
+    story: (await renderExplain(store, events, lang)).split("\n").filter(Boolean),
     lastSeq: state.lastSeq,
     updatedAt: last?.at ?? new Date(0).toISOString(),
   };
