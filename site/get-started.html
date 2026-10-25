@@ -60,6 +60,14 @@ npm install -g pnpm        # if you do not have it
 pnpm install &amp;&amp; pnpm build
 alias karigor="node $PWD/packages/cli/dist/bin.js"</pre>
 <p class="note-outline"><strong>No Claude Code?</strong> Use a free local model with <code>--adapter ollama</code> or an API key with <code>--adapter claude</code>. To watch the whole process with no model and no cost, add <code>--adapter demo</code> to any command.</p>
+<p class="note-outline"><strong>Not technical? You can skip all of this.</strong> Ask someone who is to host Karigor's chat page for you, on a server or a spare computer. They send you a link, and you build your app by chatting with it on your phone or laptop, with nothing to install. You describe, build, use and grow your app in the chat instead of typing commands. You can enter your own Anthropic API key in the page, or use the host's free local model.</p>
+<details class="note-outline">
+<summary><strong>Hosting it for someone else</strong></summary>
+<p class="body">On a server with Docker, from the cloned repository:</p>
+<pre class="code">KARIGOR_TOKEN=$(openssl rand -hex 24) docker compose up -d
+docker compose exec ollama ollama pull qwen2.5:7b</pre>
+<p class="body">Send them <code>http://&lt;host&gt;:4321/?token=&lt;KARIGOR_TOKEN&gt;</code>. Anyone who has the link can see every project on that server, so give it only to people you trust. To use Claude instead of the free local model, set <code>KARIGOR_ADAPTER=claude</code> and <code>ANTHROPIC_API_KEY</code>, or leave the key unset so each person enters their own in the page. A key entered there stays in their tab and in the memory of their run, never on disk.</p>
+</details>
 </section>
 
 <section id="idea">
