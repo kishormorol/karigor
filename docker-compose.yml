@@ -13,6 +13,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       VERCEL_TOKEN: ${VERCEL_TOKEN:-}
       KARIGOR_DEPLOY: ${KARIGOR_DEPLOY:-local}
+      KARIGOR_SIGNUP: ${KARIGOR_SIGNUP:-}      # "open": anyone who opens the page signs up with a name
+      KARIGOR_URL: ${KARIGOR_URL:-}            # the address people use, for links made with add-person
     volumes:
       - karigor-data:/data
     depends_on:

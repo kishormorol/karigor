@@ -14,9 +14,9 @@ afterEach(async () => {
   }
 });
 
-async function start(o: { token?: string; adapter?: string } = {}) {
+async function start(o: { token?: string; adapter?: string; signup?: boolean } = {}) {
   const root = await mkdtemp(join(tmpdir(), "karigor-server-"));
-  const k = createKarigorServer({ root, adapter: o.adapter ?? "demo", ...(o.token ? { token: o.token } : {}) });
+  const k = createKarigorServer({ root, adapter: o.adapter ?? "demo", ...(o.token ? { token: o.token } : {}), ...(o.signup ? { signup: true } : {}) });
   open.push(k);
   await new Promise<void>((r) => k.server.listen(0, "127.0.0.1", r));
   const base = `http://127.0.0.1:${(k.server.address() as AddressInfo).port}`;
@@ -232,5 +232,47 @@ describe("server", { timeout: 180_000 }, () => {
     } finally {
       if (prev !== undefined) process.env["ANTHROPIC_API_KEY"] = prev;
     }
+  });
+
+  it("gives each person their own link, which sees only the projects they started", async () => {
+    const { k, call, base } = await start({ token: "admin-token" });
+    const admin = { authorization: "Bearer admin-token" };
+    const add = async (name: string) => (await call("/api/people", { method: "POST", headers: admin, body: JSON.stringify({ name }) })).json["token"] as string;
+    const rahima = { authorization: `Bearer ${await add("Rahima")}` };
+    const karim = { authorization: `Bearer ${await add("Karim")}` };
+    expect((await call("/api/config", { headers: rahima })).json["me"]).toEqual({ admin: false, name: "Rahima" });
+
+    const id = (await call("/api/projects", { method: "POST", headers: rahima, body: JSON.stringify({ idea: "A tuition fee tracker" }) })).json["projectId"] as string;
+    await k.idle();
+    expect(((await call("/api/projects", { headers: rahima })).json["projects"] as unknown[]).length).toBe(1);
+    expect((await call("/api/projects", { headers: karim })).json["projects"]).toEqual([]);
+    expect((await call(`/api/projects/${id}`, { headers: karim })).status).toBe(404);
+    expect((await call(`/api/projects/${id}/feedback`, { method: "POST", headers: karim, body: JSON.stringify({ text: "hi" }) })).status).toBe(404);
+    expect((await call(`/api/projects/${id}`, { headers: rahima })).status).toBe(200);
+    expect(((await call("/api/projects", { headers: admin })).json["projects"] as unknown[]).length).toBe(1);
+
+    // Only whoever runs it manages people; a person's link signs them in like the main one.
+    expect((await call("/api/people", { headers: rahima })).status).toBe(403);
+    const people = (await call("/api/people", { headers: admin })).json["people"] as { id: string; name: string; projects: number }[];
+    expect(people.map((p) => [p.name, p.projects])).toEqual([["Rahima", 1], ["Karim", 0]]);
+    const link = await fetch(`${base}/?token=${rahima.authorization.slice(7)}`, { redirect: "manual" });
+    expect(link.headers.get("set-cookie")).toMatch(/karigor_token=/);
+    expect((await call("/api/people/" + people[1]!.id, { method: "DELETE", headers: admin })).status).toBe(200);
+    expect((await call("/api/projects", { headers: karim })).status).toBe(401);
+  });
+
+  it("lets anyone sign up with a name only when sign-ups are open", async () => {
+    const closed = await start({ token: "admin-token" });
+    expect((await closed.call("/api/projects")).json).toMatchObject({ signup: false });
+    expect((await closed.call("/api/signup", { method: "POST", body: JSON.stringify({ name: "Nila" }) })).status).toBe(403);
+
+    const { call } = await start({ token: "admin-token", signup: true });
+    expect((await call("/api/config")).json).toMatchObject({ signup: true });
+    expect((await call("/api/signup", { method: "POST", body: JSON.stringify({}) })).status).toBe(400);
+    const signed = await call("/api/signup", { method: "POST", body: JSON.stringify({ name: "Nila" }) });
+    expect(signed.status).toBe(201);
+    const cookie = signed.res.headers.get("set-cookie")!.split(";")[0]!;
+    expect((await call("/api/config", { headers: { cookie } })).json["me"]).toEqual({ admin: false, name: "Nila" });
+    expect((await call("/api/projects", { headers: { cookie } })).json["projects"]).toEqual([]);
   });
 });

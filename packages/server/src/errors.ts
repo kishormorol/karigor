@@ -16,9 +16,14 @@ const EXACT: Record<string, string> = {
   "this Karigor needs an access link; ask whoever runs it": "এই Karigor খুলতে একটি প্রবেশ লিংক লাগে; যিনি এটি চালান তাকে জিজ্ঞেস করুন",
   "something went wrong on the server": "সার্ভারে কিছু একটা গোলমাল হয়েছে",
   "no decisions have been recorded yet": "এখনো কোনো সিদ্ধান্ত লেখা হয়নি",
+  "sign up to start": "শুরু করতে নিজের নাম দিয়ে যোগ দিন",
+  "this Karigor does not take sign-ups; ask whoever runs it for a link": "এই Karigor-এ নিজে যোগ দেওয়া যায় না; যিনি এটি চালান তার কাছে একটি লিংক চান",
+  "this Karigor is full; ask whoever runs it for a link": "এই Karigor-এ আর জায়গা নেই; যিনি এটি চালান তার কাছে একটি লিংক চান",
+  "only whoever runs this Karigor can add people": "শুধু যিনি এই Karigor চালান তিনিই মানুষ যোগ করতে পারেন",
+  "people need their own links only when this Karigor has an access link (KARIGOR_TOKEN)": "এই Karigor-এ প্রবেশ লিংক (KARIGOR_TOKEN) থাকলেই কেবল আলাদা লিংক দেওয়া যায়",
 };
 
-const FIELDS: Record<string, string> = { idea: "আইডিয়া", text: "বার্তা", decisionId: "সিদ্ধান্ত", values: "সেটিং" };
+const FIELDS: Record<string, string> = { name: "নাম", idea: "আইডিয়া", text: "বার্তা", decisionId: "সিদ্ধান্ত", values: "সেটিং" };
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^(\w+) is missing$/, (k) => `${FIELDS[k!] ?? k} দেওয়া হয়নি`],

@@ -191,6 +191,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 .sheet h2 { margin: 0; font-size: 18px; }
 .plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow: auto; }
 .plist button { width: 100%; text-align: left; display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+.plist .who { display: flex; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.plist .who span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link { font: 13px/1.4 ui-monospace, monospace; word-break: break-all; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; user-select: all; }
 .plist .idea { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
 .field input { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
@@ -224,8 +227,23 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     <div class="row">
       <button class="btn" id="newBtn">New idea</button>
       <button class="btn quiet" id="keyBtn" hidden>Your key</button>
+      <button class="btn quiet" id="peopleBtn" hidden>People</button>
       <button class="btn quiet" id="closeBtn">Close</button>
     </div>
+  </div>
+</dialog>
+
+<dialog id="peopleDialog">
+  <div class="sheet">
+    <h2 id="peopleTitle">People</h2>
+    <p id="peopleText" style="margin:0;color:var(--muted);font-size:14px">Each person gets their own link. It opens only the projects they start.</p>
+    <ul class="plist" id="peopleList"></ul>
+    <form class="row" id="personForm">
+      <input id="personName" maxlength="80" autocomplete="off" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)">
+      <button class="btn" id="personAdd">Add</button>
+    </form>
+    <div id="personLink"></div>
+    <div class="row"><button class="btn quiet" id="peopleClose" type="button">Close</button></div>
   </div>
 </dialog>
 
@@ -287,6 +305,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       fixRound: "Thanks. A fix round has started.", onList: "Thanks. It's on the list for the next fix round.", already: "That's already on the list.", tryingAgain: "Trying again.",
       cantLoad: "Could not load that project.", loading: "Loading…", noProjects: "No projects yet.", cantReach: "Can't reach Karigor",
       tierNames: { free: "free", cheap: "cheap", best: "best" },
+      signupTitle: "Welcome. What should we call you?", signupText: "Your name is all it takes. Your projects are yours: other people here cannot see them.", yourName: "Your name", join: "Start",
+      saveLink: "You're in. Save this link: it signs you in on another phone or computer, and it is shown only once.", carryOn: "Continue",
+      people: "People", peopleText: "Each person gets their own link. It opens only the projects they start.", personPh: "Their name", add: "Add",
+      sendLink: (n) => `Send ${n} this link. It is shown only once.`, noPeople: "No one yet.", personProjects: (n) => `${n} project${n === 1 ? "" : "s"}`,
       costHint: (tier, c, s, b, api) => `${tier} tier: spent ${c} ${s} of ${b}${api ? ` (covered by a subscription; about ${c} ${api} at API prices)` : ""}.`,
     },
     bn: {
@@ -317,6 +339,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       fixRound: "ধন্যবাদ। একটি ঠিক করার রাউন্ড শুরু হয়েছে।", onList: "ধন্যবাদ। পরের ঠিক করার রাউন্ডের তালিকায় রাখা হলো।", already: "এটি আগেই তালিকায় আছে।", tryingAgain: "আবার চেষ্টা করা হচ্ছে।",
       cantLoad: "প্রকল্পটি খোলা যায়নি।", loading: "খোলা হচ্ছে…", noProjects: "এখনো কোনো প্রকল্প নেই।", cantReach: "Karigor-এর সঙ্গে যোগাযোগ করা যাচ্ছে না",
       tierNames: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" },
+      signupTitle: "স্বাগতম। আপনাকে কী নামে ডাকব?", signupText: "শুধু আপনার নামটুকুই লাগবে। আপনার প্রকল্প শুধু আপনার: এখানকার অন্যরা সেগুলো দেখতে পারেন না।", yourName: "আপনার নাম", join: "শুরু করুন",
+      saveLink: "আপনি যোগ দিয়েছেন। এই লিংকটি রেখে দিন: অন্য ফোন বা কম্পিউটার থেকে এটি দিয়েই ঢুকবেন, আর এটি একবারই দেখানো হয়।", carryOn: "এগিয়ে যান",
+      people: "মানুষ", peopleText: "প্রত্যেকে নিজের একটি লিংক পান। তাতে শুধু তাদের নিজের শুরু করা প্রকল্পগুলোই খোলে।", personPh: "তার নাম", add: "যোগ করুন",
+      sendLink: (n) => `${n}-কে এই লিংকটি পাঠান। এটি একবারই দেখানো হয়।`, noPeople: "এখনো কেউ নেই।", personProjects: (n) => `${n}টি প্রকল্প`,
       costHint: (tier, c, s, b, api) => `${tier} স্তর: ${c} ${b}-এর মধ্যে খরচ ${s}${api ? ` (সাবস্ক্রিপশনে ঢাকা; API দামে প্রায় ${c} ${api})` : ""}।`,
     },
   };
@@ -345,6 +371,13 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     $("keyLabel").firstChild.textContent = `${t("key")} `;
     $("keySave").textContent = t("save");
     $("keyCancel").textContent = t("cancel");
+    $("peopleBtn").textContent = t("people");
+    $("peopleTitle").textContent = t("people");
+    $("peopleText").textContent = t("peopleText");
+    $("personName").placeholder = t("personPh");
+    $("personName").setAttribute("aria-label", t("personPh"));
+    $("personAdd").textContent = t("add");
+    $("peopleClose").textContent = t("close");
   }
   const el = (tag, attrs = {}, ...kids) => {
     const e = document.createElement(tag);
@@ -359,7 +392,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   const api = async (path, opts = {}) => {
     const res = await fetch(path, { ...opts, headers: { "content-type": "application/json", "x-karigor-lang": lang, ...(opts.headers || {}) } });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || t("wrong", res.status));
+    if (!res.ok) throw Object.assign(new Error(data.error || t("wrong", res.status)), { status: res.status, data });
     return data;
   };
   const withKey = (b) => { const k = store.get("karigor_key"); return k ? { ...b, apiKey: k } : b; };
@@ -667,7 +700,52 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   applyStatic();
   window.addEventListener("hashchange", route);
 
-  api("/api/config").then((c) => { config = c; $("keyBtn").hidden = !c.needsKey; route(); }).catch((err) => { main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, t("cantReach")), el("p", {}, err.message))); });
+  // ---- people: whoever runs it hands out links; with sign-ups open, anyone joins with a name ----
+  const linkFor = (token) => `${location.origin}/?token=${token}`;
+  function signUp() {
+    const name = el("input", { maxlength: "80", autocomplete: "name", required: true });
+    const problem = el("p", { class: "meta" });
+    const form = el("form", { class: "row", onsubmit: async (e) => {
+      e.preventDefault();
+      try {
+        const r = await api("/api/signup", { method: "POST", body: JSON.stringify({ name: name.value }) });
+        main.replaceChildren(el("div", { class: "card result" }, el("p", {}, t("saveLink")), el("div", { class: "link" }, linkFor(r.token)), el("div", { class: "row" }, el("button", { class: "btn", type: "button", onclick: start }, t("carryOn")))));
+      } catch (err) { problem.textContent = err.message; }
+    } }, el("label", { class: "field", style: "flex:1;min-width:0" }, t("yourName"), name), el("button", { class: "btn", style: "align-self:flex-end" }, t("join")));
+    main.replaceChildren(el("div", { class: "card" }, el("h2", {}, t("signupTitle")), el("p", {}, t("signupText")), form, problem));
+    name.focus();
+  }
+  async function showPeople() {
+    $("projects").close();
+    $("personLink").replaceChildren();
+    $("peopleDialog").showModal();
+    const list = $("peopleList");
+    try {
+      const { people } = await api("/api/people");
+      list.replaceChildren(...(people.length ? people.map((p) => el("li", { class: "who" }, el("span", {}, p.name), el("span", { class: "meta", style: "flex:0" }, t("personProjects", p.projects)), el("button", { class: "btn quiet", type: "button", "aria-label": t("removeX", p.name), onclick: async () => { await api(`/api/people/${p.id}`, { method: "DELETE" }).catch(() => {}); showPeople(); } }, t("remove")))) : [el("li", { class: "meta" }, t("noPeople"))]));
+    } catch (err) { list.replaceChildren(el("li", { class: "meta" }, err.message)); }
+  }
+  $("peopleBtn").addEventListener("click", showPeople);
+  $("peopleClose").addEventListener("click", () => $("peopleDialog").close());
+  $("personForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = $("personName").value.trim();
+    if (!name) return;
+    try {
+      const r = await api("/api/people", { method: "POST", body: JSON.stringify({ name }) });
+      $("personName").value = "";
+      await showPeople();
+      $("personLink").replaceChildren(el("p", { class: "meta", style: "padding:0 0 6px" }, t("sendLink", r.name)), el("div", { class: "link" }, linkFor(r.token)));
+    } catch (err) { $("personLink").replaceChildren(el("p", { class: "meta" }, err.message)); }
+  });
+
+  function start() {
+    api("/api/config").then((c) => { config = c; $("keyBtn").hidden = !c.needsKey; $("peopleBtn").hidden = !(c.me && c.me.admin && c.me.people); route(); }).catch((err) => {
+      if (err.status === 401 && err.data && err.data.signup) return signUp();
+      main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, t("cantReach")), el("p", {}, err.message)));
+    });
+  }
+  start();
 })();
 </script>
 </body>

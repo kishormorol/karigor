@@ -2,9 +2,11 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { People } from "./people.js";
 import { createKarigorServer } from "./server.js";
 
-const { values: v } = parseArgs({
+const { values: v, positionals } = parseArgs({
+  allowPositionals: true,
   options: {
     root: { type: "string", default: process.env["KARIGOR_ROOT"] ?? join(homedir(), ".karigor", "projects") },
     port: { type: "string", default: process.env["PORT"] ?? "4321" },
@@ -27,7 +29,23 @@ if (v.help) {
   --deploy <target>  local, vercel or none (KARIGOR_DEPLOY)
   --app-port <n>     port of the live app on the local target (KARIGOR_APP_PORT)
 
-Set KARIGOR_TOKEN to require an access link (/?token=...). Required when the host is not 127.0.0.1.`);
+Set KARIGOR_TOKEN to require an access link (/?token=...). Required when the host is not 127.0.0.1.
+That link sees every project. To give someone their own sign-in, which sees only their projects:
+
+  karigor-server add-person "<name>"   prints their link (KARIGOR_URL sets its address)
+  KARIGOR_SIGNUP=open                  anyone who opens the page signs up with a name`);
+  process.exit(0);
+}
+
+if (positionals[0] === "add-person") {
+  const name = positionals.slice(1).join(" ").trim();
+  if (!name) {
+    console.error('karigor-server: add-person needs a name, as in add-person "Rahima"');
+    process.exit(1);
+  }
+  const { token } = await new People(v.root!).add(name);
+  const base = process.env["KARIGOR_URL"] ?? `http://localhost:${v.port}`;
+  console.log(`Send ${name} this link. It is shown only once, and it opens only their own projects:\n${base.replace(/\/$/, "")}/?token=${token}`);
   process.exit(0);
 }
 
@@ -45,6 +63,7 @@ const { server } = createKarigorServer({
   profile: v.profile!,
   appPort: Number(v["app-port"]),
   ...(token ? { token } : {}),
+  signup: process.env["KARIGOR_SIGNUP"] === "open",
   log: (l) => console.log(l),
 });
 server.listen(Number(v.port), host, () => {

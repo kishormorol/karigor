@@ -122,6 +122,8 @@ docker compose exec ollama ollama pull qwen2.5:7b
 
 The image defaults to Ollama (free); set `KARIGOR_ADAPTER=claude` and `ANTHROPIC_API_KEY` to use the API instead, or leave the key unset and each person enters their own in the page (it stays in their tab and in the memory of their run, never on disk). The server refuses to listen beyond `127.0.0.1` without `KARIGOR_TOKEN`.
 
+The `KARIGOR_TOKEN` link sees every project, so keep it for yourself. Give everyone else their own sign-in, which opens only the projects they start: add them from **People** in the page, or run `docker compose exec karigor node packages/server/dist/bin.js add-person "Rahima"` and send them the link it prints. To let anyone who opens the page join with just a name, set `KARIGOR_SIGNUP=open`. Builds run code the AI wrote on your server, so open sign-ups only where you trust who can reach it.
+
 ## How it works
 
 ```

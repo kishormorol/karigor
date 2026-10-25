@@ -7,6 +7,7 @@ import { FsStore, queueInbox, runningPid } from "@karigor/store";
 import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
+import { People, type Person } from "./people.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Works from both `src/` (tests) and `dist/` (build). */
@@ -24,6 +25,10 @@ export interface ServerOptions {
   appPort?: number;
   /** When set, every API call must carry it (bearer header or the cookie set by `/?token=`). */
   token?: string;
+  /** Let anyone open the page and make their own sign-in by giving a name. Off by default: links come from whoever runs it. */
+  signup?: boolean;
+  /** Most people a sign-up may create. */
+  maxPeople?: number;
   /** Builds running at once. */
   maxRuns?: number;
   /** How long a project paused for the usage allowance waits before trying again (default 30 minutes). */
@@ -40,6 +45,9 @@ export interface KarigorServer {
 }
 
 const ID = /^[a-z0-9][a-z0-9-]{0,80}$/;
+
+/** Who is asking: whoever runs this Karigor sees everything; everyone else only their own projects. */
+type Viewer = { admin: true } | { admin: false; person: Person };
 const MAX_BODY = 64 * 1024;
 
 class HttpError extends Error {
@@ -101,11 +109,19 @@ function optionalKey(b: Record<string, unknown>): string | undefined {
   return typeof k === "string" && k.trim() ? k.trim() : undefined;
 }
 
+const signInCookie = (token: string) => `karigor_token=${encodeURIComponent(token)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000`;
+
 const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "x-frame-options": "DENY",
 };
+
+/** Errors are written in the page's language; the page names it in a header. */
+function langOf(req: IncomingMessage): Lang {
+  const h = req.headers["x-karigor-lang"];
+  return isLang(h) ? h : "en";
+}
 
 function send(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...SECURITY_HEADERS });
@@ -115,6 +131,7 @@ function send(res: ServerResponse, status: number, data: unknown): void {
 /** The chat UI and its API over the kernel. Bring-your-own keys live only in the memory of the run they were sent with. */
 export function createKarigorServer(o: ServerOptions): KarigorServer {
   const runs = new Map<string, Promise<void>>();
+  const people = new People(o.root);
   const problems = new Map<string, string>();
   const log = o.log ?? (() => {});
   const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}) };
@@ -184,12 +201,19 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     return problem ? { ...v, problem } : v;
   };
 
-  const authed = (req: IncomingMessage): boolean => {
-    if (!o.token) return true;
-    const h = req.headers.authorization;
-    const given = h?.startsWith("Bearer ") ? h.slice(7) : cookie(req, "karigor_token");
-    return given !== undefined && same(given, o.token);
+  /** The token's owner: the one who runs it (KARIGOR_TOKEN, or anyone when there is none) or a person with their own link. */
+  const viewerFor = async (token: string | undefined | null): Promise<Viewer | undefined> => {
+    if (!o.token) return { admin: true };
+    if (!token) return undefined;
+    if (same(token, o.token)) return { admin: true };
+    const person = await people.byToken(token);
+    return person ? { admin: false, person } : undefined;
   };
+  const whoIs = (req: IncomingMessage) => {
+    const h = req.headers.authorization;
+    return viewerFor(h?.startsWith("Bearer ") ? h.slice(7) : cookie(req, "karigor_token"));
+  };
+  const sees = (v: Viewer, id: string) => v.admin || v.person.projects.includes(id);
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -198,8 +222,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
 
     if (method === "GET" && (path === "/" || path === "/index.html")) {
       const t = url.searchParams.get("token");
-      if (t !== null && o.token && same(t, o.token)) {
-        res.writeHead(302, { location: "/", "set-cookie": `karigor_token=${encodeURIComponent(t)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000`, ...SECURITY_HEADERS });
+      if (t !== null && o.token && (await viewerFor(t))) {
+        res.writeHead(302, { location: "/", "set-cookie": signInCookie(t), ...SECURITY_HEADERS });
         res.end();
         return;
       }
@@ -214,12 +238,41 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     }
     if (method === "GET" && path === "/healthz") return send(res, 200, { ok: true });
     if (!path.startsWith("/api/")) throw new HttpError(404, "not found");
-    if (!authed(req)) throw new HttpError(401, "this Karigor needs an access link; ask whoever runs it");
+    if (method === "POST" && path === "/api/signup") {
+      if (!o.signup || !o.token) throw new HttpError(403, "this Karigor does not take sign-ups; ask whoever runs it for a link");
+      const name = text(await body(req), "name", 80);
+      if ((await people.all()).length >= (o.maxPeople ?? 200)) throw new HttpError(403, "this Karigor is full; ask whoever runs it for a link");
+      const { person, token } = await people.add(name);
+      log(`${person.name} signed up`);
+      res.writeHead(201, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "set-cookie": signInCookie(token), ...SECURITY_HEADERS });
+      res.end(JSON.stringify({ name: person.name, token }));
+      return;
+    }
+    const viewer = await whoIs(req);
+    if (!viewer) {
+      const error = o.signup ? "sign up to start" : "this Karigor needs an access link; ask whoever runs it";
+      return send(res, 401, { error: errorIn(langOf(req), error), signup: !!o.signup });
+    }
+
+    if (path === "/api/people" || path.startsWith("/api/people/")) {
+      if (!viewer.admin) throw new HttpError(403, "only whoever runs this Karigor can add people");
+      if (method === "GET" && path === "/api/people") {
+        return send(res, 200, { people: (await people.all()).map((p) => ({ id: p.id, name: p.name, projects: p.projects.length, createdAt: p.createdAt })) });
+      }
+      if (method === "POST" && path === "/api/people") {
+        if (!o.token) throw new HttpError(400, "people need their own links only when this Karigor has an access link (KARIGOR_TOKEN)");
+        const { person, token } = await people.add(text(await body(req), "name", 80));
+        return send(res, 201, { id: person.id, name: person.name, token });
+      }
+      const pm = /^\/api\/people\/([a-f0-9]{1,32})$/.exec(path);
+      if (method === "DELETE" && pm) return send(res, (await people.remove(pm[1]!)) ? 200 : 404, {});
+      throw new HttpError(404, "not found");
+    }
 
     if (method === "GET" && path === "/api/config") {
-      return send(res, 200, { adapter: o.adapter, demo: o.adapter === "demo", deploy: o.deploy ?? "local", needsKey: o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"] });
+      return send(res, 200, { adapter: o.adapter, demo: o.adapter === "demo", deploy: o.deploy ?? "local", needsKey: o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"], me: viewer.admin ? { admin: true, people: !!o.token } : { admin: false, name: viewer.person.name } });
     }
-    if (method === "GET" && path === "/api/projects") return send(res, 200, { projects: await Promise.all((await listProjects(o.root)).map(async (p) => ({ ...p, running: await isRunning(p.id) }))) });
+    if (method === "GET" && path === "/api/projects") return send(res, 200, { projects: await Promise.all((await listProjects(o.root)).filter((p) => sees(viewer, p.id)).map(async (p) => ({ ...p, running: await isRunning(p.id) }))) });
     if (method === "GET" && path === "/api/starters") {
       return send(res, 200, { starters: STARTERS.map((s) => ({ id: s.id, title: s.title, for: s.for, idea: s.idea, basedOn: s.basedOn.map((x) => x.name), ...(STARTERS_BN[s.id] ? { bn: STARTERS_BN[s.id] } : {}) })) });
     }
@@ -230,6 +283,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       const idea = starter === undefined ? text(b, "idea") : ideaForStarter(starter, typeof b["idea"] === "string" ? b["idea"] : undefined, isLang(b["lang"]) ? b["lang"] : "en");
       if (o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"] && !optionalKey(b)) throw new HttpError(400, "this Karigor uses your own Anthropic key; add it first");
       const id = await createProject(o.root, idea);
+      if (!viewer.admin) await people.own(viewer.person.id, id);
       startRun(id, "run", optionalKey(b));
       return send(res, 201, { projectId: id });
     }
@@ -237,7 +291,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     const m = /^\/api\/projects\/([^/]+)(?:\/([a-z]+))?$/.exec(path);
     if (!m) throw new HttpError(404, "not found");
     const id = m[1]!;
-    if (!ID.test(id)) throw new HttpError(404, "no such project");
+    if (!ID.test(id) || !sees(viewer, id)) throw new HttpError(404, "no such project");
     const action = m[2];
 
     const lang = url.searchParams.get("lang");
@@ -343,9 +397,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
   };
 
   const server = createServer((req, res) => {
-    // Errors are written in the page's language; the page names it in a header.
-    const h = req.headers["x-karigor-lang"];
-    const lang: Lang = isLang(h) ? h : "en";
+    const lang = langOf(req);
     handle(req, res).catch((e: Error) => {
       if (res.headersSent) return res.end();
       if (e instanceof HttpError) send(res, e.status, { error: errorIn(lang, e.message) });
