@@ -122,4 +122,28 @@ describe("Playwright reports", () => {
     expect(parsePlaywrightJson(JSON.stringify({ suites: [], errors: [{ message: "Error: Cannot find module '@/db'\n at x" }] }))).toEqual({ passed: 0, failed: 1, failures: ["the journeys could not start: Error: Cannot find module '@/db'"] });
     expect(parsePlaywrightJson("not json")).toEqual({ passed: 0, failed: 0, failures: [] });
   });
+
+  it("says where a timed-out journey got stuck, so the fix starts at the right step", () => {
+    const timeout = "Test timeout of 30000ms exceeded.";
+    const report = JSON.stringify({
+      suites: [{
+        title: "contacts-edit.spec.ts",
+        file: "contacts-edit.spec.ts",
+        specs: [{
+          title: "office staff archive and restore a contact", file: "contacts-edit.spec.ts", ok: false,
+          tests: [{ status: "unexpected", results: [{
+            status: "timedOut",
+            error: { message: timeout },
+            errors: [
+              { message: timeout },
+              { message: "Error: locator.fill: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Find a contact')\u001b[22m\n", location: { file: "/w/tests/e2e/contacts-edit.spec.ts", line: 39 } },
+            ],
+          }] }],
+        }],
+      }],
+    });
+    expect(parsePlaywrightJson(report).failures).toEqual([
+      "contacts-edit.spec.ts › office staff archive and restore a contact: Test timeout of 30000ms exceeded. Stuck at line 39, waiting for getByLabel('Find a contact').",
+    ]);
+  });
 });
