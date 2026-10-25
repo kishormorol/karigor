@@ -60,13 +60,14 @@ npm install -g pnpm        # if you do not have it
 pnpm install &amp;&amp; pnpm build
 alias karigor="node $PWD/packages/cli/dist/bin.js"</pre>
 <p class="note-outline"><strong>No Claude Code?</strong> Use a free local model with <code>--adapter ollama</code> or an API key with <code>--adapter claude</code>. To watch the whole process with no model and no cost, add <code>--adapter demo</code> to any command.</p>
-<p class="note-outline"><strong>Not technical? You can skip all of this.</strong> Ask someone who is to host Karigor's chat page for you, on a server or a spare computer. They send you a link, and you build your app by chatting with it on your phone or laptop, with nothing to install. You describe, build, use and grow your app in the chat instead of typing commands. You can enter your own Anthropic API key in the page, or use the host's free local model.</p>
+<p class="note-outline"><strong>Not technical? You can skip all of this.</strong> Ask someone who is to host Karigor's chat page, on a server or a spare computer. They send you your own link, or the page lets you join with just your name. Then you describe, build, use and grow your app by chatting, on your phone or laptop, with nothing to install. Your projects are yours: other people on the same page can't see them. The AI is the host's free open-source model, or your own Anthropic key if you have one.</p>
 <details class="note-outline">
-<summary><strong>Hosting it for someone else</strong></summary>
+<summary><strong>Hosting it for others</strong></summary>
 <p class="body">On a server with Docker, from the cloned repository:</p>
 <pre class="code">KARIGOR_TOKEN=$(openssl rand -hex 24) docker compose up -d
 docker compose exec ollama ollama pull qwen2.5:7b</pre>
-<p class="body">Send them <code>http://&lt;host&gt;:4321/?token=&lt;KARIGOR_TOKEN&gt;</code>. Anyone who has the link can see every project on that server, so give it only to people you trust. To use Claude instead of the free local model, set <code>KARIGOR_ADAPTER=claude</code> and <code>ANTHROPIC_API_KEY</code>, or leave the key unset so each person enters their own in the page. A key entered there stays in their tab and in the memory of their run, never on disk.</p>
+<p class="body">Open <code>http://&lt;host&gt;:4321/?token=&lt;KARIGOR_TOKEN&gt;</code> yourself. That link sees every project, so keep it to yourself. Give everyone else their own link from <strong>People</strong> on the page; theirs opens only the projects they start. To let anyone who reaches the page join with a name, set <code>KARIGOR_SIGNUP=open</code>. Builds run code the AI wrote on your server, so open sign-ups only where you trust who can reach it.</p>
+<p class="body">The free model needs no key. To use Claude instead, set <code>KARIGOR_ADAPTER=claude</code>. Add <code>ANTHROPIC_API_KEY</code> to pay for everyone, or leave it unset so each person enters their own. A key entered on the page stays in their browser tab and in the memory of their run, never on disk.</p>
 </details>
 </section>
 
