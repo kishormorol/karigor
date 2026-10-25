@@ -9,9 +9,14 @@ import { renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject, runWaiting } from "./run.js";
 import { projectPort, runOptions as setupRun, type RunFlags } from "./setup.js";
 import { findStarter, ideaFor, renderStarter, renderStarters } from "./starters.js";
-import { isLang, type Lang } from "./words.js";
+import { isLang, progressIn, type Lang } from "./words.js";
+import { localizeHelp } from "./help-bn.js";
 
-const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: (l) => console.log(l) });
+/** The language of this command's messages, settled before it runs: --lang, else the project's own. */
+let lang: Lang = "en";
+/** Print a progress line in that language. */
+const say = (l: string) => console.log(progressIn(lang, l));
+const runOptions = (root: string, projectId: string, o: RunFlags) => setupRun(root, projectId, o, { log: say });
 
 const program = new Command();
 const defaultRoot = process.env["KARIGOR_ROOT"] ?? join(homedir(), ".karigor", "projects");
@@ -72,7 +77,7 @@ program
 async function run(root: string, projectId: string, o: RunFlags & { wait?: string | boolean }) {
   const everyMs = o.wait === undefined ? 0 : (o.wait === true ? 30 : Math.max(1, Number(o.wait) || 30)) * 60_000;
   const make = () => runOptions(root, projectId, o);
-  const state = everyMs ? await runWaiting(make, { everyMs, log: (l) => console.log(l) }) : await runProject(await make());
+  const state = everyMs ? await runWaiting(make, { everyMs, log: say }) : await runProject(await make());
   const store = await FsStore.open(root, projectId);
   console.log("");
   console.log(await renderStatus(store, state, await langFor(store, state)));
@@ -120,7 +125,11 @@ program
   .action(async (projectId: string, decisionId: string, text: string) => {
     const store = await FsStore.open(program.opts<{ root: string }>().root, projectId);
     const r = await correctAssumption(store, decisionId, text);
-    console.log(r.workItemId ? `Noted. The change is queued as ${r.workItemId}; run karigor fix ${projectId} to apply it now.` : "Noted. Every step from now on will follow it.");
+    console.log(
+      lang === "bn"
+        ? r.workItemId ? `লিখে রাখা হলো। পরিবর্তনটি ${r.workItemId} হিসেবে তালিকায় আছে; এখনই প্রয়োগ করতে karigor fix ${projectId} চালান।` : "লিখে রাখা হলো। এখন থেকে প্রতিটি ধাপ এটি মেনে চলবে।"
+        : r.workItemId ? `Noted. The change is queued as ${r.workItemId}; run karigor fix ${projectId} to apply it now.` : "Noted. Every step from now on will follow it.",
+    );
   });
 
 /** Read a line without echoing it (for passcodes and service keys). */
@@ -143,7 +152,7 @@ function askHidden(question: string): Promise<string> {
           process.stdout.write("\u001b[?2004l");
           // Terminals wrap pastes in markers (ESC[200~ ... ESC[201~); keep only what was pasted.
           value = value.replace(/\u001b\[20[01]~/g, "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
-          process.stdout.write(value ? `  (${value.length} characters received)\n` : "  (nothing entered)\n");
+          process.stdout.write(lang === "bn" ? (value ? `  (${value.length}টি অক্ষর পাওয়া গেছে)\n` : "  (কিছু লেখা হয়নি)\n") : value ? `  (${value.length} characters received)\n` : "  (nothing entered)\n");
           resolve(value);
           return;
         }
@@ -179,30 +188,44 @@ runFlags(program.command("setup").argument("<projectId>"))
         if (asked.has(m.name)) continue;
         if (m.kind === "service") {
           const group = all.filter((s) => s.kind === "service" && s.service && s.service === m.service);
-          console.log(`\nThe app needs ${m.service ? `a ${m.service} account (free)` : "an outside service"} for this. Create one, then paste what it gives you.`);
-          for (const s of group.length ? group : [{ name: m.name, note: m.note, optional: false }]) {
+          console.log(
+            lang === "bn"
+              ? `\nএর জন্য অ্যাপের ${m.service ? `একটি ${m.service} অ্যাকাউন্ট (বিনা খরচে)` : "একটি বাইরের সেবা"} দরকার। একটি খুলুন, তারপর যা দেয় তা এখানে পেস্ট করুন।`
+              : `\nThe app needs ${m.service ? `a ${m.service} account (free)` : "an outside service"} for this. Create one, then paste what it gives you.`,
+          );
+          for (const s of group.length ? group : [{ name: m.name, note: m.note, noteBn: m.noteBn, optional: false }]) {
             asked.add(s.name);
-            const v = await askHidden(`  ${s.note || s.name}${s.optional ? " (leave empty to skip)" : ""}\n  ${s.name}: `);
+            const note = (lang === "bn" && s.noteBn) || s.note || s.name;
+            const v = await askHidden(`  ${note}${s.optional ? (lang === "bn" ? " (বাদ দিতে খালি রাখুন)" : " (leave empty to skip)") : ""}\n  ${s.name}: `);
             if (v.trim()) values[s.name] = v;
           }
         } else {
           asked.add(m.name);
-          const v = await askHidden(`\n${m.note || m.name}\n  ${m.name}: `);
+          const v = await askHidden(`\n${(lang === "bn" && m.noteBn) || m.note || m.name}\n  ${m.name}: `);
           if (v.trim()) values[m.name] = v;
         }
       }
     } else if (missing.length) {
-      console.log(`Still needed: ${missing.map((m) => m.name).join(", ")}. This window cannot ask questions; run the same command in your own terminal to be asked privately, or pass --set NAME=value.`);
+      console.log(
+        lang === "bn"
+          ? `এখনো দরকার: ${missing.map((m) => m.name).join(", ")}। এই উইন্ডো প্রশ্ন করতে পারে না; গোপনে জিজ্ঞেস করার জন্য একই কমান্ড নিজের টার্মিনালে চালান, অথবা --set NAME=value দিন।`
+          : `Still needed: ${missing.map((m) => m.name).join(", ")}. This window cannot ask questions; run the same command in your own terminal to be asked privately, or pass --set NAME=value.`,
+      );
     }
-    const r = await provideSettings({ store, deploy: opts.deploy, values, log: (l) => console.log(l) });
+    const r = await provideSettings({ store, deploy: opts.deploy, values, log: say });
     if (r.resumed) {
-      console.log(`Stored ${r.stored.join(", ")}. Carrying on with the release.`);
+      console.log(lang === "bn" ? `রাখা হলো: ${r.stored.join(", ")}। রিলিজের কাজ আবার চলছে।` : `Stored ${r.stored.join(", ")}. Carrying on with the release.`);
       const state = await runProject(opts);
-      console.log(`\n${await renderStatus(store, state)}`);
+      console.log(`\n${await renderStatus(store, state, lang)}`);
       return;
     }
-    console.log(r.stored.length ? `Stored ${r.stored.join(", ")}. ${r.output.split("\n").at(-1) ?? ""}` : "Nothing new to store.");
-    console.log(r.stillMissing.length ? `Still needed before it can be used: ${r.stillMissing.map((m) => m.name).join(", ")}.` : `Everything it needs is in place${r.url ? `: ${r.url}` : ""}.`);
+    const bn = lang === "bn";
+    console.log(r.stored.length ? (bn ? `রাখা হলো: ${r.stored.join(", ")}। ${r.output.split("\n").at(-1) ?? ""}` : `Stored ${r.stored.join(", ")}. ${r.output.split("\n").at(-1) ?? ""}`) : bn ? "নতুন করে রাখার কিছু নেই।" : "Nothing new to store.");
+    console.log(
+      r.stillMissing.length
+        ? bn ? `ব্যবহারের আগে এখনো দরকার: ${r.stillMissing.map((m) => m.name).join(", ")}।` : `Still needed before it can be used: ${r.stillMissing.map((m) => m.name).join(", ")}.`
+        : bn ? `যা যা দরকার সব আছে${r.url ? `: ${r.url}` : ""}।` : `Everything it needs is in place${r.url ? `: ${r.url}` : ""}.`,
+    );
   });
 
 program
@@ -387,6 +410,24 @@ program
     await store.commit(`karigor: user unparked ${itemId}`);
     console.log(`${itemId} is back in the backlog. Run karigor resume ${projectId} to continue.`);
   });
+
+// Messages follow --lang, else the language of the project the command is about.
+program.hook("preAction", async (_program, action) => {
+  const asked = askedLang();
+  if (asked) return void (lang = asked);
+  const id = action.args[0];
+  if (!id || !/^p-[a-z0-9-]+$/.test(id)) return;
+  const store = await FsStore.open(program.opts<{ root: string }>().root, id).catch(() => undefined);
+  if (store) lang = await langFor(store);
+});
+
+// Help is written before any command runs, so it follows --lang or KARIGOR_LANG only.
+const helpLang = (() => {
+  const i = process.argv.findIndex((a) => a === "--lang" || a.startsWith("--lang="));
+  const v = i < 0 ? process.env["KARIGOR_LANG"] : process.argv[i]!.includes("=") ? process.argv[i]!.split("=")[1] : process.argv[i + 1];
+  return v === "bn" ? "bn" : "en";
+})();
+if (helpLang === "bn") localizeHelp(program);
 
 program.parseAsync(process.argv).catch((e: Error) => {
   console.error(`karigor: ${e.message}`);

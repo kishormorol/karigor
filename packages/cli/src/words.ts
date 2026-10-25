@@ -268,3 +268,58 @@ export function reasonIn(lang: Lang, reason: string): string {
   }
   return reason;
 }
+
+const STATUS_WORD_BN: Record<string, string> = { finished: "শেষ", stopped: "থেমে গেছে", waiting: "অপেক্ষায়", running: "চলছে", created: "তৈরি" };
+
+/** The build's progress log, line by line, in Bangla. Leading spaces are kept; unknown lines are shown as written. */
+const PROGRESS_BN: [RegExp, (...m: string[]) => string][] = [
+  [/^selecting a process and a target$/, () => "পদ্ধতি আর কী তৈরি হবে তা বাছাই হচ্ছে"],
+  [/^chooseBudget$/, () => "বাজেট ঠিক করা হচ্ছে"],
+  [/^finish$/, () => "শেষ করা হচ্ছে"],
+  [/^budget: (\S+) tier, (\S+) (\S+)$/, (t, c, n) => `বাজেট: ${BN.tier[t!] ?? t} স্তর, ${c} ${n}`],
+  [/^entering (\S+)$/, (p) => `শুরু হলো: ${BANGLA.phase(p)}`],
+  [/^(specify|design|plan|spike|build|verify|release|triage): gate (\S+)(?: on (\S+))?$/, (p, g, i) => `${phaseNoun(p!)} ধাপ: যাচাই "${g}"${on(i)}`],
+  [/^(specify|design|plan|spike|build|verify|release|triage): sprint (\d+) with (.+)$/, (p, n, ids) => `${phaseNoun(p!)} ধাপ: স্প্রিন্ট ${n} শুরু: ${ids}`],
+  [/^(specify|design|plan|spike|build|verify|release|triage): retrying \((.+)\)$/, (p, r) => `${phaseNoun(p!)} ধাপ: আবার চেষ্টা (${reasonIn("bn", r!)})`],
+  [/^(specify|design|plan|spike|build|verify|release|triage): shrinking (\S+)$/, (p, i) => `${phaseNoun(p!)} ধাপ: ${i} ছোট ভাগে ভাঙা হচ্ছে`],
+  [/^(specify|design|plan|spike|build|verify|release|triage): (\S+)(?: on (\S+))?(?: \(round (\d+)\))?$/, (p, r, i, n) => `${phaseNoun(p!)} ধাপ: ${role(r!)}${on(i)}${n ? `, আবার চেষ্টা ${n}` : ""}`],
+  [/^(\S+) -> back to (\S+): (.+)$/, (f, t, r) => `${phaseNoun(f!)} ধাপ থেকে ${phaseNoun(t!)} ধাপে ফেরত: ${reasonIn("bn", r!)}`],
+  [/^(\S+) -> (\S+)$/, (f, t) => (t === "done" ? `${phaseNoun(f!)} ধাপ শেষ, কাজ সম্পূর্ণ` : `${phaseNoun(f!)} ধাপ শেষ, এবার ${phaseNoun(t!)} ধাপ`)],
+  [/^parked (\S+): (.+)$/, (i, r) => `আলাদা করে রাখা হলো ${i}: ${reasonIn("bn", r!)}`],
+  [/^done (\S+)$/, (i) => `শেষ: ${i}`],
+  [/^stopped: (.+)$/, (r) => `থেমে গেছে: ${reasonIn("bn", r!)}`],
+  [/^gate (\S+) failed: (.*)$/, (g, r) => `যাচাই ${g} ব্যর্থ: ${r}`],
+  [/^paused: (.+)$/, (r) => `বিরতি: ${reasonIn("bn", r!)}`],
+  [/^waiting (\d+) minutes for the usage allowance, then trying again$/, (n) => `ব্যবহারের সীমা ফেরার জন্য ${n} মিনিট অপেক্ষা, তারপর আবার চেষ্টা`],
+  [/^carrying on after the pause$/, () => "বিরতির পর আবার কাজ চলছে"],
+  [/^creating the workspace from the (\S+) profile$/, (p) => `${BN.profile[p!] ?? p} টেমপ্লেট থেকে কাজের জায়গা তৈরি হচ্ছে`],
+  [/^installing dependencies \((.+)\)$/, (x) => `দরকারি প্যাকেজ বসানো হচ্ছে (${x})`],
+  [/^made and stored (.+)$/, (x) => `তৈরি করে রাখা হলো: ${x}`],
+  [/^could not store generated settings: (.*)$/, (x) => `তৈরি করা সেটিং রাখা গেল না: ${x}`],
+  [/^putting (\S+) on a preview \((\S+)\)$/, (v, t) => `${v} প্রিভিউতে তোলা হচ্ছে (${t})`],
+  [/^the preview failed: (.*)$/, (x) => `প্রিভিউ ব্যর্থ: ${x}`],
+  [/^putting (\S+) live$/, (v) => `${v} চালু করা হচ্ছে`],
+  [/^to sign in the first time: karigor admin-link (\S+) <your email> "<your name>"$/, (id) => `প্রথমবার সাইন ইন করতে: karigor admin-link ${id} <আপনার ইমেইল> "<আপনার নাম>"`],
+  [/^live: (.+)$/, (x) => `চালু: ${x}`],
+  [/^it still needs these settings before it can be used: (.+)$/, (x) => `ব্যবহারের আগে এখনো এই সেটিংগুলো দরকার: ${x}`],
+  [/^could not revert (\S+): (.*)$/, (i, x) => `${i} ফিরিয়ে নেওয়া গেল না: ${x}`],
+  [/^reverted (\S+)'s commits \((.+)\)$/, (i, r) => `${i}-এর পরিবর্তনগুলো ফিরিয়ে নেওয়া হলো (${reasonIn("bn", r!)})`],
+  [/^waiting for you: (.+) \(karigor setup (\S+)\)$/, (x, id) => `আপনার অপেক্ষায়: ${x} (karigor setup ${id})`],
+  [/^new work item (\S+)$/, (i) => `নতুন কাজ: ${i}`],
+  [/^fix round (\d+): starting$/, (n) => `ঠিক করার রাউন্ড ${n}: শুরু`],
+  [/^fix round (\d+) ended: (\S+)(?: \((.+)\))?$/, (n, s, r) => `ঠিক করার রাউন্ড ${n} শেষ: ${STATUS_WORD_BN[s!] ?? s}${r ? ` (${reasonIn("bn", r)})` : ""}`],
+  [/^nothing is live yet; waiting for a release$/, () => "এখনো কিছু চালু নেই; একটি রিলিজের অপেক্ষায়"],
+  [/^serving (\S+) at (\S+)$/, (v, u) => `${v} চলছে: ${u}`],
+  [/^scheduled job (\S+): (.+)$/, (n, r) => `নির্ধারিত কাজ ${n}: ${r}`],
+];
+
+/** One line of the progress log in the person's language. */
+export function progressIn(lang: Lang, line: string): string {
+  if (lang !== "bn") return line;
+  const [, lead = "", text = ""] = /^(\s*)(.*)$/s.exec(line) ?? [];
+  for (const [re, bn] of PROGRESS_BN) {
+    const m = re.exec(text);
+    if (m) return lead + bn(...m.slice(1));
+  }
+  return line;
+}
