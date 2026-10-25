@@ -1,3 +1,5 @@
+import { join } from "node:path";
+import { readSettings } from "@karigor/profiles";
 import { stagePlan } from "./stages.js";
 import type { FsStore, ProjectState, Event, BacklogItem, MetaOf } from "@karigor/store";
 import { meter, renderMeter } from "@karigor/budget";
@@ -50,7 +52,11 @@ export async function renderStatus(store: FsStore, state: ProjectState, lang: La
   if (live && state.status !== "finished") lines.push(w.liveVersion(live.version, live.url));
   if (live?.missingSettings?.length) {
     lines.push("", w.missingSettings());
-    for (const m of live.missingSettings) lines.push(`  - ${m.name}${m.note ? `: ${m.note}` : ""}`);
+    const bn = lang === "bn" ? await readSettings(join(store.dir, "workspace")) : [];
+    for (const m of live.missingSettings) {
+      const note = bn.find((s) => s.name === m.name)?.noteBn ?? m.note;
+      lines.push(`  - ${m.name}${note ? `: ${note}` : ""}`);
+    }
   }
   const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done");
   if (open.length) {

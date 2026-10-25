@@ -23,7 +23,7 @@ export interface ProjectView {
   summary?: { headline: string; whatItDoes: string; howToUse: string; url?: string };
   live?: NonNullable<Awaited<ReturnType<typeof liveRecord>>>;
   /** While waiting: the settings only the person can give, with the developer's plain description. */
-  waitingFor?: { name: string; note: string; kind: string; service?: string }[];
+  waitingFor?: { name: string; note: string; noteBn?: string; kind: string; service?: string }[];
   workItems: { id: string; title: string; status: string; source: string }[];
   /** The plan's stages when there is more than one, and the next one to build. */
   stages?: { name: string; goal: string; state: "built" | "building" | "later" }[];
@@ -86,7 +86,10 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
           ? summary?.headline ?? h.finished
           : h.stopped(state.stopReason);
   const last = events.at(-1);
-  const waitingFor = state.status === "waiting" ? (await readSettings(join(store.dir, "workspace"))).filter((s) => state.waitingFor?.includes(s.name)).map((s) => ({ name: s.name, note: s.note, kind: s.kind, ...(s.service ? { service: s.service } : {}) })) : [];
+  // The app's own settings file carries the Bangla notes; releases recorded before them only have the English one.
+  const settings = await readSettings(join(store.dir, "workspace"));
+  const bnNote = (name: string) => settings.find((s) => s.name === name)?.noteBn;
+  const waitingFor = state.status === "waiting" ? settings.filter((s) => state.waitingFor?.includes(s.name)).map((s) => ({ name: s.name, note: s.note, ...(s.noteBn ? { noteBn: s.noteBn } : {}), kind: s.kind, ...(s.service ? { service: s.service } : {}) })) : [];
   return {
     id: store.projectId,
     idea,
@@ -104,7 +107,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
     decisions: ledger.map((a) => ({ id: a.id, topic: a.topic, decision: a.decision, ...(state.corrections[a.id] ?? a.correctedTo ? { correctedTo: state.corrections[a.id] ?? a.correctedTo! } : {}) })),
     ...(m ? { cost: { currency: m.currency, spent: m.total, budget: m.budgetTotal, tier: m.tier, apiEquivalent: m.apiEquivalent } } : {}),
     ...(summary ? { summary: { headline: summary.headline, whatItDoes: summary.whatItDoes, howToUse: summary.howToUse, ...(summary.url ? { url: summary.url } : {}) } } : {}),
-    ...(live ? { live } : {}),
+    ...(live ? { live: live.missingSettings ? { ...live, missingSettings: live.missingSettings.map((m) => (bnNote(m.name) ? { ...m, noteBn: bnNote(m.name) } : m)) } : live } : {}),
     ...(waitingFor.length ? { waitingFor } : {}),
     workItems,
     ...(stages ? { stages } : {}),

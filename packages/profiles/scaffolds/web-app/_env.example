@@ -1,27 +1,36 @@
 # Where the app keeps its data. On this computer it is a file; when hosted, a free Turso database (libsql://<name>.turso.io).
+# bn: অ্যাপ যেখানে তথ্য রাখে। এই কম্পিউটারে এটি একটি ফাইল; অনলাইনে চালালে একটি বিনা খরচের Turso ডেটাবেস (libsql://<name>.turso.io)।
 # karigor: service turso
 DATABASE_URL=file:./data/app.db
 # Optional: the Turso database token, needed only when hosted.
+# bn: Turso ডেটাবেসের টোকেন, শুধু অনলাইনে চালালে লাগে।
 # karigor: service turso
 DATABASE_AUTH_TOKEN=
 # The key the scheduler uses to start scheduled jobs. A random secret; nobody needs to know it.
+# bn: নির্ধারিত সময়ের কাজগুলো চালু করতে যে গোপন চাবি লাগে। এটি নিজে থেকে তৈরি হয়; কারও জানার দরকার নেই।
 # karigor: generate
 CRON_SECRET=
 # Optional: to send emails (password resets, receipts), a free Resend account's API key. Until then emails are kept, not sent.
+# bn: ইমেইল পাঠাতে (পাসওয়ার্ড বদল, রসিদ) একটি বিনা খরচের Resend অ্যাকাউন্টের API কী। ততদিন ইমেইলগুলো রাখা থাকে, পাঠানো হয় না।
 # karigor: service resend
 RESEND_API_KEY=
 # Optional: the address emails come from, on a domain your Resend account has verified (for example "Clinic <hello@yourclinic.com>").
+# bn: যে ঠিকানা থেকে ইমেইল যাবে, আপনার Resend অ্যাকাউন্টে যাচাই করা ডোমেইনে (যেমন "Clinic <hello@yourclinic.com>")।
 # karigor: service resend
 EMAIL_FROM=
 # Optional: to send SMS through Twilio, your Twilio account SID. Until an SMS service is set up, messages are kept, not sent.
+# bn: Twilio দিয়ে এসএমএস পাঠাতে আপনার Twilio অ্যাকাউন্টের SID। এসএমএস সেবা যুক্ত না হওয়া পর্যন্ত বার্তাগুলো রাখা থাকে, পাঠানো হয় না।
 # karigor: service twilio
 TWILIO_ACCOUNT_SID=
 # Optional: your Twilio auth token.
+# bn: আপনার Twilio অ্যাকাউন্টের auth token।
 # karigor: service twilio
 TWILIO_AUTH_TOKEN=
 # Optional: the Twilio phone number SMS come from.
+# bn: যে Twilio ফোন নম্বর থেকে এসএমএস যাবে।
 # karigor: service twilio
 TWILIO_FROM=
 # Optional: instead of Twilio, any SMS gateway's web address with {to} and {text} in it, from your SMS provider's account (for example a local provider's "send SMS" link with your API key).
+# bn: Twilio-র বদলে যেকোনো এসএমএস গেটওয়ের ওয়েব ঠিকানা, যাতে {to} আর {text} আছে, আপনার এসএমএস কোম্পানির অ্যাকাউন্ট থেকে (যেমন কোনো দেশি কোম্পানির API কীসহ "এসএমএস পাঠান" লিংক)।
 # karigor: service sms-gateway
 SMS_GATEWAY_URL=

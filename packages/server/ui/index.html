@@ -474,10 +474,11 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       el("p", {}, needed.length ? t("onlyYou") : t("hidden")));
     const inputs = [];
     for (const m of needed) {
-      const field = el("input", { type: "password", autocomplete: "off", name: m.name, "aria-label": m.note || m.name });
+      const note = (lang === "bn" && m.noteBn) || m.note || m.name;
+      const field = el("input", { type: "password", autocomplete: "off", name: m.name, "aria-label": note });
       inputs.push(field);
       form.append(el("label", { class: "field" },
-        el("span", {}, m.note || m.name),
+        el("span", {}, note),
         m.kind === "service" ? el("span", { class: "meta" }, t("serviceNote", m.service)) : null,
         field));
     }
@@ -491,7 +492,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       hint.textContent = t("saving");
       try {
         const r = await api(`/api/projects/${current}/settings`, { method: "POST", body: JSON.stringify({ values }) });
-        hint.textContent = r.stillMissing.length ? t("stillNeeded", r.stillMissing.map((m) => m.note || m.name).join("; ")) : t("allSet");
+        hint.textContent = r.stillMissing.length ? t("stillNeeded", r.stillMissing.map((m) => (lang === "bn" && m.noteBn) || m.note || m.name).join("; ")) : t("allSet");
       } catch (err) { hint.textContent = err.message; btn.disabled = false; }
     });
     return form;

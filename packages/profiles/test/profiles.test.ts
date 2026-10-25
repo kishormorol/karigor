@@ -37,6 +37,12 @@ describe("profiles", () => {
     expect(JSON.parse(await readFile(join(dir, "vercel.json"), "utf8")).crons).toEqual([{ path: "/api/jobs", schedule: expect.any(String) }]);
     expect(await readFile(join(dir, "src/lib/session-cookie.ts"), "utf8")).toContain("api\\/jobs");
     expect(await readFile(join(dir, ".env.example"), "utf8")).toMatch(/# karigor: generate\nCRON_SECRET=/);
+    // every setting the person may be asked about has a Bangla note too
+    const { readSettings } = await import("../src/index.js");
+    const settings = await readSettings(dir);
+    expect(settings.filter((x) => !x.noteBn).map((x) => x.name)).toEqual([]);
+    expect(settings.find((x) => x.name === "RESEND_API_KEY")).toMatchObject({ optional: true, kind: "service", service: "resend", noteBn: expect.stringMatching(/Resend অ্যাকাউন্টের API কী/) });
+    expect(settings.find((x) => x.name === "RESEND_API_KEY")?.note).not.toMatch(/[\u0980-\u09FF]/);
   });
 
   it("parses the Vitest JSON reporter even with noise around it, and falls back on exit code", () => {
