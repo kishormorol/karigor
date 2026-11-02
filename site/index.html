@@ -169,12 +169,13 @@
 <section class="wrap section" id="needs-you">
 <div class="needs">
 <div class="stack-lg">
-<div class="stack"><p class="eyebrow">Needs you</p><h2 class="h2 h2-sm">Five moments need you. Everything else is done for you.</h2></div>
+<div class="stack"><p class="eyebrow">Needs you</p><h2 class="h2 h2-sm">Six moments need you. Everything else is done for you.</h2></div>
 <p class="body">Karigor never asks a technical question. These are the only times it waits for you, and each one is asked in plain words.</p>
 <ol class="moments" aria-label="The moments that need you">
 <li><button type="button" data-moment="budget" aria-controls="moment-card" aria-pressed="true"><span class="m-when">Before it starts</span><strong>Pick a budget, once</strong></button></li>
 <li><button type="button" data-moment="setup" aria-controls="moment-card" aria-pressed="false"><span class="m-when">When the app needs it</span><strong>Give what only you have</strong></button></li>
 <li><button type="button" data-moment="correct" aria-controls="moment-card" aria-pressed="false"><span class="m-when">Any time</span><strong>Correct an assumption</strong></button></li>
+<li><button type="button" data-moment="signin" aria-controls="moment-card" aria-pressed="false"><span class="m-when">When it goes live</span><strong>Sign in to your app</strong></button></li>
 <li><button type="button" data-moment="grow" aria-controls="moment-card" aria-pressed="false"><span class="m-when">After stage 1 is live</span><strong>Build the next part</strong></button></li>
 <li><button type="button" data-moment="change" aria-controls="moment-card" aria-pressed="false"><span class="m-when">Whenever you like</span><strong>Tell it what to change</strong></button></li>
 </ol>
@@ -215,6 +216,17 @@
 <p class="ask-note">Once the app is live, a correction becomes a fix round, built and checked like everything else.</p>
 </div>
 
+<div class="ask" data-card="signin" hidden>
+<div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Your way in</span></div>
+<p class="ask-q">Your app has its own sign-in. Give your email and name to become its first admin.</p>
+<ul class="ask-rows">
+<li><strong>Your email</strong><span class="ask-field">rahima@example.com</span></li>
+<li><strong>Your name</strong><span class="ask-field">Rahima</span></li>
+</ul>
+<div class="ask-actions" aria-hidden="true"><span class="ask-btn ask-btn-main">Get my sign-in link</span></div>
+<p class="ask-note">You get a one-time link to choose your password, on this computer or on Vercel. Then add your team from People inside the app; each gets their own link.</p>
+</div>
+
 <div class="ask" data-card="grow" hidden>
 <div class="ask-top"><span>Karigor · Shop counter</span><span class="ask-flag">Your call</span></div>
 <p class="ask-q">Stage 1 is live. Try it on a busy day, then build the next part when you are ready.</p>
@@ -253,17 +265,21 @@
 <div class="wrap split section">
 <div class="stack" style="flex-basis: 380px">
 <p class="eyebrow">What gets built</p>
-<h2 class="h2 h2-sm">A real web app, on a stack you could hire for.</h2>
-<p class="body">Every web app starts with tested sign-in for many people, roles and permissions, an activity log and a UI kit of sidebars, tables, charts and dialogs. Tests, lint, build and journeys pass before the first feature is written.</p>
+<h2 class="h2 h2-sm">A real web app, or a simple website. Picked from your idea.</h2>
+<p class="body">If people sign in, book, order or keep records, it becomes a web app. Every web app starts with tested sign-in for many people, roles and permissions, an activity log and a UI kit of sidebars, tables, charts and dialogs. Tests, lint, build and journeys pass before the first feature is written.</p>
+<p class="body">If people only look (a shop’s page, a menu, a portfolio, a wedding page), it becomes a simple website: plain pages, each checked for phones, titles, pictures and links that lead somewhere. It builds faster and costs nothing to keep online.</p>
+<p class="body">Your logo, photos or price list can come with the idea. Pictures go into the pages; other files stay private and become the app’s starting data.</p>
 <p class="body">Bigger ideas are split into stages. Stage 1 is the smallest version someone can use end to end; <code>karigor grow</code> builds each next stage on top of what is live.</p>
 </div>
-<ul class="tiles" aria-label="The web-app stack" style="flex-basis: 460px">
+<ul class="tiles" aria-label="The stack" style="flex-basis: 460px">
 <li><strong>Next.js + TypeScript</strong><span>the app</span></li>
 <li><strong>Tailwind</strong><span>styling</span></li>
 <li><strong>Drizzle</strong><span>SQLite locally, Turso-ready</span></li>
 <li><strong>Vitest</strong><span>unit tests</span></li>
 <li><strong>Playwright</strong><span>journeys at phone and desktop size</span></li>
+<li><strong>HTML + CSS</strong><span>simple websites, no framework</span></li>
 <li><strong>Local or Vercel</strong><span>this computer, or the free tier</span></li>
+<li><strong>Your files</strong><span>logo, photos, price lists</span></li>
 </ul>
 </div>
 </section>
@@ -728,7 +744,7 @@
 <article class="card card-featured">
 <p class="card-num">Everyone</p>
 <h3 class="h3">Sign in and build in the chat</h3>
-<p class="body">Someone hosts Karigor's chat page and gives you a link, or you join with just your name. Describe your app, watch it get built, then use it and ask for changes, all from your phone or laptop. Your projects are yours: other people on the same page can't see them. Nothing to install, and nothing to pay for the AI: it runs on a free open-source model, or on your own key if you have one.</p>
+<p class="body">Someone hosts Karigor's chat page and gives you a link, or you join with just your name. Describe your app, attach your logo or price list, watch it get built, sign in to it, then use it and ask for changes, all from your phone or laptop. Delete a project you no longer want from the same page. Your projects are yours: other people on the same page can't see them. Nothing to install, and nothing to pay for the AI: it runs on a free open-source model, or on your own key if you have one.</p>
 <p><a class="btn btn-secondary" href="/get-started#install">How to get a link</a></p>
 </article>
 <article class="card">
