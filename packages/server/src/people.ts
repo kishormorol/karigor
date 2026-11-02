@@ -70,6 +70,13 @@ export class People {
     });
   }
 
+  /** A deleted project leaves everyone's list. */
+  async disown(projectId: string): Promise<void> {
+    await this.change((people) => {
+      for (const p of people) p.projects = p.projects.filter((x) => x !== projectId);
+    });
+  }
+
   async own(personId: string, projectId: string): Promise<void> {
     await this.change((people) => people.find((p) => p.id === personId)?.projects.push(projectId));
   }

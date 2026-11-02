@@ -293,6 +293,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       howToUse: "How to use it: ", openIt: "Open it", planParts: "The plan, part by part", partState: { built: "Built", building: "Being built", later: "Later" },
       buildNext: (n) => `Build the next part: ${n}`, tryFirst: "Try what is there first; you can still send fixes.", writeBelow: "Something not right, or something to add? Write it below and a fix round starts on its own.",
       buildingNext: (s) => `Building the next part: ${s}.`,
+      deleteProject: "Delete this project", deleteSure: "This removes the app and everything Karigor kept about it. It cannot be undone.", deleteYes: "Yes, delete it",
+      deleted: "Deleted.", deletedElsewhere: (u) => `Deleted from Karigor. The app is still online at ${u}; remove it from your hosting account if you no longer want it.`,
       signInTitle: "Your way in", signInText: "Your app has its own sign-in. Give your email and name to become its first admin; you get a one-time link to choose your password. Then add the people who work with you from People inside the app.",
       email: "Your email", yourNameOpt: "Your name", getLink: "Get my sign-in link", makingLink: "Making your sign-in link…",
       linkReady: "Open this link once to choose your password. It works one time only, so do not share it.", choosePassword: "Choose my password",
@@ -330,6 +332,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       howToUse: "যেভাবে ব্যবহার করবেন: ", openIt: "খুলুন", planParts: "পরিকল্পনা, অংশ অনুযায়ী", partState: { built: "তৈরি হয়েছে", building: "তৈরি হচ্ছে", later: "পরে" },
       buildNext: (n) => `পরের অংশ তৈরি করুন: ${n}`, tryFirst: "যা আছে আগে ব্যবহার করে দেখুন; ঠিক করার কথা এখনো পাঠাতে পারবেন।", writeBelow: "কিছু ঠিক নেই, বা কিছু যোগ করতে চান? নিচে লিখুন, ঠিক করার রাউন্ড নিজে থেকেই শুরু হবে।",
       buildingNext: (s) => `পরের অংশ তৈরি হচ্ছে: ${s}।`,
+      deleteProject: "এই প্রকল্প মুছে ফেলুন", deleteSure: "এতে অ্যাপটি আর Karigor-এ রাখা এর সবকিছু মুছে যাবে। আর ফেরত আনা যাবে না।", deleteYes: "হ্যাঁ, মুছে ফেলুন",
+      deleted: "মুছে ফেলা হয়েছে।", deletedElsewhere: (u) => `Karigor থেকে মুছে ফেলা হয়েছে। অ্যাপটি এখনো ${u} ঠিকানায় অনলাইনে আছে; আর না চাইলে আপনার হোস্টিং অ্যাকাউন্ট থেকে সরিয়ে দিন।`,
       signInTitle: "আপনার প্রবেশপথ", signInText: "আপনার অ্যাপের নিজস্ব সাইন ইন আছে। প্রথম অ্যাডমিন হতে আপনার ইমেইল আর নাম দিন; পাসওয়ার্ড বেছে নেওয়ার জন্য একবারের একটি লিংক পাবেন। তারপর অ্যাপের ভেতরে People থেকে আপনার সহকর্মীদের যোগ করুন।",
       email: "আপনার ইমেইল", yourNameOpt: "আপনার নাম", getLink: "আমার সাইন ইন লিংক দিন", makingLink: "সাইন ইন লিংক তৈরি হচ্ছে…",
       linkReady: "পাসওয়ার্ড বেছে নিতে এই লিংকটি একবার খুলুন। এটি শুধু একবারই কাজ করে, তাই কাউকে দেবেন না।", choosePassword: "পাসওয়ার্ড বেছে নিন",
@@ -473,7 +477,30 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       view.work.parked.length ? el("details", { class: "more" }, el("summary", {}, t("setAside")), el("ul", {}, view.work.parked.map((p) => el("li", {}, `${p.title}${p.reason ? `: ${p.reason}` : ""}`)))) : null,
       open.length ? el("details", { class: "more", open: true }, el("summary", {}, t("toHandle", open.length)), el("ul", {}, open.map((w) => el("li", {}, w.title)))) : null,
       view.status === "stopped" && !view.running && !view.problem ? el("div", { class: "row" }, el("button", { class: "btn quiet", onclick: resume }, t("tryAgain"))) : null,
+      view.running ? null : deleteRow(),
     );
+  }
+
+  /** Deleting asks once more on the page itself, never with a browser dialog. */
+  let deleting = null;
+  function deleteRow() {
+    if (deleting !== current) return el("div", { class: "row" }, el("button", { class: "btn quiet", type: "button", onclick: () => { deleting = current; render(); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } }, t("deleteProject")));
+    return el("div", { class: "card problem", style: "gap:10px" },
+      el("p", {}, t("deleteSure")),
+      el("div", { class: "row" },
+        el("button", { class: "btn", type: "button", onclick: removeProject }, t("deleteYes")),
+        el("button", { class: "btn quiet", type: "button", onclick: () => { deleting = null; render(); } }, t("cancel"))));
+  }
+
+  async function removeProject() {
+    const id = current;
+    try {
+      const r = await api(`/api/projects/${id}`, { method: "DELETE" });
+      deleting = null;
+      history.replaceState(null, "", location.pathname + location.search);
+      open(null);
+      hint.textContent = r.stillOnline ? t("deletedElsewhere", r.stillOnline) : t("deleted");
+    } catch (err) { hint.textContent = err.message; }
   }
 
   /** Where the run is in the process: spec, design, plan, build, release. */

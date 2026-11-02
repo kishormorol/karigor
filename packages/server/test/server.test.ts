@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -223,6 +223,20 @@ describe("server", { timeout: 180_000 }, () => {
     }
   });
 
+  it("deletes a project and everything about it, but not while it is being built", async () => {
+    const { k, call, root } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    const busy = await call(`/api/projects/${id}`, { method: "DELETE" });
+    expect(busy.status).toBe(409);
+    await k.idle();
+    const r = await call(`/api/projects/${id}`, { method: "DELETE" });
+    expect(r.status).toBe(200);
+    expect(r.json).toEqual({ deleted: true });
+    expect(await stat(join(root, id)).then(() => true, () => false)).toBe(false);
+    expect((await call("/api/projects")).json["projects"]).toEqual([]);
+    expect((await call(`/api/projects/${id}`, { method: "DELETE" })).status).toBe(404);
+  });
+
   it("guards the API with a token, sets it as a cookie from an access link, and rejects bad input", async () => {
     const { call, base } = await start({ token: "s3cret-token" });
     expect((await call("/api/projects")).status).toBe(401);
@@ -278,6 +292,11 @@ describe("server", { timeout: 180_000 }, () => {
     expect(link.headers.get("set-cookie")).toMatch(/karigor_token=/);
     expect((await call("/api/people/" + people[1]!.id, { method: "DELETE", headers: admin })).status).toBe(200);
     expect((await call("/api/projects", { headers: karim })).status).toBe(401);
+
+    // Only someone who sees a project can delete it, and it leaves their list.
+    expect((await call(`/api/projects/${id}`, { method: "DELETE", headers: { authorization: `Bearer ${await add("Nila")}` } })).status).toBe(404);
+    expect((await call(`/api/projects/${id}`, { method: "DELETE", headers: rahima })).status).toBe(200);
+    expect(((await call("/api/people", { headers: admin })).json["people"] as { name: string; projects: number }[]).find((p) => p.name === "Rahima")?.projects).toBe(0);
   });
 
   it("lets anyone sign up with a name only when sign-ups are open", async () => {

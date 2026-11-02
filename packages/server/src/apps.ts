@@ -22,17 +22,29 @@ export class AppPorts {
   }
 
   portFor(id: string): Promise<number> {
-    const next = this.queue.then(async () => {
-      const ports = await this.all();
+    return this.change((ports) => {
       if (ports[id]) return ports[id];
       const taken = new Set(Object.values(ports));
       let port = this.first;
       while (taken.has(port)) port++;
       ports[id] = port;
+      return port;
+    });
+  }
+
+  /** Frees a deleted project's port for the next one. */
+  release(id: string): Promise<void> {
+    return this.change((ports) => void delete ports[id]);
+  }
+
+  private change<T>(fn: (ports: Record<string, number>) => T): Promise<T> {
+    const next = this.queue.then(async () => {
+      const ports = await this.all();
+      const out = fn(ports);
       const tmp = `${this.file}.${process.pid}.tmp`;
       await writeFile(tmp, JSON.stringify(ports, null, 2));
       await rename(tmp, this.file);
-      return port;
+      return out;
     });
     this.queue = next.catch(() => {});
     return next;
@@ -72,6 +84,13 @@ export class LiveApps {
       const h = await server.waitHealthy(profile.healthPath ?? "/", 120_000);
       this.o.log?.(`[${id}] ${h.ok ? `serving ${cur.version} on port ${port}` : `${cur.version} did not start: ${h.output.split("\n")[0]}`}`);
     }
+  }
+
+  /** Stops a project's app for good (the project is being deleted). */
+  async forget(id: string): Promise<void> {
+    const was = this.running.get(id);
+    this.running.delete(id);
+    await was?.server.stop();
   }
 
   start(everyMs = 15_000): void {

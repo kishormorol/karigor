@@ -158,6 +158,8 @@ Other tools:
 - `karigor park <id> <itemId>` sets a piece of work aside; `karigor unpark` puts it back.
 - `karigor kit <id>` gives an app built on an older template the current look (a fix round then restyles its pages).
 
+To remove a project you no longer want, open it on the chat page and press **Delete this project** at the bottom. It removes the app, its data and everything Karigor kept about it, and cannot be undone. An app put on Vercel stays online there; the page tells you its address so you can remove it from your Vercel account.
+
 ## 8. Keep it running
 
 `karigor serve <id> --port <n>` is the whole of operations on your computer. It runs the live app, watches its output and health, checks its libraries for security problems each day, and turns anything wrong into a fix round with a new release. It stops when you close it or restart the computer; run it again to continue.

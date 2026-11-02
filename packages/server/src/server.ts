@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
@@ -418,6 +418,22 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       });
       if (result!.resumed) startRun(id, "run");
       return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null, resumed: !!result!.resumed });
+    }
+    if (method === "DELETE" && !action) {
+      // Everything about the project goes: its records, its workspace, its releases, and the app this server keeps running.
+      const v = await view(id);
+      if (await isRunning(id)) throw new HttpError(409, "it is being worked on right now; try again when this round finishes");
+      clearTimeout(retries.get(id));
+      retries.delete(id);
+      problems.delete(id);
+      await ports.release(id);
+      await live?.forget(id);
+      await people.disown(id);
+      await rm(join(o.root, id), { recursive: true, force: true });
+      log(`[${id}] deleted`);
+      // An app put online elsewhere (Vercel) is not Karigor's to remove; the person is told where it still is.
+      const stillOnline = o.deploy === "vercel" ? v.live?.url : undefined;
+      return send(res, 200, { deleted: true, ...(stillOnline ? { stillOnline } : {}) });
     }
     if (method === "POST" && action === "signin") {
       // The app's owner gets their first way in (or a fresh one): a one-time link to choose a password.
