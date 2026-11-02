@@ -112,7 +112,7 @@ Then open http://localhost:3300. Leave `serve` running: it keeps the app up and 
 
 Your data stays on your computer, in `~/.karigor/projects/<id>/data/`, and survives every new release.
 
-**Signing in the first time.** Make yourself the first admin:
+**Signing in the first time.** On the chat page, the finished app's card has **Your way in**: give your email and name, press **Get my sign-in link**, and open the link to choose your password. From the command line, make yourself the first admin with:
 
 ```sh
 karigor admin-link <id> you@example.com "Your name"

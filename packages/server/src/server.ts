@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, queueInbox, runningPid } from "@karigor/store";
-import { canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
+import { adminLink, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
 import { People, type Person } from "./people.js";
@@ -418,6 +418,24 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       });
       if (result!.resumed) startRun(id, "run");
       return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null, resumed: !!result!.resumed });
+    }
+    if (method === "POST" && action === "signin") {
+      // The app's owner gets their first way in (or a fresh one): a one-time link to choose a password.
+      const b = await body(req);
+      const email = text(b, "email", 200);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "that does not look like an email address");
+      const name = typeof b["name"] === "string" ? b["name"].trim().slice(0, 100) : "";
+      const v = await view(id);
+      if (!v.live) throw new HttpError(409, "it is not online yet");
+      if (!v.signIn) throw new HttpError(409, "this app has no sign-in to set up");
+      const opts = await runOptions(o.root, id, await flagsFor(id), { log: (l) => log(`[${id}] ${l}`) });
+      const r = await adminLink(opts.deploy, email, name);
+      const link = /https?:\/\/\S+\/welcome\/\S+/.exec(r.output)?.[0];
+      if (!r.ok || !link) {
+        log(`[${id}] sign-in link failed: ${r.output}`);
+        throw new HttpError(400, "the sign-in link could not be made here; ask whoever runs this Karigor");
+      }
+      return send(res, 200, await publicUrls({ link }));
     }
     throw new HttpError(404, "not found");
   };

@@ -101,7 +101,7 @@ The web-app stores data in SQLite on your computer. On Vercel, give it a free [T
 - `karigor setup <id>`: give the live app what it still needs (a passcode, a database), in plain words.
 - `karigor fix <id>`: start a fix round now. `serve` and `watch` start them on their own.
 - `karigor grow <id>` (or `--all`): build the next stage of the plan on top of what is live.
-- `karigor admin-link <id> you@example.com "Your name"`: your first way in; open the link it prints to choose a password, then add your team from People.
+- `karigor admin-link <id> you@example.com "Your name"`: your first way in; open the link it prints to choose a password, then add your team from People. On the chat page, the finished app's card does the same: give your email and press **Get my sign-in link**.
 
 Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
 

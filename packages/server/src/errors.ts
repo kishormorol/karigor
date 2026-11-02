@@ -13,6 +13,10 @@ const EXACT: Record<string, string> = {
   "it is being worked on right now; try again when this round finishes": "এখন এটির কাজ চলছে; এই রাউন্ড শেষ হলে আবার চেষ্টা করুন",
   "this Karigor does not put apps online, so there is nowhere to store settings": "এই Karigor অ্যাপ অনলাইনে তোলে না, তাই সেটিং রাখার কোনো জায়গা নেই",
   "not found": "পাওয়া যায়নি",
+  "that does not look like an email address": "এটি ঠিক ইমেইল ঠিকানার মতো দেখাচ্ছে না",
+  "it is not online yet": "এটি এখনো অনলাইনে আসেনি",
+  "this app has no sign-in to set up": "এই অ্যাপে সাইন ইন ঠিক করার কিছু নেই",
+  "the sign-in link could not be made here; ask whoever runs this Karigor": "সাইন ইন লিংকটি এখানে তৈরি করা গেল না; যিনি এই Karigor চালান তাকে জিজ্ঞেস করুন",
   "this Karigor needs an access link; ask whoever runs it": "এই Karigor খুলতে একটি প্রবেশ লিংক লাগে; যিনি এটি চালান তাকে জিজ্ঞেস করুন",
   "something went wrong on the server": "সার্ভারে কিছু একটা গোলমাল হয়েছে",
   "no decisions have been recorded yet": "এখনো কোনো সিদ্ধান্ত লেখা হয়নি",
@@ -23,7 +27,7 @@ const EXACT: Record<string, string> = {
   "people need their own links only when this Karigor has an access link (KARIGOR_TOKEN)": "এই Karigor-এ প্রবেশ লিংক (KARIGOR_TOKEN) থাকলেই কেবল আলাদা লিংক দেওয়া যায়",
 };
 
-const FIELDS: Record<string, string> = { name: "নাম", idea: "আইডিয়া", text: "বার্তা", decisionId: "সিদ্ধান্ত", values: "সেটিং" };
+const FIELDS: Record<string, string> = { name: "নাম", idea: "আইডিয়া", text: "বার্তা", decisionId: "সিদ্ধান্ত", values: "সেটিং", email: "ইমেইল" };
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^(\w+) is missing$/, (k) => `${FIELDS[k!] ?? k} দেওয়া হয়নি`],

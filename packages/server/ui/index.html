@@ -293,6 +293,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       howToUse: "How to use it: ", openIt: "Open it", planParts: "The plan, part by part", partState: { built: "Built", building: "Being built", later: "Later" },
       buildNext: (n) => `Build the next part: ${n}`, tryFirst: "Try what is there first; you can still send fixes.", writeBelow: "Something not right, or something to add? Write it below and a fix round starts on its own.",
       buildingNext: (s) => `Building the next part: ${s}.`,
+      signInTitle: "Your way in", signInText: "Your app has its own sign-in. Give your email and name to become its first admin; you get a one-time link to choose your password. Then add the people who work with you from People inside the app.",
+      email: "Your email", yourNameOpt: "Your name", getLink: "Get my sign-in link", makingLink: "Making your sign-in link…",
+      linkReady: "Open this link once to choose your password. It works one time only, so do not share it.", choosePassword: "Choose my password",
       needsBefore: "Built. It needs a few things from you before it goes online", needsLive: "Online, but it needs a few things from you",
       onlyYou: "Only you can choose or provide these. They are stored privately where the app runs, never shown again, and never saved by Karigor.", hidden: "It needs a couple of hidden settings. Karigor can make them for you.",
       serviceNote: (svc) => `This comes from ${svc ? `a free ${svc} account` : "an outside service"} you create yourself.`, saveUpdate: "Save and update the app", makeThem: "Make them for me",
@@ -327,6 +330,9 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       howToUse: "যেভাবে ব্যবহার করবেন: ", openIt: "খুলুন", planParts: "পরিকল্পনা, অংশ অনুযায়ী", partState: { built: "তৈরি হয়েছে", building: "তৈরি হচ্ছে", later: "পরে" },
       buildNext: (n) => `পরের অংশ তৈরি করুন: ${n}`, tryFirst: "যা আছে আগে ব্যবহার করে দেখুন; ঠিক করার কথা এখনো পাঠাতে পারবেন।", writeBelow: "কিছু ঠিক নেই, বা কিছু যোগ করতে চান? নিচে লিখুন, ঠিক করার রাউন্ড নিজে থেকেই শুরু হবে।",
       buildingNext: (s) => `পরের অংশ তৈরি হচ্ছে: ${s}।`,
+      signInTitle: "আপনার প্রবেশপথ", signInText: "আপনার অ্যাপের নিজস্ব সাইন ইন আছে। প্রথম অ্যাডমিন হতে আপনার ইমেইল আর নাম দিন; পাসওয়ার্ড বেছে নেওয়ার জন্য একবারের একটি লিংক পাবেন। তারপর অ্যাপের ভেতরে People থেকে আপনার সহকর্মীদের যোগ করুন।",
+      email: "আপনার ইমেইল", yourNameOpt: "আপনার নাম", getLink: "আমার সাইন ইন লিংক দিন", makingLink: "সাইন ইন লিংক তৈরি হচ্ছে…",
+      linkReady: "পাসওয়ার্ড বেছে নিতে এই লিংকটি একবার খুলুন। এটি শুধু একবারই কাজ করে, তাই কাউকে দেবেন না।", choosePassword: "পাসওয়ার্ড বেছে নিন",
       needsBefore: "তৈরি হয়ে গেছে। অনলাইনে যাওয়ার আগে আপনার কাছ থেকে কয়েকটি জিনিস দরকার", needsLive: "অনলাইনে আছে, তবে আপনার কাছ থেকে কয়েকটি জিনিস দরকার",
       onlyYou: "এগুলো শুধু আপনিই বাছাই করতে বা দিতে পারেন। অ্যাপ যেখানে চলে সেখানে গোপনে রাখা হয়, আর কখনো দেখানো হয় না, Karigor-ও রাখে না।", hidden: "এর কয়েকটি গোপন সেটিং দরকার। Karigor আপনার হয়ে এগুলো তৈরি করে দিতে পারে।",
       serviceNote: (svc) => `এটি আসে ${svc ? `একটি বিনা খরচের ${svc} অ্যাকাউন্ট` : "একটি বাইরের সেবা"} থেকে, যা আপনি নিজে খুলবেন।`, saveUpdate: "সংরক্ষণ করে অ্যাপ হালনাগাদ করুন", makeThem: "আমার হয়ে তৈরি করে দিন",
@@ -492,9 +498,43 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       el("p", {}, el("strong", {}, t("howToUse")), s.howToUse),
       url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, t("openIt")), el("span", { class: "meta" }, url)) : null,
       view.stages ? el("details", { class: "more", open: true }, el("summary", {}, t("planParts")), el("ul", {}, view.stages.map((p) => el("li", {}, `${t("partState")[p.state]}: ${p.name}. ${p.goal}`)))) : null,
+      view.signIn ? signInBlock() : null,
       view.nextStage && !view.running ? el("div", { class: "row" }, el("button", { class: "btn", onclick: growNext }, t("buildNext", view.nextStage.name)), el("span", { class: "meta" }, t("tryFirst"))) : null,
       el("p", { class: "meta" }, t("writeBelow")),
     );
+  }
+
+  /** The app's first way in: its owner becomes the first admin and gets a one-time link to choose a password. */
+  const signInLinks = {};
+  function signInBlock() {
+    const box = el("div", { class: "card", style: "gap:10px" }, el("h3", {}, t("signInTitle")));
+    const shown = signInLinks[current];
+    if (shown) {
+      box.append(el("p", {}, t("linkReady")), el("div", { class: "row" }, el("a", { class: "btn", href: shown, target: "_blank", rel: "noopener noreferrer" }, t("choosePassword"))));
+      return box;
+    }
+    const email = el("input", { type: "email", autocomplete: "email", required: true, maxlength: "200" });
+    const name = el("input", { autocomplete: "name", maxlength: "100" });
+    const btn = el("button", { class: "btn" }, t("getLink"));
+    const form = el("form", { style: "display:flex;flex-direction:column;gap:10px" },
+      el("label", { class: "field" }, t("email"), email),
+      el("label", { class: "field" }, t("yourNameOpt"), name),
+      el("div", { class: "row" }, btn));
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      hint.textContent = t("makingLink");
+      const id = current;
+      try {
+        const r = await api(`/api/projects/${id}/signin`, { method: "POST", body: JSON.stringify({ email: email.value, name: name.value }) });
+        const link = safeUrl(r.link);
+        if (link) signInLinks[id] = link;
+        hint.textContent = "";
+        if (id === current) render();
+      } catch (err) { hint.textContent = err.message; btn.disabled = false; }
+    });
+    box.append(el("p", { class: "meta" }, t("signInText")), form);
+    return box;
   }
 
   async function growNext() {

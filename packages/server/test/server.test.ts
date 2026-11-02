@@ -204,6 +204,25 @@ describe("server", { timeout: 180_000 }, () => {
     expect(r.json["error"]).toMatch(/does not put apps online/);
   });
 
+  it("offers the owner a sign-in link only for a live app with sign-in, and checks the email", async () => {
+    const { k, call, root } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    const signin = (b: unknown) => call(`/api/projects/${id}/signin`, { method: "POST", body: JSON.stringify(b) });
+    expect((await signin({})).status).toBe(400);
+    expect((await signin({ email: "not an email" })).json["error"]).toMatch(/email address/);
+    const v = (await call(`/api/projects/${id}`)).json;
+    expect(v["signIn"]).toBeUndefined();
+    const r = await signin({ email: "owner@example.com", name: "Owner" });
+    expect(r.status).toBe(409);
+    expect(r.json["error"]).toMatch(v["live"] ? /no sign-in/ : /not online/);
+    if (v["live"]) {
+      // An app made with people and roles carries the admin:link script; the page then offers the form.
+      await writeFile(join(root, id, "workspace", "package.json"), JSON.stringify({ scripts: { "admin:link": "tsx scripts/admin-link.ts" } }));
+      expect((await call(`/api/projects/${id}`)).json["signIn"]).toBe(true);
+    }
+  });
+
   it("guards the API with a token, sets it as a cookie from an access link, and rejects bad input", async () => {
     const { call, base } = await start({ token: "s3cret-token" });
     expect((await call("/api/projects")).status).toBe(401);
