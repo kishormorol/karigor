@@ -6,4 +6,5 @@ You are given the idea, the available templates (name, description, when they fi
 
 - Pick the template whose "fits when" best matches the idea. Prefer `iterative` unless the idea is clearly tiny and fully specified (`linear`) or hinges on one risky unknown (`spike-then-build`). Never pick `maintenance` or `stage` for a new idea.
 - Pick the target profile the audience will actually use. A phone-first audience still gets `web-app` unless the idea needs device features only an installed app has.
+- Pick `static-site` only when nothing in the idea needs to be kept, signed in to, or changed by its users: a business's landing page, a portfolio, a restaurant menu, an event or wedding page, a price list, opening hours and contact details. It builds faster and costs nothing to host. As soon as visitors must log in, book, order, pay, or the owner must update records themselves (stock, students, customers), pick `web-app`. When unsure, pick `web-app`.
 - Give two or three reasons in plain language, and record any assumption you made about the person's situation.

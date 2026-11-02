@@ -1,7 +1,8 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { LocalDeploy, startServer, type RunningServer } from "@karigor/deploy";
-import { profileFor } from "@karigor/profiles";
+import { BUILDABLE, profileFor } from "@karigor/profiles";
+import { FsStore } from "@karigor/store";
 
 /** Each project's live app gets its own port, kept in `apps.json` beside the projects. */
 export class AppPorts {
@@ -61,10 +62,12 @@ export class LiveApps {
 
   /** One pass over every project: start what is live but not running, restart what changed, stop what went offline. */
   async check(): Promise<void> {
-    const profile = profileFor(this.o.profile);
-    const argv = profile.commands.start;
-    if (!argv?.length) return;
     for (const [id, port] of Object.entries(await this.o.ports.all())) {
+      // Each app runs as the kind it was built as (a web app, a simple website).
+      const kind = await FsStore.open(this.o.root, id).then((s) => s.replay()).then((s) => s.targetProfile, () => undefined);
+      const profile = profileFor(kind && (BUILDABLE as readonly string[]).includes(kind) ? kind : this.o.profile);
+      const argv = profile.commands.start;
+      if (!argv?.length) continue;
       const deploy = new LocalDeploy({ projectDir: join(this.o.root, id), profile, productionPort: port });
       const cur = await deploy.current().catch(() => undefined);
       const was = this.running.get(id);

@@ -540,6 +540,7 @@ export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248d
  */
 export async function installUiKit(store: FsStore, profileName = "web-app"): Promise<string[]> {
   await assertIdle(store.dir, "changing the UI kit");
+  if ((await store.replay()).targetProfile === "static-site") throw new Error("a simple website has no UI kit; its look is site/styles.css");
   const { SCAFFOLDS_DIR } = await import("@karigor/profiles");
   const { readFile, writeFile, mkdir } = await import("node:fs/promises");
   const from = join(SCAFFOLDS_DIR, profileName);

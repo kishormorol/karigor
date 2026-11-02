@@ -44,11 +44,14 @@ const ROLES_BN: Record<string, string> = {
   releaser: "রিলিজকারী",
 };
 
+/** The kind of software in the story's words; a web app keeps its usual name. */
+const EN_PROFILE: Record<string, string> = { "static-site": "simple website" };
+
 const BN = {
   tier: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" } as Record<string, string>,
   model: { judgment: "বিচারের", routine: "সাধারণ কাজের", mock: "নকল" } as Record<string, string>,
   status: { todo: "বাকি", "in-progress": "চলছে", done: "শেষ", parked: "আলাদা করে রাখা" } as Record<string, string>,
-  profile: { "web-app": "ওয়েব অ্যাপ" } as Record<string, string>,
+  profile: { "web-app": "ওয়েব অ্যাপ", "static-site": "সাধারণ ওয়েবসাইট" } as Record<string, string>,
 };
 
 export interface StoryWords {
@@ -85,7 +88,7 @@ export interface StoryWords {
 export const EN: StoryWords = {
   phase: (p) => (p ? PHASES_EN[p] ?? p : "not started"),
   created: () => "Project created.",
-  template: (t, p) => `Chose the "${t}" process; building a ${p}.`,
+  template: (t, p) => `Chose the "${t}" process; building a ${EN_PROFILE[p] ?? p}.`,
   budget: (t) => `Budget tier: ${t}.`,
   sprint: (n, items) => `Sprint ${n} started with ${items}.`,
   phaseStarted: (p) => `Started ${EN.phase(p)}.`,
@@ -197,7 +200,7 @@ export const STATUS_EN: StatusWords = {
   liveVersion: (v, u) => `Live version: ${v}${u ? ` at ${u}` : ""}.`,
   missingSettings: () => "It is online but cannot be used until these settings are added where it is hosted:",
   openItems: (n) => `Problems and requests waiting to be handled: ${n}.`,
-  process: (t, p) => `Process: ${t}; building a ${p}.`,
+  process: (t, p) => `Process: ${t}; building a ${EN_PROFILE[p] ?? p}.`,
   budget: (t) => `Budget tier: ${t}.`,
   work: (d, i, t, p, x) => `Work: ${d} done, ${i} in progress, ${t} to do, ${p} parked, ${x} replaced by smaller pieces.`,
   parked: (t, r) => `Parked: ${t}. ${r ?? ""}`.trim(),

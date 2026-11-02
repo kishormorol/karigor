@@ -2,7 +2,7 @@
 import { FsStore } from "@karigor/store";
 import { FakeSandbox } from "@karigor/gates";
 import { ClaudeAdapter, ClaudeCodeAdapter, ClaudeCodeAgent, ModelAgent, OllamaAdapter, type AgentAdapter, type ModelAdapter } from "@karigor/runtime";
-import { profileFor, type Profile } from "@karigor/profiles";
+import { BUILDABLE, profileFor, type Profile } from "@karigor/profiles";
 import { LocalDeploy, VercelDeploy, projectSlug, type DeployAdapter } from "@karigor/deploy";
 import { demoAdapter } from "./demo.js";
 import type { RunOptions } from "./run.js";
@@ -92,8 +92,19 @@ export async function runOptions(root: string, projectId: string, o: RunFlags, e
   const base = { root, projectId, adapter, ...(tier ? { tier } : {}), ...(extra.log ? { log: extra.log } : {}) };
   // The demo adapter has no real developer, so it keeps the fake sandbox. Real adapters build for real.
   if (!agent) return { ...base, sandbox: new FakeSandbox() };
-  const profile = profileFor(o.profile);
   const store = await FsStore.open(root, projectId);
-  const deploy = await deployFor(o.deploy, store, profile, await projectPort(root, projectId, o.port), extra.log);
-  return { ...base, profile, agent, ...(deploy ? { deploy } : {}) };
+  // A project keeps the kind of software it was first built as; a new one may become any buildable kind.
+  const chosen = (await store.replay()).targetProfile;
+  const kinds: readonly string[] = BUILDABLE;
+  const open = kinds.includes(o.profile);
+  const profile = profileFor(open && chosen && kinds.includes(chosen) ? chosen : o.profile);
+  const port = await projectPort(root, projectId, o.port);
+  const deploy = await deployFor(o.deploy, store, profile, port, extra.log);
+  const retarget = async (kind: string) => {
+    if (!kinds.includes(kind)) return undefined;
+    const p = profileFor(kind);
+    const d = await deployFor(o.deploy, store, p, port, extra.log);
+    return { profile: p, ...(d ? { deploy: d } : {}) };
+  };
+  return { ...base, profile, agent, ...(deploy ? { deploy } : {}), ...(open ? { buildable: [...kinds], retarget } : {}) };
 }

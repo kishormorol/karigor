@@ -238,3 +238,25 @@ describe("the owner's first link for a hosted app", () => {
     expect(await adminLink(deploy, "owner@example.com", "", { projectDir: dir, url: "https://shop.vercel.app", fetcher: refused })).toEqual({ ok: false, output: "The app did not make a link (401: not allowed)." });
   });
 });
+
+describe("a project keeps its kind of software", () => {
+  it("reopens as the kind it was built as, and a new one may become any buildable kind", async () => {
+    const { runOptions } = await import("../src/index.js");
+    const root = await mkdtemp(join(tmpdir(), "karigor-kind-"));
+    const fresh = await createProject(root, "A page for my bakery", { committer: noopCommitter });
+    const o = await runOptions(root, fresh, { adapter: "claude-code", profile: "web-app", deploy: "none" });
+    expect(o.profile?.name).toBe("web-app");
+    expect(o.buildable).toEqual(["web-app", "static-site"]);
+    expect((await o.retarget!("static-site"))?.profile.name).toBe("static-site");
+    expect(await o.retarget!("mobile-app")).toBeUndefined();
+
+    const built = await createProject(root, "A page for my bakery", { committer: noopCommitter });
+    const store = await FsStore.open(root, built, { committer: noopCommitter });
+    await store.appendEvent({ type: "template-selected", by: "selector", template: "iterative", targetProfile: "static-site" });
+    expect((await runOptions(root, built, { adapter: "claude-code", profile: "web-app", deploy: "none" })).profile?.name).toBe("static-site");
+    // a profile named on purpose (Karigor's own tests) is used as it is, with nothing else offered
+    const pinned = await runOptions(root, built, { adapter: "claude-code", profile: "fixture", deploy: "none" });
+    expect(pinned.profile?.name).toBe("fixture");
+    expect(pinned.buildable).toBeUndefined();
+  });
+});

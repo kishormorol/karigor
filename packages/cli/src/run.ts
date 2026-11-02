@@ -44,6 +44,10 @@ export interface RunOptions {
   agent?: AgentAdapter;
   /** Where releases go. Needs a workspace (`profile` and `agent`). Without one, the release gate fails honestly. */
   deploy?: DeployAdapter;
+  /** Kinds of software this run may build; the selector picks one. Unset: just `profile`'s kind. */
+  buildable?: string[];
+  /** When the selector picks a kind other than `profile`'s: the profile and deploy target for it. */
+  retarget?: (kind: string) => Promise<{ profile: Profile; deploy?: DeployAdapter } | undefined>;
   /** Skip the profile's install step (tests). */
   skipInstall?: boolean;
   /** Chosen once, when the kernel asks. Defaults to `free` for mock/local adapters, else `cheap`. */
@@ -184,8 +188,8 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
     },
   });
   // A real build can only make the kind of software its profile scaffolds; the selector is offered just that.
-  const buildable = opts.profile && opts.profile.name !== "fixture" ? [opts.profile.name] : undefined;
-  const capabilities = opts.profile?.capabilities ? renderCapabilities(opts.profile.capabilities) : undefined;
+  const buildable = opts.buildable ?? (opts.profile && opts.profile.name !== "fixture" ? [opts.profile.name] : undefined);
+  let capabilities = opts.profile?.capabilities ? renderCapabilities(opts.profile.capabilities) : undefined;
   const given = await renderGiven(store.dir);
   const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({
     state, store, phase, backlog, templates, clock, makeId: newId,
@@ -446,6 +450,15 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
         ]);
         template = templates.find((t) => t.name === chosen)!;
         await store.commit(`karigor: process ${chosen}, target ${profile}`);
+        // The kind chosen decides the workspace, its checks and where it goes live; nothing has been built yet.
+        if (opts.retarget && opts.profile && profile !== opts.profile.name && !workspace) {
+          const r = await opts.retarget(profile);
+          if (r) {
+            opts = { ...opts, profile: r.profile, ...(r.deploy ? { deploy: r.deploy } : {}) };
+            capabilities = r.profile.capabilities ? renderCapabilities(r.profile.capabilities) : undefined;
+            log(`building it as ${profile}`);
+          }
+        }
         continue;
       }
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { fixture, parsePlaywrightJson, parseVitestJson, profileFor, renderCapabilities, webApp } from "../src/index.js";
+import { BUILDABLE, fixture, parsePlaywrightJson, parseVitestJson, profileFor, renderCapabilities, staticSite, webApp } from "../src/index.js";
 
 const run = promisify(execFile);
 
@@ -19,6 +19,31 @@ describe("profiles", () => {
     const bad = await run("node", ["test.mjs"], { cwd: dir }).catch((e: { stdout: string; stderr: string; code: number }) => e);
     expect(bad.code).toBe(1);
     expect(fixture.parseTests(bad.stdout, bad.stderr, 1)).toMatchObject({ passed: 2, failed: 1 });
+  });
+
+  it("static-site scaffold checks its pages, builds, and its checker catches broken pages", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "karigor-static-"));
+    await staticSite.scaffold(dir);
+    expect(BUILDABLE).toEqual(["web-app", "static-site"]);
+    expect(profileFor("static-site")).toBe(staticSite);
+    for (const f of ["package.json", ".gitignore", "vercel.json", "site/index.html", "site/404.html", "site/styles.css", "scripts/pages.mjs", "tests/site.test.js"]) {
+      await expect(readFile(join(dir, f), "utf8"), f).resolves.toBeDefined();
+    }
+    // lint and build need no installed packages, so they run here as they would in a release
+    expect((await run("node", ["scripts/check.mjs"], { cwd: dir })).stdout).toMatch(/2 page\(s\) checked/);
+    await run("node", ["scripts/build.mjs"], { cwd: dir });
+    expect(await readdir(join(dir, "dist"))).toEqual(expect.arrayContaining(["index.html", "404.html", "styles.css"]));
+    await writeFile(join(dir, "site", "about.html"), '<html><head><title>About</title></head><body><img src="/given/logo.png"></body></html>');
+    const bad = await run("node", ["scripts/check.mjs"], { cwd: dir }).then(() => "", (e: { stderr: string }) => e.stderr);
+    expect(bad).toMatch(/about.html: <html> needs a lang/);
+    expect(bad).toMatch(/"\/given\/logo.png" points at nothing/);
+    // a picture the person gave is found in public/given/ and lands in the release
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(join(dir, "public", "given"), { recursive: true });
+    await writeFile(join(dir, "public", "given", "logo.png"), "png");
+    expect(await run("node", ["scripts/check.mjs"], { cwd: dir }).then(() => "", (e: { stderr: string }) => e.stderr)).not.toMatch(/logo.png" points at nothing/);
+    expect(staticSite.commands.e2e).toBeUndefined();
+    expect(staticSite.stackGuide).toMatch(/wa\.me/);
   });
 
   it("web-app scaffold has the files the stack guide promises", async () => {

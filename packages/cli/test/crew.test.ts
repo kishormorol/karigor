@@ -87,6 +87,28 @@ describe("build crew: real workspace with a scripted agent", { timeout: 120_000 
     expect(agent.calls[0]!.user).toMatch(/Files the person gave[\s\S]*public\/given\/logo.png[\s\S]*Rice,62.50/);
   });
 
+  it("when the selector picks another kind of software, the run builds that kind from the start", async () => {
+    const { root, projectId } = await fresh();
+    const agent = devAgent();
+    const asked: string[] = [];
+    const website = { ...fixture, name: "static-site" as const, stackGuide: "# Stack guide: static-site (test)" };
+    const state = await runProject(
+      opts(root, projectId, agent, { buildable: ["web-app", "static-site"], retarget: async (kind: string) => (asked.push(kind), { profile: website }) }, { targetProfile: "static-site" }),
+    );
+    expect(asked).toEqual(["static-site"]);
+    expect(state.targetProfile).toBe("static-site");
+    for (const id of ["b1", "b2", "b3"]) expect(state.items[id]?.status).toBe("done");
+    expect(agent.calls.length).toBe(3);
+  });
+
+  it("a kind that cannot be built falls back to the first buildable one and nothing is retargeted", async () => {
+    const { root, projectId } = await fresh();
+    const asked: string[] = [];
+    const state = await runProject(opts(root, projectId, devAgent(), { buildable: ["web-app", "static-site"], retarget: async (k: string) => (asked.push(k), undefined) }, { targetProfile: "mobile-app" }));
+    expect(state.targetProfile).toBe("web-app");
+    expect(asked).toEqual(["web-app"]);
+  });
+
   it("a failing real test sends the item round with the gate's output as feedback, and the fix lands", async () => {
     const { root, projectId } = await fresh();
     const agent = devAgent({ failTestsFor: (id, round) => id === "b2" && round === 0 });

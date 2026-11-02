@@ -12,6 +12,8 @@ export interface ScriptOptions {
   override?: (req: ModelRequest<unknown>, attempt: number) => unknown | undefined;
   deployUrl?: string | null;
   template?: string;
+  /** The kind of software the selector picks (default web-app). */
+  targetProfile?: string;
 }
 
 /** First "- kind id" line from a judge prompt, as a citation. */
@@ -37,7 +39,7 @@ export function answerFor(req: ModelRequest<unknown>, attempt: number, o: Script
   if (over !== undefined) return over;
   switch (req.role) {
     case "selector":
-      return { template: o.template ?? "iterative", targetProfile: "web-app", reasons: ["several features that will evolve"], assumptions: [] };
+      return { template: o.template ?? "iterative", targetProfile: o.targetProfile ?? "web-app", reasons: ["several features that will evolve"], assumptions: [] };
     case "product-owner":
       return {
         title: "ToolShare",
