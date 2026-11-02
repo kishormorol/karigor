@@ -6,6 +6,7 @@ import {
   languageOf,
   makeId,
   makeProjectId,
+  keepOwnerSecret,
   renderGiven,
   syncGiven,
   type Artifact,
@@ -251,11 +252,13 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
     const ws = await getWorkspace();
     const gen = (await d.missingSettings(ws.dir).catch(() => [])).filter((m) => m.kind === "generate");
     if (!gen.length) return;
-    const r = await d.setSettings(ws.dir, Object.fromEntries(gen.map((g) => [g.name, generateSettingValue()])));
+    const made = Object.fromEntries(gen.map((g) => [g.name, generateSettingValue()]));
+    const r = await d.setSettings(ws.dir, made);
     if (!r.ok) {
       log(`  could not store generated settings: ${r.output.split("\n")[0]}`);
       return;
     }
+    await keepOwnerSecret(store.dir, made);
     log(`  made and stored ${gen.map((g) => g.name).join(", ")}`);
     await append({ type: "settings-provided", by: "system", names: gen.map((g) => g.name) });
   };

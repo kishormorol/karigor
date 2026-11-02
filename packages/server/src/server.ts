@@ -468,7 +468,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       if (!v.live) throw new HttpError(409, "it is not online yet");
       if (!v.signIn) throw new HttpError(409, "this app has no sign-in to set up");
       const opts = await runOptions(o.root, id, await flagsFor(id), { log: (l) => log(`[${id}] ${l}`) });
-      const r = await adminLink(opts.deploy, email, name);
+      const live = (await projectView(await FsStore.open(o.root, id), false)).live;
+      const r = await adminLink(opts.deploy, email, name, { projectDir: join(o.root, id), ...(live?.url ? { url: live.url } : {}) });
       const link = /https?:\/\/\S+\/welcome\/\S+/.exec(r.output)?.[0];
       if (!r.ok || !link) {
         log(`[${id}] sign-in link failed: ${r.output}`);

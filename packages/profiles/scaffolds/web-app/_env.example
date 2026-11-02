@@ -10,6 +10,10 @@ DATABASE_AUTH_TOKEN=
 # bn: নির্ধারিত সময়ের কাজগুলো চালু করতে যে গোপন চাবি লাগে। এটি নিজে থেকে তৈরি হয়; কারও জানার দরকার নেই।
 # karigor: generate
 CRON_SECRET=
+# The key Karigor uses to give the app's owner their first sign-in link once it is online. A random secret; nobody needs to know it.
+# bn: অনলাইনে আসার পর অ্যাপের মালিককে প্রথম সাইন ইন লিংক দিতে Karigor যে গোপন চাবি ব্যবহার করে। এটি নিজে থেকে তৈরি হয়; কারও জানার দরকার নেই।
+# karigor: generate
+OWNER_LINK_SECRET=
 # Optional: to send emails (password resets, receipts), a free Resend account's API key. Until then emails are kept, not sent.
 # bn: ইমেইল পাঠাতে (পাসওয়ার্ড বদল, রসিদ) একটি বিনা খরচের Resend অ্যাকাউন্টের API কী। ততদিন ইমেইলগুলো রাখা থাকে, পাঠানো হয় না।
 # karigor: service resend

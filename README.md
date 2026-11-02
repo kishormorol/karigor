@@ -92,7 +92,7 @@ VERCEL_TOKEN=... node packages/cli/dist/bin.js new "..." --deploy vercel --run
 node packages/cli/dist/bin.js watch <projectId> --every 15     # health and audit, fix rounds when needed
 ```
 
-The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project. Secrets the app needs (a signing key) are made and stored automatically before the preview. Anything only you can choose or provide (a passcode, a database account) is listed by `karigor status`; give it with `karigor setup <id>` (it asks in plain words and hides what you type) or in the chat UI, and the live version is rebuilt with it. Values go only to Vercel's sensitive settings, or a private file on this computer for the local target; Karigor's own records keep names, never values. Without `VERCEL_TOKEN`, the Vercel CLI's own login (`vercel login`) is used.
+The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project. Secrets the app needs (a signing key) are made and stored automatically before the preview. Anything only you can choose or provide (a passcode, a database account) is listed by `karigor status`; give it with `karigor setup <id>` (it asks in plain words and hides what you type) or in the chat UI, and the live version is rebuilt with it. Values go only to Vercel's sensitive settings, or a private file on this computer for the local target; Karigor's own records keep names, never values (one exception: the `OWNER_LINK_SECRET` it made itself, kept in a private file so it can ask the app for your sign-in link). Without `VERCEL_TOKEN`, the Vercel CLI's own login (`vercel login`) is used.
 
 ### After release
 
@@ -101,7 +101,7 @@ The web-app stores data in SQLite on your computer. On Vercel, give it a free [T
 - `karigor setup <id>`: give the live app what it still needs (a passcode, a database), in plain words.
 - `karigor fix <id>`: start a fix round now. `serve` and `watch` start them on their own.
 - `karigor grow <id>` (or `--all`): build the next stage of the plan on top of what is live.
-- `karigor admin-link <id> you@example.com "Your name"`: your first way in; open the link it prints to choose a password, then add your team from People. On the chat page, the finished app's card does the same: give your email and press **Get my sign-in link**.
+- `karigor admin-link <id> you@example.com "Your name"`: your first way in; open the link it prints to choose a password, then add your team from People. On the chat page, the finished app's card does the same: give your email and press **Get my sign-in link**. It works for apps on Vercel too: Karigor keeps one secret for this (the key the app accepts when Karigor asks it for your link), readable only by your user, and no other value.
 
 Projects live in `~/.karigor/projects` (override with `KARIGOR_ROOT`).
 

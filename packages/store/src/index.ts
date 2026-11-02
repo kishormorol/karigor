@@ -7,3 +7,4 @@ export * from "./fs-store.js";
 export * from "./lock.js";
 export * from "./language.js";
 export * from "./given.js";
+export * from "./owner-secret.js";

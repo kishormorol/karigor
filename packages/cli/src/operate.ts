@@ -5,7 +5,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { stat } from "node:fs/promises";
-import { FsStore, acquireRunLock, assertIdle, makeId, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState, type Stage } from "@karigor/store";
+import { FsStore, acquireRunLock, assertIdle, keepOwnerSecret, makeId, ownerSecret, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState, type Stage } from "@karigor/store";
 import { loadTemplate } from "@karigor/process";
 import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
@@ -296,8 +296,25 @@ export async function growOnce(o: Omit<RunOptions, "root" | "projectId"> & { roo
  * which adds the admin (or finds them) and prints a one-time link to choose a password.
  * Only for an app that lives on this computer; a hosted app's database settings are not kept here.
  */
-export async function adminLink(deploy: DeployAdapter | undefined, email: string, name = ""): Promise<{ ok: boolean; output: string }> {
+export async function adminLink(deploy: DeployAdapter | undefined, email: string, name = "", hosted?: { projectDir: string; url?: string; fetcher?: typeof fetch }): Promise<{ ok: boolean; output: string }> {
   if (!(deploy instanceof LocalDeploy)) {
+    // A hosted app made from a recent template answers Karigor itself, with the key Karigor made for it.
+    const secret = hosted ? await ownerSecret(hosted.projectDir) : undefined;
+    if (hosted?.url && secret) {
+      try {
+        const res = await (hosted.fetcher ?? fetch)(`${hosted.url.replace(/\/$/, "")}/api/owner-link`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+          body: JSON.stringify({ email, name }),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const j = (await res.json().catch(() => ({}))) as { link?: string; created?: boolean; error?: string };
+        if (res.ok && j.link) return { ok: true, output: `${j.created ? "Added" : "Found"} ${email} as an admin.\nOne-time link to set a password:\n${j.link}` };
+        return { ok: false, output: `The app did not make a link (${res.status}${j.error ? `: ${j.error}` : ""}).` };
+      } catch (e) {
+        return { ok: false, output: `The app could not be reached: ${(e as Error).message}` };
+      }
+    }
     return { ok: false, output: "Admin links are made here for apps that live on this computer. For a hosted app, run `pnpm admin:link <email>` in the project's workspace with DATABASE_URL and DATABASE_AUTH_TOKEN set to its database." };
   }
   const live = await deploy.current();
@@ -462,6 +479,7 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
   if (!names.length) return { stored: [], stillMissing: await o.deploy.missingSettings(dir), output: "nothing to store" };
   const saved = await o.deploy.setSettings(dir, values);
   if (!saved.ok) throw new Error(saved.output);
+  await keepOwnerSecret(o.store.dir, values);
   await o.store.appendEvent({ type: "settings-provided", by: o.by ?? "user", names });
   let state = await o.store.replay();
   if (state.status === "waiting") {

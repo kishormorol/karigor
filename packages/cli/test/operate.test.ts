@@ -210,3 +210,31 @@ describe("scheduled jobs on this computer", () => {
     expect(await runScheduledJobs("http://x/api/jobs", "s", (async () => new Response("", { status: 401 })) as typeof fetch)).toEqual(["scheduled jobs could not start: the app said 401"]);
   });
 });
+
+describe("the owner's first link for a hosted app", () => {
+  it("asks the live app with the key Karigor kept, and says plainly when it cannot", async () => {
+    const { FakeDeploy } = await import("@karigor/deploy");
+    const { keepOwnerSecret } = await import("@karigor/store");
+    const { adminLink } = await import("../src/index.js");
+    const dir = await mkdtemp(join(tmpdir(), "karigor-owner-"));
+    const deploy = new FakeDeploy();
+    const seen: { url: string; auth: string | null }[] = [];
+    const fetcher = (async (url: string, init: RequestInit) => {
+      seen.push({ url, auth: new Headers(init.headers).get("authorization") });
+      return new Response(JSON.stringify({ link: "https://shop.vercel.app/welcome/abc", created: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const without = await adminLink(deploy, "owner@example.com", "Owner", { projectDir: dir, url: "https://shop.vercel.app", fetcher });
+    expect(without.ok).toBe(false);
+    expect(seen).toEqual([]);
+
+    await keepOwnerSecret(dir, { OWNER_LINK_SECRET: "k3y", CRON_SECRET: "other" });
+    expect(await readFile(join(dir, "owner-link-secret"), "utf8")).toBe("k3y");
+    const r = await adminLink(deploy, "owner@example.com", "Owner", { projectDir: dir, url: "https://shop.vercel.app/", fetcher });
+    expect(r).toEqual({ ok: true, output: expect.stringMatching(/https:\/\/shop\.vercel\.app\/welcome\/abc/) });
+    expect(seen).toEqual([{ url: "https://shop.vercel.app/api/owner-link", auth: "Bearer k3y" }]);
+
+    const refused = (async () => new Response(JSON.stringify({ error: "not allowed" }), { status: 401 })) as unknown as typeof fetch;
+    expect(await adminLink(deploy, "owner@example.com", "", { projectDir: dir, url: "https://shop.vercel.app", fetcher: refused })).toEqual({ ok: false, output: "The app did not make a link (401: not allowed)." });
+  });
+});
