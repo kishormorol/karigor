@@ -237,6 +237,25 @@ describe("server", { timeout: 180_000 }, () => {
     expect((await call(`/api/projects/${id}`, { method: "DELETE" })).status).toBe(404);
   });
 
+  it("takes the person's files before the build starts, and lists them", async () => {
+    const { k, call, base } = await start();
+    const created = await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "A price list for my shop", hold: true }) });
+    const id = created.json["projectId"] as string;
+    expect(k.runs.has(id)).toBe(false);
+    const up = (name: string, body: string | Buffer) => fetch(`${base}/api/projects/${id}/files?name=${encodeURIComponent(name)}`, { method: "POST", body });
+    expect((await up("prices.csv", "item,price\nRice,62.50\n")).status).toBe(201);
+    expect((await up("logo.png", Buffer.from([1, 2, 3]))).status).toBe(201);
+    const bad = await up("run.sh", "echo hi");
+    expect(bad.status).toBe(400);
+    expect(((await bad.json()) as { error: string }).error).toMatch(/cannot be added/);
+    expect((await fetch(`${base}/api/projects/nope/files?name=a.csv`, { method: "POST", body: "x" })).status).toBe(404);
+    expect((await call(`/api/projects/${id}/resume`, { method: "POST", body: "{}" })).status).toBe(202);
+    await k.idle();
+    const v = (await call(`/api/projects/${id}`)).json;
+    expect(v["status"]).toBe("finished");
+    expect(v["files"]).toEqual([expect.objectContaining({ name: "logo.png", kind: "image" }), expect.objectContaining({ name: "prices.csv", kind: "text" })]);
+  });
+
   it("guards the API with a token, sets it as a cookie from an access link, and rejects bad input", async () => {
     const { call, base } = await start({ token: "s3cret-token" });
     expect((await call("/api/projects")).status).toBe(401);

@@ -33,6 +33,8 @@ export interface RoleContext {
   deployTarget?: string;
   /** What the kind of software being built can and cannot do yet, rendered; specs and plans stay within it. */
   capabilities?: string;
+  /** Files the person gave, rendered: where each sits in the workspace and the start of each text file. */
+  given?: string;
   /** Kinds of software this run can really build (target profile names). Unset: every kind is offered. */
   buildable?: string[];
   backlog: BacklogItem[];
@@ -170,6 +172,9 @@ const whatItCanDo = (ctx: RoleContext) =>
   ctx.capabilities ? section("What this kind of software can do (plan within it)", ctx.capabilities) : "";
 
 /** Where releases really go, so a spec never promises hosting the run will not use. */
+/** The person's own files (a logo, a price list), so the spec, plan and code use them. */
+export const givenFiles = (ctx: RoleContext) => (ctx.given ? section("Files the person gave", ctx.given) : "");
+
 const whereItLives = (ctx: RoleContext) =>
   ctx.deployTarget ? section("Where it will go live (plan for this; do not promise other hosting)", ctx.deployTarget) : "";
 
@@ -180,7 +185,7 @@ export const productOwner: RoleDefinition<ProductOwnerOutput> = {
   async inputs(ctx) {
     const idea = await latest(ctx, "idea");
     const ledger = await latest(ctx, "ledger");
-    return [section("Idea", idea?.meta.text ?? "(missing)"), whatItCanDo(ctx), whereItLives(ctx), ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
+    return [section("Idea", idea?.meta.text ?? "(missing)"), givenFiles(ctx), whatItCanDo(ctx), whereItLives(ctx), ledger ? renderArtifact(ledger) : "", renderFeedback(ctx)].join("\n");
   },
   async write(out, ctx) {
     const { assumptions, body, ...fields } = out;
@@ -205,6 +210,7 @@ export const architect: RoleDefinition<ArchitectOutput> = {
       ctx.stackGuide ? section("The build crew's stack (design within it)", ctx.stackGuide) : "",
       whatItCanDo(ctx),
       whereItLives(ctx),
+      givenFiles(ctx),
       spec ? renderArtifact(spec) : "",
       spec?.meta.stages.length ? section("Stages", renderStages(ctx.state, spec, stage)) : "",
       previous && ctx.state.stage
@@ -232,7 +238,7 @@ export const planner: RoleDefinition<PlannerOutput> = {
   async inputs(ctx) {
     const spec = await latest(ctx, "spec");
     const arch = await latest(ctx, "architecture");
-    const parts = [spec ? renderArtifact(spec) : "", arch ? renderArtifact(arch) : "", ctx.stackGuide ? section("The build crew's stack (items must fit it)", ctx.stackGuide) : "", whatItCanDo(ctx)];
+    const parts = [spec ? renderArtifact(spec) : "", arch ? renderArtifact(arch) : "", ctx.stackGuide ? section("The build crew's stack (items must fit it)", ctx.stackGuide) : "", whatItCanDo(ctx), givenFiles(ctx)];
     const stage = currentStage(ctx.state, spec);
     if (spec && stage && ctx.purpose !== "shrink") {
       parts.push(
@@ -345,6 +351,7 @@ export const developer: RoleDefinition<DeveloperOutput> = {
       section("Backlog item to implement", item ? "```json\n" + JSON.stringify(item, null, 2) + "\n```" : `(phase-level work for ${ctx.phase})`),
       arch ? renderArchitectureFor(arch, item?.moduleId) : "",
       spec ? section("Spec summary", `${spec.meta.title}: ${spec.meta.problem}`) : "",
+      givenFiles(ctx),
     ];
     const changes = ctx.state.artifacts["change"] ?? [];
     if (changes.length) {

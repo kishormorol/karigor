@@ -1,6 +1,6 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { FsStore, type BacklogItem, type ProjectState } from "@karigor/store";
+import { FsStore, listGiven, type BacklogItem, type ProjectState } from "@karigor/store";
 import { meter } from "@karigor/budget";
 import { liveRecord, reasonIn, renderExplain, stagePlan, storyWords, type Lang } from "@karigor/cli";
 import { readSettings } from "@karigor/profiles";
@@ -30,6 +30,8 @@ export interface ProjectView {
   nextStage?: { name: string; goal: string };
   /** The live app has people with sign-in, so its owner can ask here for their first way in. */
   signIn?: boolean;
+  /** Files the person added (a logo, a price list). */
+  files: { name: string; bytes: number; kind: string }[];
   /** The event log as plain sentences, oldest first. */
   story: string[];
   lastSeq: number;
@@ -116,6 +118,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
     workItems,
     ...(stages ? { stages } : {}),
     ...(signIn ? { signIn } : {}),
+    files: (await listGiven(store.dir)).map((f) => ({ name: f.name, bytes: f.bytes, kind: f.kind })),
     ...(state.status === "finished" && plan.next && plan.stages.length > 1 ? { nextStage: { name: plan.next.name, goal: plan.next.goal } } : {}),
     story: (await renderExplain(store, events, lang)).split("\n").filter(Boolean),
     lastSeq: state.lastSeq,

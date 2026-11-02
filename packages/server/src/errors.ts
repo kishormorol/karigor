@@ -14,6 +14,9 @@ const EXACT: Record<string, string> = {
   "this Karigor does not put apps online, so there is nowhere to store settings": "এই Karigor অ্যাপ অনলাইনে তোলে না, তাই সেটিং রাখার কোনো জায়গা নেই",
   "not found": "পাওয়া যায়নি",
   "that does not look like an email address": "এটি ঠিক ইমেইল ঠিকানার মতো দেখাচ্ছে না",
+  "the file is too big (at most 10 MB)": "ফাইলটি অনেক বড় (সর্বোচ্চ ১০ MB)",
+  "the file is empty": "ফাইলটি খালি",
+  "the project's files are too big together (at most 50 MB)": "প্রকল্পের ফাইলগুলো মিলিয়ে অনেক বড় (সর্বোচ্চ ৫০ MB)",
   "it is not online yet": "এটি এখনো অনলাইনে আসেনি",
   "this app has no sign-in to set up": "এই অ্যাপে সাইন ইন ঠিক করার কিছু নেই",
   "the sign-in link could not be made here; ask whoever runs this Karigor": "সাইন ইন লিংকটি এখানে তৈরি করা গেল না; যিনি এই Karigor চালান তাকে জিজ্ঞেস করুন",
@@ -30,6 +33,8 @@ const EXACT: Record<string, string> = {
 const FIELDS: Record<string, string> = { name: "নাম", idea: "আইডিয়া", text: "বার্তা", decisionId: "সিদ্ধান্ত", values: "সেটিং", email: "ইমেইল" };
 
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
+  [/^a project can have at most (\d+) files$/, (n) => `একটি প্রকল্পে সর্বোচ্চ ${n}টি ফাইল রাখা যায়`],
+  [/^files of this kind cannot be added \(it can take: (.*)\)$/, (k) => `এই ধরনের ফাইল যোগ করা যায় না (যা যায়: ${k})`],
   [/^(\w+) is missing$/, (k) => `${FIELDS[k!] ?? k} দেওয়া হয়নি`],
   [/^(\w+) is too long \(at most (\d+) characters\)$/, (_k, n) => `লেখাটি অনেক লম্বা (সর্বোচ্চ ${n} অক্ষর)`],
   [/^there is no ready-made idea called "(.+)"; karigor starters lists them$/, (id) => `"${id}" নামে কোনো তৈরি আইডিয়া নেই`],

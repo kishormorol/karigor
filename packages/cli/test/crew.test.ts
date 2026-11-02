@@ -2,9 +2,9 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FsStore, noopCommitter, type Event, type ProjectState } from "@karigor/store";
+import { FsStore, addGiven, noopCommitter, type Event, type ProjectState } from "@karigor/store";
 import { fixture } from "@karigor/profiles";
-import { Workspace } from "@karigor/sandbox";
+import { Workspace, run } from "@karigor/sandbox";
 import { MockAgent, type AgentRequest } from "@karigor/runtime";
 import { createProject, runProject, scriptedAdapter, type ScriptOptions } from "../src/index.js";
 
@@ -71,6 +71,20 @@ describe("build crew: real workspace with a scripted agent", { timeout: 120_000 
     expect(reports.every((r) => r.meta.suite === "fixture")).toBe(true);
     // the architect and planner saw the stack guide
     expect(agent.calls.length).toBe(3);
+  });
+
+  it("the person's files land in the workspace as their own commit, and the developer is told about them", async () => {
+    const { root, projectId } = await fresh();
+    await addGiven(join(root, projectId), "logo.png", Buffer.from([1, 2, 3]));
+    await addGiven(join(root, projectId), "prices.csv", Buffer.from("item,price\nRice,62.50\n"));
+    const agent = devAgent();
+    await runProject(opts(root, projectId, agent));
+    const ws = join(root, projectId, "workspace");
+    await expect(readFile(join(ws, "given/prices.csv"), "utf8")).resolves.toMatch(/Rice/);
+    await expect(readFile(join(ws, "public/given/logo.png"))).resolves.toEqual(Buffer.from([1, 2, 3]));
+    const log = await run("git", ["log", "--format=%s"], { cwd: ws });
+    expect(log.stdout).toMatch(/karigor: files the person gave/);
+    expect(agent.calls[0]!.user).toMatch(/Files the person gave[\s\S]*public\/given\/logo.png[\s\S]*Rice,62.50/);
   });
 
   it("a failing real test sends the item round with the gate's output as feedback, and the fix lands", async () => {

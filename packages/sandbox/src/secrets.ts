@@ -12,7 +12,7 @@ const PATTERNS: { name: string; re: RegExp }[] = [
   { name: "Stripe live key", re: /\b(?:sk|rk)_live_[A-Za-z0-9]{16,}\b/ },
 ];
 
-const SKIP = /(^|\/)(node_modules|\.next|dist|build|\.git)(\/|$)|\.(png|jpg|jpeg|gif|webp|ico|woff2?|ttf|pdf|lock|db)$|-lock\.(yaml|json)$|(^|\/)package-lock\.json$/;
+const SKIP = /(^|\/)(node_modules|\.next|dist|build|\.git|given)(\/|$)|\.(png|jpg|jpeg|gif|webp|ico|woff2?|ttf|pdf|lock|db)$|-lock\.(yaml|json)$|(^|\/)package-lock\.json$/;
 
 /** Scan files for secret-shaped strings and tracked env files. */
 export async function scanSecrets(dir: string, files: string[]): Promise<SecurityFinding[]> {

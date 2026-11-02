@@ -3,7 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { readFile, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FsStore, queueInbox, runningPid } from "@karigor/store";
+import { FsStore, GivenError, GIVEN_LIMITS, addGiven, queueInbox, runningPid } from "@karigor/store";
 import { adminLink, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
@@ -95,6 +95,18 @@ async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
   } catch {
     throw new HttpError(400, "the request was not valid JSON");
   }
+}
+
+/** A file's raw bytes, refused once past `max`. */
+async function bytes(req: IncomingMessage, max: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > max) throw new HttpError(413, "the file is too big (at most 10 MB)");
+    chunks.push(c as Buffer);
+  }
+  return Buffer.concat(chunks);
 }
 
 function text(b: Record<string, unknown>, key: string, max = 4000): string {
@@ -310,7 +322,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       if (o.adapter === "claude" && !process.env["ANTHROPIC_API_KEY"] && !optionalKey(b)) throw new HttpError(400, "this Karigor uses your own Anthropic key; add it first");
       const id = await createProject(o.root, idea);
       if (!viewer.admin) await people.own(viewer.person.id, id);
-      startRun(id, "run", optionalKey(b));
+      // `hold`: the page adds the person's files first, then starts it with resume.
+      if (b["hold"] !== true) startRun(id, "run", optionalKey(b));
       return send(res, 201, { projectId: id });
     }
 
@@ -418,6 +431,16 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       });
       if (result!.resumed) startRun(id, "run");
       return send(res, 200, { stored: result!.stored, stillMissing: result!.stillMissing, url: result!.url ?? null, resumed: !!result!.resumed });
+    }
+    if (method === "POST" && action === "files") {
+      await view(id);
+      const name = url.searchParams.get("name") ?? "";
+      if (!name.trim()) throw new HttpError(400, "name is missing");
+      const data = await bytes(req, GIVEN_LIMITS.fileBytes);
+      const f = await addGiven(join(o.root, id), name, data).catch((e: Error) => {
+        throw e instanceof GivenError ? new HttpError(400, e.message) : e;
+      });
+      return send(res, 201, { name: f.name, bytes: f.bytes, kind: f.kind });
     }
     if (method === "DELETE" && !action) {
       // Everything about the project goes: its records, its workspace, its releases, and the app this server keeps running.

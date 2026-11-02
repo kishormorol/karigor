@@ -184,6 +184,11 @@ footer { position: sticky; bottom: 0; background: color-mix(in srgb, var(--bg) 9
 .composer textarea:focus { border-color: var(--accent); }
 .composer .btn { border-radius: 16px; min-width: 64px; justify-content: center; }
 .composer .btn:disabled { opacity: .5; cursor: default; }
+.composer .attach { min-width: 46px; padding: 0; }
+.chosen { max-width: 720px; margin: 0 auto 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.chosen .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-2); border-radius: 999px; padding: 4px 4px 4px 12px; font-size: 13px; max-width: 100%; }
+.chosen .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chosen .chip button { border: 0; background: none; color: inherit; min-width: 28px; min-height: 28px; border-radius: 999px; cursor: pointer; }
 .hint { max-width: 720px; margin: 6px auto 0; font-size: 12px; color: var(--muted); min-height: 1em; }
 
 dialog { border: 0; border-radius: 20px; padding: 0; width: min(520px, calc(100% - 32px)); background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
@@ -215,7 +220,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
 <footer>
   <div class="picked" id="picked" hidden></div>
+  <div class="chosen" id="chosen" hidden></div>
   <form class="composer" id="composer">
+    <button class="btn quiet attach" id="attach" type="button" aria-label="Add files" title="Add files"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8"/></svg></button>
+    <input type="file" id="fileInput" multiple hidden accept=".png,.jpg,.jpeg,.gif,.webp,.svg,.ico,.csv,.tsv,.txt,.md,.json,.pdf,.xlsx,.xls,.docx,.doc,.ods,.odt,.mp3,.mp4,.woff,.woff2,.ttf">
     <label for="input" class="sr">Message</label>
     <textarea id="input" rows="1" placeholder="Describe your idea…"></textarea>
     <button class="btn" id="send" type="submit">Send</button>
@@ -293,6 +301,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       howToUse: "How to use it: ", openIt: "Open it", planParts: "The plan, part by part", partState: { built: "Built", building: "Being built", later: "Later" },
       buildNext: (n) => `Build the next part: ${n}`, tryFirst: "Try what is there first; you can still send fixes.", writeBelow: "Something not right, or something to add? Write it below and a fix round starts on its own.",
       buildingNext: (s) => `Building the next part: ${s}.`,
+      addFiles: "Add files", filesOnly: (n) => `I added these files: ${n}. Please use them.`, filesWith: (n) => `(Files added: ${n})`,
+      uploading: (n) => `Adding ${n}…`, cantAdd: (n, why) => `${n} was not added: ${why}`, yourFiles: (n) => `Your files (${n})`, filesHelp: "Pictures can be shown in the app; other files stay private.",
       deleteProject: "Delete this project", deleteSure: "This removes the app and everything Karigor kept about it. It cannot be undone.", deleteYes: "Yes, delete it",
       deleted: "Deleted.", deletedElsewhere: (u) => `Deleted from Karigor. The app is still online at ${u}; remove it from your hosting account if you no longer want it.`,
       signInTitle: "Your way in", signInText: "Your app has its own sign-in. Give your email and name to become its first admin; you get a one-time link to choose your password. Then add the people who work with you from People inside the app.",
@@ -332,6 +342,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       howToUse: "যেভাবে ব্যবহার করবেন: ", openIt: "খুলুন", planParts: "পরিকল্পনা, অংশ অনুযায়ী", partState: { built: "তৈরি হয়েছে", building: "তৈরি হচ্ছে", later: "পরে" },
       buildNext: (n) => `পরের অংশ তৈরি করুন: ${n}`, tryFirst: "যা আছে আগে ব্যবহার করে দেখুন; ঠিক করার কথা এখনো পাঠাতে পারবেন।", writeBelow: "কিছু ঠিক নেই, বা কিছু যোগ করতে চান? নিচে লিখুন, ঠিক করার রাউন্ড নিজে থেকেই শুরু হবে।",
       buildingNext: (s) => `পরের অংশ তৈরি হচ্ছে: ${s}।`,
+      addFiles: "ফাইল যোগ করুন", filesOnly: (n) => `আমি এই ফাইলগুলো যোগ করেছি: ${n}। এগুলো ব্যবহার করুন।`, filesWith: (n) => `(যোগ করা ফাইল: ${n})`,
+      uploading: (n) => `${n} যোগ হচ্ছে…`, cantAdd: (n, why) => `${n} যোগ হয়নি: ${why}`, yourFiles: (n) => `আপনার ফাইল (${n})`, filesHelp: "ছবি অ্যাপে দেখানো যায়; অন্য ফাইল গোপন থাকে।",
       deleteProject: "এই প্রকল্প মুছে ফেলুন", deleteSure: "এতে অ্যাপটি আর Karigor-এ রাখা এর সবকিছু মুছে যাবে। আর ফেরত আনা যাবে না।", deleteYes: "হ্যাঁ, মুছে ফেলুন",
       deleted: "মুছে ফেলা হয়েছে।", deletedElsewhere: (u) => `Karigor থেকে মুছে ফেলা হয়েছে। অ্যাপটি এখনো ${u} ঠিকানায় অনলাইনে আছে; আর না চাইলে আপনার হোস্টিং অ্যাকাউন্ট থেকে সরিয়ে দিন।`,
       signInTitle: "আপনার প্রবেশপথ", signInText: "আপনার অ্যাপের নিজস্ব সাইন ইন আছে। প্রথম অ্যাডমিন হতে আপনার ইমেইল আর নাম দিন; পাসওয়ার্ড বেছে নেওয়ার জন্য একবারের একটি লিংক পাবেন। তারপর অ্যাপের ভেতরে People থেকে আপনার সহকর্মীদের যোগ করুন।",
@@ -372,6 +384,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     document.documentElement.lang = lang;
     $("langBtn").textContent = t("otherLang");
     $("langBtn").setAttribute("aria-label", t("otherLangName"));
+    $("attach").setAttribute("aria-label", t("addFiles"));
+    $("attach").title = t("addFiles");
     $("langBtn").lang = lang === "bn" ? "en" : "bn";
     $("projectsBtn").textContent = t("projects");
     document.querySelector('label[for="input"]').textContent = t("message");
@@ -477,6 +491,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       view.work.parked.length ? el("details", { class: "more" }, el("summary", {}, t("setAside")), el("ul", {}, view.work.parked.map((p) => el("li", {}, `${p.title}${p.reason ? `: ${p.reason}` : ""}`)))) : null,
       open.length ? el("details", { class: "more", open: true }, el("summary", {}, t("toHandle", open.length)), el("ul", {}, open.map((w) => el("li", {}, w.title)))) : null,
       view.status === "stopped" && !view.running && !view.problem ? el("div", { class: "row" }, el("button", { class: "btn quiet", onclick: resume }, t("tryAgain"))) : null,
+      view.files && view.files.length ? el("details", { class: "more" }, el("summary", {}, t("yourFiles", view.files.length)), el("p", { class: "meta" }, t("filesHelp")), el("ul", {}, view.files.map((f) => el("li", {}, f.name)))) : null,
       view.running ? null : deleteRow(),
     );
   }
@@ -696,18 +711,24 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     e.preventDefault();
     const text = input.value.trim();
     const starter = !current && picked ? picked.id : null;
-    if (!text && !starter) return;
+    if (!text && !starter && !(current && chosen.length)) return;
     if (config.needsKey && !store.get("karigor_key")) { $("keyDialog").showModal(); return; }
     send.disabled = true;
     try {
       if (!current) {
-        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey(starter ? { starter, idea: text, lang } : { idea: text })) });
+        const hold = chosen.length > 0;
+        const r = await api("/api/projects", { method: "POST", body: JSON.stringify(withKey({ ...(starter ? { starter, idea: text, lang } : { idea: text }), ...(hold ? { hold } : {}) })) });
+        // Its files go in before the build starts, so the very first spec can use them.
+        if (hold) { await uploadChosen(r.projectId); await api(`/api/projects/${r.projectId}/resume`, { method: "POST", body: JSON.stringify(withKey({})) }); }
         input.value = "";
         picked = null;
         justCreated = r.projectId;
         location.hash = `#/p/${r.projectId}`;
       } else {
-        const r = await api(`/api/projects/${current}/feedback`, { method: "POST", body: JSON.stringify(withKey({ text })) });
+        const added = await uploadChosen(current);
+        const said = added.length ? (text ? `${text}\n\n${t("filesWith", added.join(", "))}` : t("filesOnly", added.join(", "))) : text;
+        if (!said) return;
+        const r = await api(`/api/projects/${current}/feedback`, { method: "POST", body: JSON.stringify(withKey({ text: said })) });
         input.value = "";
         hint.textContent = r.fixing ? t("fixRound") : r.workItemId ? t("onList") : t("already");
       }
@@ -718,6 +739,33 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       send.disabled = false;
     }
   }
+  // ---- files the person adds (a logo, photos, a price list) ----
+  let chosen = [];
+  function showChosen() {
+    const box = $("chosen");
+    box.hidden = !chosen.length;
+    box.replaceChildren(...chosen.map((f, i) => el("span", { class: "chip" }, el("span", {}, f.name),
+      el("button", { type: "button", "aria-label": t("removeX", f.name), onclick: () => { chosen.splice(i, 1); showChosen(); } }, "×"))));
+  }
+  /** Sends the chosen files one by one; returns the names that arrived. A file that is refused says why and the rest still go. */
+  async function uploadChosen(id) {
+    const names = [];
+    const problems = [];
+    for (const f of chosen) {
+      hint.textContent = t("uploading", f.name);
+      try {
+        const res = await fetch(`/api/projects/${id}/files?name=${encodeURIComponent(f.name)}`, { method: "POST", body: f, headers: { "content-type": "application/octet-stream", "x-karigor-lang": lang } });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || t("wrong", res.status));
+        names.push(j.name);
+      } catch (err) { problems.push(t("cantAdd", f.name, err.message)); }
+    }
+    chosen = [];
+    showChosen();
+    hint.textContent = problems.join(" ");
+    return names;
+  }
+
   async function resume() {
     try { await api(`/api/projects/${current}/resume`, { method: "POST", body: JSON.stringify(withKey({})) }); hint.textContent = t("tryingAgain"); }
     catch (err) { hint.textContent = err.message; }
@@ -754,6 +802,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   input.addEventListener("input", grow);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && matchMedia("(pointer: fine)").matches) { e.preventDefault(); $("composer").requestSubmit(); } });
   $("composer").addEventListener("submit", submit);
+  $("attach").addEventListener("click", () => $("fileInput").click());
+  $("fileInput").addEventListener("change", (e) => { chosen.push(...e.target.files); e.target.value = ""; showChosen(); input.focus(); });
   $("projectsBtn").addEventListener("click", showProjects);
   $("closeBtn").addEventListener("click", () => $("projects").close());
   $("newBtn").addEventListener("click", () => { $("projects").close(); location.hash = ""; input.focus(); });

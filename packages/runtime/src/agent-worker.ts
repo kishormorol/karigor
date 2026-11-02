@@ -62,6 +62,7 @@ export async function renderDeveloperTask(ctx: RoleContext): Promise<string> {
     section("Backlog item to implement", item ? "```json\n" + JSON.stringify(item, null, 2) + "\n```" : `(phase-level work for ${ctx.phase})`),
     spec ? section("Product", `${spec.meta.title}\n\nAudience: ${spec.meta.audience}\n\nProblem: ${spec.meta.problem}\n\nGoals:\n${spec.meta.goals.map((g) => `- ${g}`).join("\n")}`) : "",
     arch ? section("Architecture", `${arch.meta.stack.map((s) => `- ${s.layer}: ${s.choice} (${s.reason})`).join("\n")}\n\nComponents:\n${arch.meta.components.map((c) => `- ${c.name}: ${c.responsibility}`).join("\n")}\n\n${arch.body}`) : "",
+    ctx.given ? section("Files the person gave (already in the workspace)", ctx.given) : "",
     renderFeedback(ctx),
   ];
   return parts.filter(Boolean).join("\n");

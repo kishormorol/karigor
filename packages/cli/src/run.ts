@@ -6,6 +6,8 @@ import {
   languageOf,
   makeId,
   makeProjectId,
+  renderGiven,
+  syncGiven,
   type Artifact,
   type ArtifactKind,
   type ArtifactRef,
@@ -183,11 +185,13 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
   // A real build can only make the kind of software its profile scaffolds; the selector is offered just that.
   const buildable = opts.profile && opts.profile.name !== "fixture" ? [opts.profile.name] : undefined;
   const capabilities = opts.profile?.capabilities ? renderCapabilities(opts.profile.capabilities) : undefined;
+  const given = await renderGiven(store.dir);
   const roleContext = (phase: string, extra: Partial<RoleContext> = {}): RoleContext => ({
     state, store, phase, backlog, templates, clock, makeId: newId,
     ...(opts.profile ? { stackGuide: opts.profile.stackGuide } : {}),
     ...(buildable ? { buildable } : {}),
     ...(capabilities ? { capabilities } : {}),
+    ...(given ? { given } : {}),
     ...(opts.deploy ? { deployTarget: opts.deploy.describe() } : {}),
     ...extra,
   });
@@ -204,6 +208,12 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
     else {
       log(`creating the workspace from the ${opts.profile!.name} profile`);
       workspace = await Workspace.create(dir, opts.profile!, { log, ...(opts.skipInstall ? { skipInstall: true } : {}) });
+    }
+    // The person's own files (a logo, a price list) land in the code as their own commit, before any item's work.
+    const added = await syncGiven(store.dir, dir);
+    if (added.length) {
+      await workspace.commitAll(`karigor: files the person gave (${added.join(", ")})`);
+      log(`added the person's files: ${added.join(", ")}`);
     }
     return workspace;
   };
