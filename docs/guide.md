@@ -25,7 +25,7 @@ The idea is the only thing Karigor needs, and it shapes everything that follows.
 - **the jobs it must do**, in the words you use at work;
 - **local details** that matter: currency, language, payment methods, phone or computer.
 
-Karigor decides what kind of thing to build from your idea. Something people only look at (your shop's page, a menu, a portfolio, a wedding or event page) becomes a **simple website**: quick to build and free to keep online. Anything where people sign in, book, order or keep records becomes a **web app**. You can see and change this choice among the decisions made for you.
+Karigor decides what kind of thing to build from your idea. Something people only look at (your shop's page, a menu, a portfolio, a wedding or event page) becomes a **simple website**: quick to build and free to keep online. Anything where people sign in, book, order or keep records becomes a **web app**. The choice is shown among the decisions made for you. A project stays the kind it was first built as, so if the choice is wrong, start again and say it plainly in the idea ("just a simple website" or "a web app where customers sign in").
 
 You can also give it files: on the chat page, press the paperclip beside the message box before you send. A logo or photos are used in the pages. A price list, product list or customer list (CSV, Excel, text) becomes the app's starting data. Pictures can be shown in the app; every other file stays private and is never put on the web. Files can be added later too, with a message saying what to do with them. Up to 30 files, 10 MB each.
 
