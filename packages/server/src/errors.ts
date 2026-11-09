@@ -19,6 +19,7 @@ const EXACT: Record<string, string> = {
   "the project's files are too big together (at most 50 MB)": "প্রকল্পের ফাইলগুলো মিলিয়ে অনেক বড় (সর্বোচ্চ ৫০ MB)",
   "it is not online yet": "এটি এখনো অনলাইনে আসেনি",
   "this app has no sign-in to set up": "এই অ্যাপে সাইন ইন ঠিক করার কিছু নেই",
+  "your credit has run out; add credit to keep building": "আপনার ক্রেডিট শেষ হয়ে গেছে; তৈরি চালিয়ে যেতে ক্রেডিট যোগ করুন",
   "this app has no access keys": "এই অ্যাপে অ্যাক্সেস কী নেই",
   "phone apps need the app online at an https address": "ফোন অ্যাপের জন্য অ্যাপটিকে একটি https ঠিকানায় অনলাইনে থাকতে হবে",
   "the phone apps are being made right now": "ফোন অ্যাপগুলো এখনই তৈরি হচ্ছে",

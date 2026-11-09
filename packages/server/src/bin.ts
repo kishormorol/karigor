@@ -2,6 +2,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
+import { logMailer, resendMailer } from "./mail.js";
 import { People } from "./people.js";
 import { createKarigorServer } from "./server.js";
 
@@ -37,7 +38,14 @@ That link sees every project. To give someone their own sign-in, which sees only
 
 To host everyone's apps from here, each on its own port and kept running:
   KARIGOR_APPS_URL=https://a{port}.example.com   the address people use for each app
-  KARIGOR_SERVE_APPS=1                           the same, at http://localhost:<port>`);
+  KARIGOR_SERVE_APPS=1                           the same, at http://localhost:<port>
+
+To run it as a service for many people (sign-in by email, credit for builds):
+  KARIGOR_URL=https://karigor.example.com   this Karigor's public address (needed for the emailed links)
+  KARIGOR_EMAIL_SIGNIN=1                    people sign in with a one-time link sent to their email
+  RESEND_API_KEY, KARIGOR_MAIL_FROM         send those emails through Resend (without them, links go to this log)
+  KARIGOR_WELCOME_CREDIT=1                  USD of credit for each new sign-up (with KARIGOR_SIGNUP=open)
+  KARIGOR_METERED=20                        charge builds on this Karigor's model key: cost plus this % margin`);
   process.exit(0);
 }
 
@@ -68,6 +76,16 @@ const { server } = createKarigorServer({
   appPort: Number(v["app-port"]),
   ...(token ? { token } : {}),
   signup: process.env["KARIGOR_SIGNUP"] === "open",
+  ...(process.env["KARIGOR_EMAIL_SIGNIN"] === "1"
+    ? {
+        emailSignIn: {
+          url: process.env["KARIGOR_URL"] ?? `http://localhost:${v.port}`,
+          mailer: process.env["RESEND_API_KEY"] && process.env["KARIGOR_MAIL_FROM"] ? resendMailer({ apiKey: process.env["RESEND_API_KEY"], from: process.env["KARIGOR_MAIL_FROM"] }) : logMailer((l) => console.log(l)),
+        },
+      }
+    : {}),
+  ...(process.env["KARIGOR_WELCOME_CREDIT"] ? { welcomeCreditUsd: Number(process.env["KARIGOR_WELCOME_CREDIT"]) } : {}),
+  ...(process.env["KARIGOR_METERED"] !== undefined ? { metered: { marginPct: Number(process.env["KARIGOR_METERED"]) || 0 } } : {}),
   ...(process.env["KARIGOR_APPS_URL"] || process.env["KARIGOR_SERVE_APPS"] === "1" ? { apps: process.env["KARIGOR_APPS_URL"] ? { url: process.env["KARIGOR_APPS_URL"] } : {} } : {}),
   log: (l) => console.log(l),
 });

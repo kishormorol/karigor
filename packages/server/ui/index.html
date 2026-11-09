@@ -83,6 +83,7 @@ header {
 .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--mine); color: var(--mine-text); display: grid; place-items: center; font-size: 15px; font-weight: 800; }
 .title { flex: 1; min-width: 0; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; border: 0; }
+.chip.out { background: var(--bad-soft); color: var(--bad); }
 .iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; height: 36px; padding: 0 12px; font-size: 14px; }
 
 main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 16px 16px 24px; display: flex; flex-direction: column; gap: 12px; }
@@ -215,6 +216,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <div class="brand"><div class="mark" aria-hidden="true">K</div><span>Karigor</span></div>
   <div class="title" id="title"></div>
   <button class="chip" id="cost" hidden></button>
+  <span class="chip" id="credit" hidden></span>
   <button class="iconbtn" id="langBtn" type="button" lang="bn">বাংলা</button>
   <button class="iconbtn" id="projectsBtn" aria-haspopup="dialog">Projects</button>
 </header>
@@ -332,6 +334,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       fixRound: "Thanks. A fix round has started.", onList: "Thanks. It's on the list for the next fix round.", already: "That's already on the list.", tryingAgain: "Trying again.",
       cantLoad: "Could not load that project.", loading: "Loading…", noProjects: "No projects yet.", cantReach: "Can't reach Karigor",
       tierNames: { free: "free", cheap: "cheap", best: "best" },
+      emailTitle: "Sign in to Karigor", emailText: "Give your email and we send you a link that signs you in. No password to remember. New here? The same link makes your account.", emailLabel: "Your email", emailSend: "Send my link", emailSent: (e) => `Check ${e} for a sign-in link. It works once, for 15 minutes.`, linkExpired: "That sign-in link was already used or is too old. Ask for a new one.",
+      credit: (n) => `Credit: $${n.toFixed(2)}`, creditOut: "Your credit has run out. Add credit to keep building; what you built stays.",
       signupTitle: "Welcome. What should we call you?", signupText: "Your name is all it takes. Your projects are yours: other people here cannot see them.", yourName: "Your name", join: "Start",
       saveLink: "You're in. Save this link: it signs you in on another phone or computer, and it is shown only once.", carryOn: "Continue",
       people: "People", peopleText: "Each person gets their own link. It opens only the projects they start.", personPh: "Their name", add: "Add",
@@ -379,6 +383,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       fixRound: "ধন্যবাদ। একটি ঠিক করার রাউন্ড শুরু হয়েছে।", onList: "ধন্যবাদ। পরের ঠিক করার রাউন্ডের তালিকায় রাখা হলো।", already: "এটি আগেই তালিকায় আছে।", tryingAgain: "আবার চেষ্টা করা হচ্ছে।",
       cantLoad: "প্রকল্পটি খোলা যায়নি।", loading: "খোলা হচ্ছে…", noProjects: "এখনো কোনো প্রকল্প নেই।", cantReach: "Karigor-এর সঙ্গে যোগাযোগ করা যাচ্ছে না",
       tierNames: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" },
+      emailTitle: "Karigor-এ সাইন ইন করুন", emailText: "আপনার ইমেইল দিন, আমরা সাইন ইন করার একটি লিংক পাঠাব। কোনো পাসওয়ার্ড মনে রাখতে হবে না। নতুন? একই লিংকে আপনার অ্যাকাউন্ট তৈরি হবে।", emailLabel: "আপনার ইমেইল", emailSend: "লিংক পাঠান", emailSent: (e) => `${e} ঠিকানায় সাইন ইন লিংক দেখুন। এটি একবার, ১৫ মিনিটের জন্য কাজ করে।`, linkExpired: "এই সাইন ইন লিংকটি আগেই ব্যবহার হয়েছে বা অনেক পুরোনো। নতুন একটি চান।",
+      credit: (n) => `ক্রেডিট: $${n.toFixed(2)}`, creditOut: "আপনার ক্রেডিট শেষ। তৈরি চালিয়ে যেতে ক্রেডিট যোগ করুন; যা তৈরি হয়েছে তা থাকবে।",
       signupTitle: "স্বাগতম। আপনাকে কী নামে ডাকব?", signupText: "শুধু আপনার নামটুকুই লাগবে। আপনার প্রকল্প শুধু আপনার: এখানকার অন্যরা সেগুলো দেখতে পারেন না।", yourName: "আপনার নাম", join: "শুরু করুন",
       saveLink: "আপনি যোগ দিয়েছেন। এই লিংকটি রেখে দিন: অন্য ফোন বা কম্পিউটার থেকে এটি দিয়েই ঢুকবেন, আর এটি একবারই দেখানো হয়।", carryOn: "এগিয়ে যান",
       people: "মানুষ", peopleText: "প্রত্যেকে নিজের একটি লিংক পান। তাতে শুধু তাদের নিজের শুরু করা প্রকল্পগুলোই খোলে।", personPh: "তার নাম", add: "যোগ করুন",
@@ -911,6 +917,24 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
 
   // ---- people: whoever runs it hands out links; with sign-ups open, anyone joins with a name ----
   const linkFor = (token) => `${location.origin}/?token=${token}`;
+  /** Sign-in by email: a one-time link, no password. */
+  function emailSignIn() {
+    $("composer").hidden = $("projectsBtn").hidden = true;
+    const email = el("input", { type: "email", maxlength: "200", autocomplete: "email", required: true });
+    const problem = el("p", { class: "meta" });
+    const card = el("div", { class: "card" });
+    const form = el("form", { class: "row", onsubmit: async (e) => {
+      e.preventDefault();
+      try {
+        await api("/api/signin/email", { method: "POST", body: JSON.stringify({ email: email.value, lang }) });
+        card.replaceChildren(el("h2", {}, t("emailTitle")), el("p", {}, t("emailSent", email.value.trim())));
+      } catch (err) { problem.textContent = err.message; }
+    } }, el("label", { class: "field", style: "flex:1;min-width:0" }, t("emailLabel"), email), el("button", { class: "btn", style: "align-self:flex-end" }, t("emailSend")));
+    const expired = new URLSearchParams(location.search).has("expired");
+    card.append(el("h2", {}, t("emailTitle")), expired ? el("p", { class: "banner" }, t("linkExpired")) : null, el("p", {}, t("emailText")), form, problem);
+    main.replaceChildren(card);
+    email.focus();
+  }
   function signUp() {
     $("composer").hidden = $("projectsBtn").hidden = true;
     const name = el("input", { maxlength: "80", autocomplete: "name", required: true });
@@ -949,8 +973,15 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     } catch (err) { $("personLink").replaceChildren(el("p", { class: "meta" }, err.message)); }
   });
 
+  /** What a person can still spend, beside the project's own cost. */
+  function showCredit() {
+    const n = config.metered && config.me ? config.me.creditUsd : undefined;
+    $("credit").hidden = typeof n !== "number";
+    if (typeof n === "number") { $("credit").textContent = t("credit", n); $("credit").classList.toggle("out", n <= 0); $("credit").title = n <= 0 ? t("creditOut") : ""; }
+  }
   function start() {
-    api("/api/config").then((c) => { config = c; $("composer").hidden = $("projectsBtn").hidden = false; $("keyBtn").hidden = !c.needsKey; $("peopleBtn").hidden = !(c.me && c.me.admin && c.me.people); route(); }).catch((err) => {
+    api("/api/config").then((c) => { config = c; $("composer").hidden = $("projectsBtn").hidden = false; $("keyBtn").hidden = !c.needsKey; $("peopleBtn").hidden = !(c.me && c.me.admin && c.me.people); showCredit(); route(); }).catch((err) => {
+      if (err.status === 401 && err.data && err.data.email) return emailSignIn();
       if (err.status === 401 && err.data && err.data.signup) return signUp();
       main.replaceChildren(el("div", { class: "card problem" }, el("h2", {}, t("cantReach")), el("p", {}, err.message)));
     });
