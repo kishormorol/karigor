@@ -306,6 +306,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       deleteProject: "Delete this project", deleteSure: "This removes the app and everything Karigor kept about it. It cannot be undone.", deleteYes: "Yes, delete it",
       deleted: "Deleted.", deletedElsewhere: (u) => `Deleted from Karigor. The app is still online at ${u}; remove it from your hosting account if you no longer want it.`,
       signInTitle: "Your way in", signInText: "Your app has its own sign-in. Give your email and name to become its first admin; you get a one-time link to choose your password. Then add the people who work with you from People inside the app.",
+      keyTitle: "Your access key", keyText: "This is a service other programs call. Each program sends an access key with every call. Get the first one here; it can make more keys for other programs and turn them off.", keyName: "Who will use it", getKey: "Get an access key", makingKey: "Making your key…",
+      keyReady: "Copy this key now and keep it somewhere safe. It is shown only once; if it is lost, get a new one here.", copy: "Copy", copied: "Copied", readDocs: "How to call it (docs)",
       email: "Your email", yourNameOpt: "Your name", getLink: "Get my sign-in link", makingLink: "Making your sign-in link…",
       linkReady: "Open this link once to choose your password. It works one time only, so do not share it.", choosePassword: "Choose my password",
       needsBefore: "Built. It needs a few things from you before it goes online", needsLive: "Online, but it needs a few things from you",
@@ -347,6 +349,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       deleteProject: "এই প্রকল্প মুছে ফেলুন", deleteSure: "এতে অ্যাপটি আর Karigor-এ রাখা এর সবকিছু মুছে যাবে। আর ফেরত আনা যাবে না।", deleteYes: "হ্যাঁ, মুছে ফেলুন",
       deleted: "মুছে ফেলা হয়েছে।", deletedElsewhere: (u) => `Karigor থেকে মুছে ফেলা হয়েছে। অ্যাপটি এখনো ${u} ঠিকানায় অনলাইনে আছে; আর না চাইলে আপনার হোস্টিং অ্যাকাউন্ট থেকে সরিয়ে দিন।`,
       signInTitle: "আপনার প্রবেশপথ", signInText: "আপনার অ্যাপের নিজস্ব সাইন ইন আছে। প্রথম অ্যাডমিন হতে আপনার ইমেইল আর নাম দিন; পাসওয়ার্ড বেছে নেওয়ার জন্য একবারের একটি লিংক পাবেন। তারপর অ্যাপের ভেতরে People থেকে আপনার সহকর্মীদের যোগ করুন।",
+      keyTitle: "আপনার অ্যাক্সেস কী", keyText: "এটি অন্য প্রোগ্রামের জন্য একটি সেবা। প্রতিটি প্রোগ্রাম প্রতিবার একটি অ্যাক্সেস কী পাঠায়। প্রথম কীটি এখান থেকে নিন; এটি দিয়ে অন্য প্রোগ্রামের জন্য আরও কী বানানো আর বন্ধ করা যায়।", keyName: "কে ব্যবহার করবে", getKey: "অ্যাক্সেস কী দিন", makingKey: "কী তৈরি হচ্ছে…",
+      keyReady: "কীটি এখনই কপি করে নিরাপদ জায়গায় রাখুন। এটি শুধু একবারই দেখানো হয়; হারিয়ে গেলে এখান থেকে নতুন একটি নিন।", copy: "কপি", copied: "কপি হয়েছে", readDocs: "কীভাবে ব্যবহার করবেন (ডকস)",
       email: "আপনার ইমেইল", yourNameOpt: "আপনার নাম", getLink: "আমার সাইন ইন লিংক দিন", makingLink: "সাইন ইন লিংক তৈরি হচ্ছে…",
       linkReady: "পাসওয়ার্ড বেছে নিতে এই লিংকটি একবার খুলুন। এটি শুধু একবারই কাজ করে, তাই কাউকে দেবেন না।", choosePassword: "পাসওয়ার্ড বেছে নিন",
       needsBefore: "তৈরি হয়ে গেছে। অনলাইনে যাওয়ার আগে আপনার কাছ থেকে কয়েকটি জিনিস দরকার", needsLive: "অনলাইনে আছে, তবে আপনার কাছ থেকে কয়েকটি জিনিস দরকার",
@@ -541,6 +545,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, t("openIt")), el("span", { class: "meta" }, url)) : null,
       view.stages ? el("details", { class: "more", open: true }, el("summary", {}, t("planParts")), el("ul", {}, view.stages.map((p) => el("li", {}, `${t("partState")[p.state]}: ${p.name}. ${p.goal}`)))) : null,
       view.signIn ? signInBlock() : null,
+      view.accessKey ? keyBlock(view.accessKey) : null,
       view.nextStage && !view.running ? el("div", { class: "row" }, el("button", { class: "btn", onclick: growNext }, t("buildNext", view.nextStage.name)), el("span", { class: "meta" }, t("tryFirst"))) : null,
       el("p", { class: "meta" }, t("writeBelow")),
     );
@@ -576,6 +581,44 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       } catch (err) { hint.textContent = err.message; btn.disabled = false; }
     });
     box.append(el("p", { class: "meta" }, t("signInText")), form);
+    return box;
+  }
+
+  /** A service's first access key, shown once (kept only in this page's memory). */
+  const madeKeys = {};
+  function keyBlock(info) {
+    const box = el("div", { class: "card", style: "gap:10px" }, el("h3", {}, t("keyTitle")));
+    const docs = safeUrl(info.docs);
+    const docsLink = docs ? el("a", { href: docs, target: "_blank", rel: "noopener noreferrer" }, t("readDocs")) : null;
+    const shown = madeKeys[current];
+    if (shown) {
+      const field = el("input", { readonly: true, value: shown, style: "font-family:ui-monospace,monospace", "aria-label": t("keyTitle") });
+      const copyBtn = el("button", { class: "btn", type: "button" }, t("copy"));
+      copyBtn.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(shown); copyBtn.textContent = t("copied"); }
+        catch { field.select(); }
+      });
+      box.append(el("p", {}, t("keyReady")), field, el("div", { class: "row" }, copyBtn, docsLink));
+      return box;
+    }
+    const name = el("input", { autocomplete: "name", maxlength: "100" });
+    const btn = el("button", { class: "btn" }, t("getKey"));
+    const form = el("form", { style: "display:flex;flex-direction:column;gap:10px" },
+      el("label", { class: "field" }, t("keyName"), name),
+      el("div", { class: "row" }, btn, docsLink));
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      hint.textContent = t("makingKey");
+      const id = current;
+      try {
+        const r = await api(`/api/projects/${id}/key`, { method: "POST", body: JSON.stringify({ name: name.value }) });
+        if (typeof r.key === "string") madeKeys[id] = r.key;
+        hint.textContent = "";
+        if (id === current) render();
+      } catch (err) { hint.textContent = err.message; btn.disabled = false; }
+    });
+    box.append(el("p", { class: "meta" }, t("keyText")), form);
     return box;
   }
 

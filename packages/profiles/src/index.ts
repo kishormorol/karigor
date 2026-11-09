@@ -5,16 +5,18 @@ export * from "./playwright.js";
 export * from "./fixture.js";
 export * from "./web-app.js";
 export * from "./static-site.js";
+export * from "./api.js";
 
 import { fixture } from "./fixture.js";
 import type { Profile } from "./types.js";
 import { webApp } from "./web-app.js";
 import { staticSite } from "./static-site.js";
+import { api } from "./api.js";
 
-export const PROFILES: Record<string, Profile> = { fixture, "web-app": webApp, "static-site": staticSite };
+export const PROFILES: Record<string, Profile> = { fixture, "web-app": webApp, "static-site": staticSite, api };
 
 /** The kinds of software a real build can make, the default first (a kind the selector names that is not here falls back to it). */
-export const BUILDABLE = ["web-app", "static-site"] as const;
+export const BUILDABLE = ["web-app", "static-site", "api"] as const;
 
 export function profileFor(name: string): Profile {
   const p = PROFILES[name];

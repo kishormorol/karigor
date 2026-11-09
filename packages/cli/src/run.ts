@@ -319,6 +319,10 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
           fresh.body += `\n## Signing in the first time\n\nRun \`karigor admin-link ${state.projectId} you@example.com "Your name"\` and open the link it prints to choose your password. Then add the people who work with you from People; each gets their own link.\n`;
           log(`  to sign in the first time: karigor admin-link ${state.projectId} <your email> "<your name>"`);
         }
+        if (firstRelease && pkg.scripts?.["key:new"]) {
+          fresh.body += `\n## Your first access key\n\nRun \`karigor access-key ${state.projectId} "Your name"\` to get the key programs use to call it (it is shown once). The docs page at ${res.url.replace(/\/$/, "")}/docs shows every call with an example.\n`;
+          log(`  to get the first access key: karigor access-key ${state.projectId} "<your name>"`);
+        }
         if (missing.length) fresh.body += `\n## Before it can be used\n\nIt is online, but it needs these settings on ${opts.deploy!.describe()} before it can do its job:\n\n${missing.map((m) => `- \`${m.name}\`${m.note ? `: ${m.note}` : ""}`).join("\n")}\n`;
         await store.writeArtifact(fresh);
         events.push({ type: "artifact-written", by: "system", kind: "summary", id: fresh.meta.id });

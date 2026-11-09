@@ -45,13 +45,13 @@ const ROLES_BN: Record<string, string> = {
 };
 
 /** The kind of software in the story's words; a web app keeps its usual name. */
-const EN_PROFILE: Record<string, string> = { "static-site": "simple website" };
+const EN_PROFILE: Record<string, string> = { "static-site": "simple website", api: "service other programs call" };
 
 const BN = {
   tier: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" } as Record<string, string>,
   model: { judgment: "বিচারের", routine: "সাধারণ কাজের", mock: "নকল" } as Record<string, string>,
   status: { todo: "বাকি", "in-progress": "চলছে", done: "শেষ", parked: "আলাদা করে রাখা" } as Record<string, string>,
-  profile: { "web-app": "ওয়েব অ্যাপ", "static-site": "সাধারণ ওয়েবসাইট" } as Record<string, string>,
+  profile: { "web-app": "ওয়েব অ্যাপ", "static-site": "সাধারণ ওয়েবসাইট", api: "অন্য প্রোগ্রামের জন্য একটি সেবা (API)" } as Record<string, string>,
 };
 
 export interface StoryWords {

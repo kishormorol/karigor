@@ -19,6 +19,8 @@ const EXACT: Record<string, string> = {
   "the project's files are too big together (at most 50 MB)": "প্রকল্পের ফাইলগুলো মিলিয়ে অনেক বড় (সর্বোচ্চ ৫০ MB)",
   "it is not online yet": "এটি এখনো অনলাইনে আসেনি",
   "this app has no sign-in to set up": "এই অ্যাপে সাইন ইন ঠিক করার কিছু নেই",
+  "this app has no access keys": "এই অ্যাপে অ্যাক্সেস কী নেই",
+  "the access key could not be made here; ask whoever runs this Karigor": "অ্যাক্সেস কী এখানে তৈরি করা গেল না; যিনি এই Karigor চালান তাকে জিজ্ঞেস করুন",
   "the sign-in link could not be made here; ask whoever runs this Karigor": "সাইন ইন লিংকটি এখানে তৈরি করা গেল না; যিনি এই Karigor চালান তাকে জিজ্ঞেস করুন",
   "this Karigor needs an access link; ask whoever runs it": "এই Karigor খুলতে একটি প্রবেশ লিংক লাগে; যিনি এটি চালান তাকে জিজ্ঞেস করুন",
   "something went wrong on the server": "সার্ভারে কিছু একটা গোলমাল হয়েছে",

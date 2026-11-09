@@ -327,6 +327,40 @@ export async function adminLink(deploy: DeployAdapter | undefined, email: string
   return { ok: r.code === 0, output: (r.stdout + (r.code === 0 ? "" : `\n${r.stderr}`)).trim() };
 }
 
+/**
+ * The owner's first access key for a service (an `api` app): the live release's own `key:new` script on
+ * this computer, or the hosted service's `/owner-key` with the secret Karigor made for it. The key is shown once.
+ */
+export async function ownerAccessKey(deploy: DeployAdapter | undefined, name = "", hosted?: { projectDir: string; url?: string; fetcher?: typeof fetch }): Promise<{ ok: boolean; key?: string; output: string }> {
+  const who = name.trim().slice(0, 100) || "Owner";
+  if (!(deploy instanceof LocalDeploy)) {
+    const secret = hosted ? await ownerSecret(hosted.projectDir) : undefined;
+    if (!hosted?.url || !secret) return { ok: false, output: "This service's first key can only be made once it is online and Karigor holds its owner secret." };
+    try {
+      const res = await (hosted.fetcher ?? fetch)(`${hosted.url.replace(/\/$/, "")}/owner-key`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+        body: JSON.stringify({ name: who }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const j = (await res.json().catch(() => ({}))) as { key?: string; error?: string };
+      if (res.ok && j.key) return { ok: true, key: j.key, output: `Made a key for ${who}. It is shown only now; keep it somewhere safe:\n${j.key}` };
+      return { ok: false, output: `The service did not make a key (${res.status}${j.error ? `: ${j.error}` : ""}).` };
+    } catch (e) {
+      return { ok: false, output: `The service could not be reached: ${(e as Error).message}` };
+    }
+  }
+  const live = await deploy.current();
+  if (!live) return { ok: false, output: "Nothing is live yet. Build it first (karigor run or resume)." };
+  const dir = deploy.releaseDir(live.version);
+  const { readFile } = await import("node:fs/promises");
+  const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> };
+  if (!pkg.scripts?.["key:new"]) return { ok: false, output: "This is not a service with access keys." };
+  const r = await runCommand("pnpm", ["-s", "key:new", who], { cwd: dir, env: await deploy.settingsEnv(), timeoutMs: 120_000 });
+  const key = /\bkey_[A-Za-z0-9_-]{16,}/.exec(r.stdout)?.[0];
+  return { ok: r.code === 0 && !!key, ...(key ? { key } : {}), output: (r.stdout + (r.code === 0 ? "" : `\n${r.stderr}`)).trim() };
+}
+
 /** The production URL to watch for a hosted target (a local target is watched by `serve`). */
 export async function hostedHealthUrl(store: FsStore, state: ProjectState, healthPath = "/"): Promise<string | undefined> {
   const live = await liveRecord(store, state);
@@ -540,7 +574,9 @@ export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248d
  */
 export async function installUiKit(store: FsStore, profileName = "web-app"): Promise<string[]> {
   await assertIdle(store.dir, "changing the UI kit");
-  if ((await store.replay()).targetProfile === "static-site") throw new Error("a simple website has no UI kit; its look is site/styles.css");
+  const kind = (await store.replay()).targetProfile;
+  if (kind === "static-site") throw new Error("a simple website has no UI kit; its look is site/styles.css");
+  if (kind === "api") throw new Error("a service has no screens, so no UI kit; its docs page is src/lib/docs.ts");
   const { SCAFFOLDS_DIR } = await import("@karigor/profiles");
   const { readFile, writeFile, mkdir } = await import("node:fs/promises");
   const from = join(SCAFFOLDS_DIR, profileName);

@@ -369,3 +369,36 @@ describe.runIf(process.env["KARIGOR_REAL_DEPLOY"] === "1")("LocalDeploy (live, w
     expect(j.passed).toBeGreaterThanOrEqual(6);
   }, 900_000);
 });
+
+/** The api profile through the same path: real install, migrations, type check, serve, health, a key and a call. */
+describe.runIf(process.env["KARIGOR_REAL_DEPLOY"] === "1")("LocalDeploy (live, api profile)", () => {
+  it("previews, promotes and verifies the real scaffold, and the release makes working keys", async () => {
+    const { api } = await import("@karigor/profiles");
+    const { LocalSandbox } = await import("@karigor/sandbox");
+    const projectDir = await mkdtemp(join(tmpdir(), "karigor-live-api-"));
+    const ws = await Workspace.create(join(projectDir, "workspace"), api);
+    // the same checks every build item ends with
+    const box = new LocalSandbox(ws, api);
+    const t = await box.runTests();
+    expect(t.failed, t.output.slice(-3000)).toBe(0);
+    expect(t.passed).toBeGreaterThanOrEqual(10);
+    const deploy = new LocalDeploy({ projectDir, profile: api, healthTimeoutMs: 120_000 });
+    started.push(deploy);
+    const sha = await ws.head();
+    const r = { dir: ws.dir, version: releaseVersion(1, sha), commit: sha, key: "live" };
+    const p = await deploy.preview(r);
+    expect(p.ok, p.output.slice(-3000)).toBe(true);
+    expect(await (await fetch(`${p.url}/health`)).json()).toEqual({ ok: true });
+    const promoted = await deploy.promote({ ...r, preview: p });
+    expect(promoted.ok).toBe(true);
+    // what `karigor access-key` runs for a service on this computer
+    const live = await deploy.current();
+    const { run: runCommand } = await import("@karigor/sandbox");
+    const k = await runCommand("pnpm", ["-s", "key:new", "Owner"], { cwd: deploy.releaseDir(live!.version), env: await deploy.settingsEnv(), timeoutMs: 120_000 });
+    const key = /key_[A-Za-z0-9_-]{16,}/.exec(k.stdout)?.[0];
+    expect(key, k.stdout + k.stderr).toBeTruthy();
+    const me = await fetch(`${p.url}/v1/me`, { headers: { authorization: `Bearer ${key}` } });
+    expect(await me.json()).toEqual({ name: "Owner", scope: "full" });
+    expect((await deploy.verifyRollback({ dir: ws.dir })).ok).toBe(true);
+  }, 900_000);
+});

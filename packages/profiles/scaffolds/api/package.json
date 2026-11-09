@@ -1,0 +1,30 @@
+{
+  "name": "karigor-api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/serve.ts",
+    "build": "drizzle-kit migrate && tsc --noEmit",
+    "start": "tsx src/serve.ts",
+    "lint": "tsc --noEmit && tsx scripts/check-docs.ts",
+    "test": "vitest run --reporter=json --reporter=default",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "key:new": "tsx scripts/key-new.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.0",
+    "@libsql/client": "^0.15.0",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.10.0",
+    "tsx": "^4.20.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "drizzle-kit": "^0.31.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.12"
+  }
+}

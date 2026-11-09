@@ -239,6 +239,29 @@ describe("the owner's first link for a hosted app", () => {
   });
 });
 
+describe("a service's first access key", () => {
+  it("asks the hosted service with the key Karigor kept, and never claims a key it did not get", async () => {
+    const { FakeDeploy } = await import("@karigor/deploy");
+    const { keepOwnerSecret } = await import("@karigor/store");
+    const { ownerAccessKey } = await import("../src/index.js");
+    const dir = await mkdtemp(join(tmpdir(), "karigor-key-"));
+    const deploy = new FakeDeploy();
+    const seen: { url: string; auth: string | null; body: string }[] = [];
+    const fetcher = (async (url: string, init: RequestInit) => {
+      seen.push({ url, auth: new Headers(init.headers).get("authorization"), body: String(init.body) });
+      return new Response(JSON.stringify({ key: "key_not-a-real-key-0000", name: "Rina" }), { status: 200 });
+    }) as unknown as typeof fetch;
+    expect((await ownerAccessKey(deploy, "Rina", { projectDir: dir, url: "https://shop-api.vercel.app", fetcher })).ok).toBe(false);
+    expect(seen).toEqual([]);
+    await keepOwnerSecret(dir, { OWNER_LINK_SECRET: "k3y" });
+    const r = await ownerAccessKey(deploy, "Rina", { projectDir: dir, url: "https://shop-api.vercel.app/", fetcher });
+    expect(r).toMatchObject({ ok: true, key: "key_not-a-real-key-0000" });
+    expect(seen).toEqual([{ url: "https://shop-api.vercel.app/owner-key", auth: "Bearer k3y", body: JSON.stringify({ name: "Rina" }) }]);
+    const refused = (async () => new Response(JSON.stringify({ error: "not allowed" }), { status: 401 })) as unknown as typeof fetch;
+    expect(await ownerAccessKey(deploy, "", { projectDir: dir, url: "https://shop-api.vercel.app", fetcher: refused })).toEqual({ ok: false, output: "The service did not make a key (401: not allowed)." });
+  });
+});
+
 describe("a project keeps its kind of software", () => {
   it("reopens as the kind it was built as, and a new one may become any buildable kind", async () => {
     const { runOptions } = await import("../src/index.js");
@@ -246,7 +269,7 @@ describe("a project keeps its kind of software", () => {
     const fresh = await createProject(root, "A page for my bakery", { committer: noopCommitter });
     const o = await runOptions(root, fresh, { adapter: "claude-code", profile: "web-app", deploy: "none" });
     expect(o.profile?.name).toBe("web-app");
-    expect(o.buildable).toEqual(["web-app", "static-site"]);
+    expect(o.buildable).toEqual(["web-app", "static-site", "api"]);
     expect((await o.retarget!("static-site"))?.profile.name).toBe("static-site");
     expect(await o.retarget!("mobile-app")).toBeUndefined();
 

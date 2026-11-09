@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { BUILDABLE, fixture, parsePlaywrightJson, parseVitestJson, profileFor, renderCapabilities, staticSite, webApp } from "../src/index.js";
+import { api, BUILDABLE, fixture, parsePlaywrightJson, parseVitestJson, profileFor, renderCapabilities, staticSite, webApp } from "../src/index.js";
 
 const run = promisify(execFile);
 
@@ -24,7 +24,7 @@ describe("profiles", () => {
   it("static-site scaffold checks its pages, builds, and its checker catches broken pages", async () => {
     const dir = await mkdtemp(join(tmpdir(), "karigor-static-"));
     await staticSite.scaffold(dir);
-    expect(BUILDABLE).toEqual(["web-app", "static-site"]);
+    expect(BUILDABLE).toEqual(["web-app", "static-site", "api"]);
     expect(profileFor("static-site")).toBe(staticSite);
     for (const f of ["package.json", ".gitignore", "vercel.json", "site/index.html", "site/404.html", "site/styles.css", "scripts/pages.mjs", "tests/site.test.js"]) {
       await expect(readFile(join(dir, f), "utf8"), f).resolves.toBeDefined();
@@ -44,6 +44,25 @@ describe("profiles", () => {
     expect(await run("node", ["scripts/check.mjs"], { cwd: dir }).then(() => "", (e: { stderr: string }) => e.stderr)).not.toMatch(/logo.png" points at nothing/);
     expect(staticSite.commands.e2e).toBeUndefined();
     expect(staticSite.stackGuide).toMatch(/wa\.me/);
+  });
+
+  it("api scaffold has the files the stack guide promises, a migration, and settings explained in Bangla too", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "karigor-api-"));
+    await api.scaffold(dir);
+    expect(profileFor("api")).toBe(api);
+    for (const f of ["package.json", ".gitignore", ".env.example", "vercel.json", "src/app.ts", "src/serve.ts", "src/lib/access.ts", "src/lib/docs.ts", "src/lib/service.ts", "src/lib/validate.ts", "src/server/auth.ts", "src/server/keys.ts", "src/server/owner-key.ts", "src/db/schema.ts", "tests/api.ts", "tests/db.ts", "scripts/key-new.ts", "scripts/check-docs.ts", "drizzle/0000_init.sql", "drizzle/meta/_journal.json"]) {
+      await expect(readFile(join(dir, f), "utf8"), f).resolves.toBeDefined();
+    }
+    const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));
+    expect(pkg.scripts.test).toMatch(/vitest run --reporter=json/);
+    // Karigor gives the owner their first key with the same script name and secret it already knows
+    expect(pkg.scripts["key:new"]).toBeTruthy();
+    expect(await readFile(join(dir, ".env.example"), "utf8")).toMatch(/# karigor: generate\nOWNER_LINK_SECRET=/);
+    for (const m of ["need(c,", "ENDPOINTS", "testApi()", "c.var.db", "Fake secrets in tests look plainly fake"]) expect(api.stackGuide).toContain(m);
+    const { readSettings } = await import("../src/index.js");
+    expect((await readSettings(dir)).filter((x) => !x.noteBn).map((x) => x.name)).toEqual([]);
+    expect(api.healthPath).toBe("/health");
+    expect(api.capabilities?.notYet.join(" ")).toMatch(/Screens for people/);
   });
 
   it("web-app scaffold has the files the stack guide promises", async () => {

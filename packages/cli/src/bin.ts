@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore, ideaLanguage, languageOf, queueInbox, runningPid, type ProjectState } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, ownerAccessKey, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { liveRecord, renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject, runWaiting } from "./run.js";
@@ -309,6 +309,18 @@ runFlags(program.command("admin-link").argument("<projectId>").argument("<email>
     const store = await FsStore.open(root, projectId);
     const live = await liveRecord(store, await store.replay());
     const r = await adminLink(opts.deploy, email, name, { projectDir: store.dir, ...(live?.url ? { url: live.url } : {}) });
+    console.log(r.output);
+    if (!r.ok) process.exitCode = 1;
+  });
+
+runFlags(program.command("access-key").argument("<projectId>").argument("[name]"))
+  .description("for a service: make an access key with every permission and print it once")
+  .action(async (projectId: string, name: string | undefined, o: RunFlags) => {
+    const root = program.opts<{ root: string }>().root;
+    const opts = await runOptions(root, projectId, o);
+    const store = await FsStore.open(root, projectId);
+    const live = await liveRecord(store, await store.replay());
+    const r = await ownerAccessKey(opts.deploy, name, { projectDir: store.dir, ...(live?.url ? { url: live.url } : {}) });
     console.log(r.output);
     if (!r.ok) process.exitCode = 1;
   });

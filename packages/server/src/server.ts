@@ -4,7 +4,7 @@ import { readFile, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, GivenError, GIVEN_LIMITS, addGiven, queueInbox, runningPid } from "@karigor/store";
-import { adminLink, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
+import { adminLink, ownerAccessKey, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
 import { People, type Person } from "./people.js";
@@ -476,6 +476,23 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
         throw new HttpError(400, "the sign-in link could not be made here; ask whoever runs this Karigor");
       }
       return send(res, 200, await publicUrls({ link }));
+    }
+    if (method === "POST" && action === "key") {
+      // A service's owner gets an access key with every permission, shown once.
+      const b = await body(req);
+      const name = typeof b["name"] === "string" ? b["name"].trim().slice(0, 100) : "";
+      const v = await view(id);
+      if (!v.live) throw new HttpError(409, "it is not online yet");
+      if (!v.accessKey) throw new HttpError(409, "this app has no access keys");
+      const opts = await runOptions(o.root, id, await flagsFor(id), { log: (l) => log(`[${id}] ${l}`) });
+      const live = (await projectView(await FsStore.open(o.root, id), false)).live;
+      const r = await ownerAccessKey(opts.deploy, name, { projectDir: join(o.root, id), ...(live?.url ? { url: live.url } : {}) });
+      if (!r.ok || !r.key) {
+        log(`[${id}] access key failed: ${r.output}`);
+        throw new HttpError(400, "the access key could not be made here; ask whoever runs this Karigor");
+      }
+      log(`[${id}] made an access key for ${name || "Owner"}`);
+      return send(res, 200, { key: r.key });
     }
     throw new HttpError(404, "not found");
   };

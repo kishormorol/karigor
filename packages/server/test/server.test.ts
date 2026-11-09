@@ -223,6 +223,21 @@ describe("server", { timeout: 180_000 }, () => {
     }
   });
 
+  it("offers an access key only for a live service", async () => {
+    const { k, call, root } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    const v = (await call(`/api/projects/${id}`)).json;
+    expect(v["accessKey"]).toBeUndefined();
+    const r = await call(`/api/projects/${id}/key`, { method: "POST", body: JSON.stringify({ name: "Owner" }) });
+    expect(r.status).toBe(409);
+    expect(r.json["error"]).toMatch(v["live"] ? /no access keys/ : /not online/);
+    if (v["live"]) {
+      await writeFile(join(root, id, "workspace", "package.json"), JSON.stringify({ scripts: { "key:new": "tsx scripts/key-new.ts" } }));
+      expect((await call(`/api/projects/${id}`)).json["accessKey"]).toBeDefined();
+    }
+  });
+
   it("deletes a project and everything about it, but not while it is being built", async () => {
     const { k, call, root } = await start();
     const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;

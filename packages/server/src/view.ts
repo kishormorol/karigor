@@ -30,6 +30,8 @@ export interface ProjectView {
   nextStage?: { name: string; goal: string };
   /** The live app has people with sign-in, so its owner can ask here for their first way in. */
   signIn?: boolean;
+  /** A service (api): its owner can get an access key here; `docs` is its docs page. */
+  accessKey?: { docs?: string };
   /** Files the person added (a logo, a price list). */
   files: { name: string; bytes: number; kind: string }[];
   /** The event log as plain sentences, oldest first. */
@@ -96,6 +98,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
   const waitingFor = state.status === "waiting" ? settings.filter((s) => state.waitingFor?.includes(s.name)).map((s) => ({ name: s.name, note: s.note, ...(s.noteBn ? { noteBn: s.noteBn } : {}), kind: s.kind, ...(s.service ? { service: s.service } : {}) })) : [];
   const pkg = live ? (JSON.parse(await readFile(join(store.dir, "workspace", "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> }) : {};
   const signIn = !!live && !!pkg.scripts?.["admin:link"];
+  const accessKey = live && pkg.scripts?.["key:new"] ? { ...(live.url ? { docs: `${live.url.replace(/\/$/, "")}/docs` } : {}) } : undefined;
   return {
     id: store.projectId,
     idea,
@@ -118,6 +121,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
     workItems,
     ...(stages ? { stages } : {}),
     ...(signIn ? { signIn } : {}),
+    ...(accessKey ? { accessKey } : {}),
     files: (await listGiven(store.dir)).map((f) => ({ name: f.name, bytes: f.bytes, kind: f.kind })),
     ...(state.status === "finished" && plan.next && plan.stages.length > 1 ? { nextStage: { name: plan.next.name, goal: plan.next.goal } } : {}),
     story: (await renderExplain(store, events, lang)).split("\n").filter(Boolean),

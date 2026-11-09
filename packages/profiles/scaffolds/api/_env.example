@@ -1,0 +1,12 @@
+# Where the service keeps its data. On this computer it is a file; when hosted, a free Turso database (libsql://<name>.turso.io).
+# bn: সেবাটি যেখানে তথ্য রাখে। এই কম্পিউটারে এটি একটি ফাইল; অনলাইনে চালালে একটি বিনা খরচের Turso ডেটাবেস (libsql://<name>.turso.io)।
+# karigor: service turso
+DATABASE_URL=file:./data/app.db
+# Optional: the Turso database token, needed only when hosted.
+# bn: Turso ডেটাবেসের টোকেন, শুধু অনলাইনে চালালে লাগে।
+# karigor: service turso
+DATABASE_AUTH_TOKEN=
+# The key Karigor uses to give the owner their first access key once the service is online. A random secret; nobody needs to know it.
+# bn: অনলাইনে আসার পর মালিককে প্রথম অ্যাক্সেস কী দিতে Karigor যে গোপন চাবি ব্যবহার করে। এটি নিজে থেকে তৈরি হয়; কারও জানার দরকার নেই।
+# karigor: generate
+OWNER_LINK_SECRET=
