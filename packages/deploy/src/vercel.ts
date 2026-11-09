@@ -5,7 +5,7 @@ import type { DeployAdapter, DeployRequest, DeployResult, LiveRelease } from "./
 
 export type VercelExec = (file: string, args: string[], opts: { cwd: string; timeoutMs: number; env: NodeJS.ProcessEnv; input?: string }) => Promise<{ stdout: string; stderr: string; code: number | null }>;
 
-const defaultExec: VercelExec = (file, args, { cwd, timeoutMs, env, input }) =>
+export const defaultExec: VercelExec = (file, args, { cwd, timeoutMs, env, input }) =>
   new Promise((resolve) => {
     const child = execFile(file, args, { cwd, timeout: timeoutMs, env, maxBuffer: 32 * 1024 * 1024 }, (err, stdout, stderr) => {
       const e = err as (Error & { code?: unknown; killed?: boolean }) | null;
@@ -181,6 +181,13 @@ export class VercelDeploy implements DeployAdapter {
     return this.waitLive(id, r.dir, res);
   }
 
+  /** Production's request logs: requests that failed with a 5xx, and anything logged as an error. */
+  async recentErrors(since: Date): Promise<string[]> {
+    const res = await this.cli(["logs", "--project", this.o.project, "--environment", "production", "--since", since.toISOString(), "--json", "--limit", "500"], process.cwd());
+    if (!res.ok) throw new Error(`could not read the app's logs on Vercel: ${res.output.split("\n").at(-1)}`);
+    return vercelErrorLines(res.stdout);
+  }
+
   /** What `vercel inspect` says about a deployment or a domain. */
   private async inspect(target: string, cwd: string): Promise<{ id?: string; status?: string; aliases: string[] }> {
     const res = await this.cli(["inspect", target], cwd);
@@ -244,7 +251,7 @@ export class VercelDeploy implements DeployAdapter {
 }
 
 /** A GET that does not follow redirects off the host: a redirect to Vercel's login is not a healthy app. */
-async function publicCheck(url: string, f: typeof fetch, headers: Record<string, string> = {}): Promise<UrlCheck & { protectedBy?: boolean }> {
+export async function publicCheck(url: string, f: typeof fetch, headers: Record<string, string> = {}): Promise<UrlCheck & { protectedBy?: boolean }> {
   try {
     let target = url;
     for (let hops = 0; hops < 5; hops++) {
@@ -313,4 +320,26 @@ export function projectSlug(title: string, projectId: string): string {
   for (const w of words) if ((base ? base.length + 1 : 0) + w.length <= 28) base = base ? `${base}-${w}` : w; else break;
   base ||= words[0]?.slice(0, 28) || "karigor-app";
   return `${base}-${projectId.slice(-6)}`.replace(/--+/g, "-");
+}
+
+/** Error lines from `vercel logs --json` output: one per failed request or error entry, oldest first. */
+export function vercelErrorLines(jsonLines: string): string[] {
+  const out: { at: number; line: string }[] = [];
+  for (const raw of jsonLines.split("\n")) {
+    if (!raw.trim().startsWith("{")) continue;
+    let e: { timestamp?: number; level?: string; message?: string; requestMethod?: string; requestPath?: string; responseStatusCode?: number; logs?: { level?: string; message?: string }[] };
+    try {
+      e = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    const status = e.responseStatusCode ?? 0;
+    const errorLog = [...(e.logs ?? []), ...(e.message ? [{ level: e.level, message: e.message }] : [])].find((l) => /^(error|fatal)$/i.test(l.level ?? "") || /\b(Error|Exception)\b/.test(l.message ?? ""));
+    if (status < 500 && !errorLog) continue;
+    const first = (errorLog?.message ?? "").split("\n").find((l) => l.trim())?.trim() ?? "";
+    const req = e.requestMethod && e.requestPath ? `${e.requestMethod} ${e.requestPath}${status ? ` ${status}` : ""}` : "";
+    const text = [req, first].filter(Boolean).join(" ");
+    out.push({ at: e.timestamp ?? 0, line: /\b(Error|Exception)\b/.test(text) || / 5\d\d\b/.test(text) ? text : `Error: ${text}` });
+  }
+  return out.sort((a, b) => a.at - b.at).map((x) => x.line);
 }

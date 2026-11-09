@@ -8,3 +8,5 @@ export * from "./vercel.js";
 export function releaseVersion(n: number, commit: string): string {
   return `r${n}-${commit.slice(0, 7)}`;
 }
+export * from "./netlify.js";
+export * from "./cloudflare.js";

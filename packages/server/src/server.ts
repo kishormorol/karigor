@@ -469,8 +469,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       await people.disown(id);
       await rm(join(o.root, id), { recursive: true, force: true });
       log(`[${id}] deleted`);
-      // An app put online elsewhere (Vercel) is not Karigor's to remove; the person is told where it still is.
-      const stillOnline = o.deploy === "vercel" ? v.live?.url : undefined;
+      // An app put online elsewhere (Vercel, Netlify, Cloudflare) is not Karigor's to remove; the person is told where it still is.
+      const stillOnline = o.deploy && o.deploy !== "local" ? v.live?.url : undefined;
       return send(res, 200, { deleted: true, ...(stillOnline ? { stillOnline } : {}) });
     }
     if (method === "POST" && action === "signin") {

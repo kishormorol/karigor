@@ -4,8 +4,8 @@
  */
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { stat } from "node:fs/promises";
-import { FsStore, acquireRunLock, assertIdle, keepOwnerSecret, makeId, ownerSecret, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState, type Stage } from "@karigor/store";
+import { readFile, stat, writeFile } from "node:fs/promises";
+import { FsStore, acquireRunLock, assertIdle, ignoreInProjectGit, keepOwnerSecret, makeId, ownerSecret, type Artifact, type Committer, type MetaOf, type NewEvent, type ProjectState, type Stage } from "@karigor/store";
 import { loadTemplate } from "@karigor/process";
 import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
@@ -166,6 +166,8 @@ export interface OperateOptions extends Omit<RunOptions, "root" | "projectId"> {
   signals?: Signal[];
   /** Record signals but do not start a fix round. */
   recordOnly?: boolean;
+  /** Read the hosted app's logs since the last look, and turn its errors into work items. */
+  hostedLogs?: boolean;
 }
 
 export interface OperateResult {
@@ -194,6 +196,22 @@ async function operateOnceLocked(o: OperateOptions): Promise<OperateResult> {
     const s = await healthSignal(o.healthUrl, o.healthCheck ?? {});
     if (s) signals.push(s);
   }
+  if (o.hostedLogs && o.deploy?.recentErrors) {
+    // From the last look (an hour back the first time), so an error is counted once.
+    const mark = join(store.dir, "logs-checked-at");
+    const last = Date.parse((await readFile(mark, "utf8").catch(() => "")).trim());
+    const now = clock();
+    const since = new Date(Number.isFinite(last) ? last : now.getTime() - 60 * 60 * 1000);
+    try {
+      const lines = await o.deploy.recentErrors(since);
+      signals.push(...errorSignals(lines));
+      await ignoreInProjectGit(store.dir, ["logs-checked-at"]);
+      await writeFile(mark, now.toISOString(), "utf8");
+      if (lines.length) log(`the live app's logs show ${lines.length} problem line(s) since ${since.toISOString()}`);
+    } catch (e) {
+      log((e as Error).message);
+    }
+  }
   if (o.audit && o.profile) {
     const dir = join(store.dir, "workspace");
     if (await stat(join(dir, ".git")).then(() => true, () => false)) {
@@ -206,7 +224,7 @@ async function operateOnceLocked(o: OperateOptions): Promise<OperateResult> {
   let state = await store.replay();
   // A project paused for the provider's allowance carries on at the next pass.
   if (!o.recordOnly && state.status === "waiting" && state.pausedReason) {
-    const { healthUrl: _h, healthCheck: _c, audit: _a, signals: _s, recordOnly: _r, ...run } = o;
+    const { healthUrl: _h, healthCheck: _c, audit: _a, signals: _s, recordOnly: _r, hostedLogs: _l, ...run } = o;
     log("carrying on after the pause");
     state = await runProject(run);
     return { recorded, state };
@@ -215,7 +233,7 @@ async function operateOnceLocked(o: OperateOptions): Promise<OperateResult> {
   const cycle = await startMaintenance(store, { adapter: o.adapter, ...(o.templatesDir ? { templatesDir: o.templatesDir } : {}), clock });
   if (cycle === undefined) return { recorded, state };
   log(`fix round ${cycle}: starting`);
-  const { healthUrl: _h, healthCheck: _c, audit: _a, signals: _s, recordOnly: _r, ...run } = o;
+  const { healthUrl: _h, healthCheck: _c, audit: _a, signals: _s, recordOnly: _r, hostedLogs: _l, ...run } = o;
   state = await runProject(run);
   return { recorded, cycle, state };
 }

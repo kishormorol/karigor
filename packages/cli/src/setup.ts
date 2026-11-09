@@ -3,7 +3,7 @@ import { FsStore } from "@karigor/store";
 import { FakeSandbox } from "@karigor/gates";
 import { ClaudeAdapter, ClaudeCodeAdapter, ClaudeCodeAgent, ModelAgent, OllamaAdapter, type AgentAdapter, type ModelAdapter } from "@karigor/runtime";
 import { BUILDABLE, profileFor, type Profile } from "@karigor/profiles";
-import { LocalDeploy, VercelDeploy, projectSlug, type DeployAdapter } from "@karigor/deploy";
+import { CloudflarePagesDeploy, LocalDeploy, NetlifyDeploy, VercelDeploy, projectSlug, type DeployAdapter } from "@karigor/deploy";
 import { demoAdapter } from "./demo.js";
 import type { RunOptions } from "./run.js";
 
@@ -49,8 +49,20 @@ export async function deployFor(target: string | undefined, store: FsStore, prof
       const idea = state.ideaId ? (await store.readArtifact("idea", state.ideaId)).meta.text : store.projectId;
       return new VercelDeploy({ project: projectSlug(idea, store.projectId), ...(profile.healthPath ? { healthPath: profile.healthPath } : {}), ...(process.env["KARIGOR_DEPLOY_ENV"] ? { envNames: process.env["KARIGOR_DEPLOY_ENV"].split(",").map((x) => x.trim()).filter(Boolean) } : {}) });
     }
+    case "netlify": {
+      if (profile.name !== "web-app" && profile.name !== "static-site") throw new Error(`Netlify hosts web apps and simple websites; this is a ${profile.name}, so use vercel or local`);
+      const state = await store.replay();
+      const idea = state.ideaId ? (await store.readArtifact("idea", state.ideaId)).meta.text : store.projectId;
+      return new NetlifyDeploy({ project: projectSlug(idea, store.projectId), kind: profile.name, ...(profile.healthPath ? { healthPath: profile.healthPath } : {}), ...(log ? { log } : {}) });
+    }
+    case "cloudflare": {
+      if (profile.name !== "static-site") throw new Error(`Cloudflare Pages hosts simple websites; this is a ${profile.name}, so use vercel, netlify or local`);
+      const state = await store.replay();
+      const idea = state.ideaId ? (await store.readArtifact("idea", state.ideaId)).meta.text : store.projectId;
+      return new CloudflarePagesDeploy({ project: projectSlug(idea, store.projectId), ...(profile.healthPath ? { healthPath: profile.healthPath } : {}) });
+    }
     default:
-      throw new Error(`unknown deploy target "${t}" (use local, vercel or none)`);
+      throw new Error(`unknown deploy target "${t}" (use local, vercel, netlify, cloudflare or none)`);
   }
 }
 

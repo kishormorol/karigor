@@ -41,7 +41,7 @@ const runFlags = (c: Command) =>
     .option("--adapter <name>", "claude-code (your Claude Code login, no key), claude (API key), ollama (local, free) or demo (offline)", "claude-code")
     .option("--tier <tier>", "free, cheap or best (asked once; default best for claude-code and ollama, which cost nothing per call; free for demo; cheap for claude)")
     .option("--profile <name>", "target profile for real builds", "web-app")
-    .option("--deploy <target>", "where releases go: local (this computer, free), vercel (VERCEL_TOKEN) or none; default: the project's last target, else local")
+    .option("--deploy <target>", "where releases go: local (this computer, free), vercel (VERCEL_TOKEN), netlify (NETLIFY_AUTH_TOKEN; web apps and simple websites), cloudflare (CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID; simple websites) or none; default: the project's last target, else local")
     .option("--port <n>", "port for the live app on the local target (default: the port it last went live on, else 3000)");
 
 runFlags(
@@ -353,7 +353,7 @@ runFlags(program.command("watch").argument("<projectId>"))
     for (;;) {
       const state = await store.replay();
       const url = o.url ?? (await hostedHealthUrl(store, state, opts.profile?.healthPath));
-      const r = await operateOnce({ ...opts, audit: true, ...(url ? { healthUrl: url } : {}) });
+      const r = await operateOnce({ ...opts, audit: true, hostedLogs: true, ...(url ? { healthUrl: url } : {}) });
       console.log(r.cycle ? `Fix round ${r.cycle}: ${r.state.status}.` : r.recorded.length ? `${r.recorded.length} new problem(s) noted.` : `All quiet${url ? ` (${url} is healthy)` : ""}.`);
       if (!o.every) break;
       await new Promise((res) => setTimeout(res, Number(o.every) * 60_000));

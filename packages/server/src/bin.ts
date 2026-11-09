@@ -26,7 +26,7 @@ if (v.help) {
   --port <n>         port for the UI (PORT, default 4321)
   --host <addr>      address to listen on (KARIGOR_HOST, default 127.0.0.1)
   --adapter <name>   claude-code, claude, ollama or demo (KARIGOR_ADAPTER)
-  --deploy <target>  local, vercel or none (KARIGOR_DEPLOY)
+  --deploy <target>  local, vercel, netlify, cloudflare or none (KARIGOR_DEPLOY)
   --app-port <n>     port of the live app on the local target (KARIGOR_APP_PORT)
 
 Set KARIGOR_TOKEN to require an access link (/?token=...). Required when the host is not 127.0.0.1.

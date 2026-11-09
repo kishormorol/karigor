@@ -1,0 +1,4 @@
+# How Netlify builds this app (migrations, then Next.js on Netlify's runtime). Vercel and this computer ignore it.
+[build]
+  command = "pnpm build"
+  publish = ".next"

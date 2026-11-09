@@ -1,0 +1,4 @@
+# How Netlify builds this site. Other hosts ignore it.
+[build]
+  command = "pnpm build"
+  publish = "dist"

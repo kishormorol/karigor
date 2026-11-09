@@ -239,6 +239,24 @@ describe("the owner's first link for a hosted app", () => {
   });
 });
 
+describe("errors in a hosted app's logs", { timeout: 120_000 }, () => {
+  it("become work items, and each look starts where the last one ended", async () => {
+    const { base, deploy } = await released();
+    const asked: Date[] = [];
+    let lines = ["POST /api/visits 500 TypeError: Cannot read properties of undefined (reading 'id')", "POST /api/visits 500 TypeError: Cannot read properties of undefined (reading 'id')"];
+    const hosted = Object.assign(Object.create(Object.getPrototypeOf(deploy)) as typeof deploy, deploy, {
+      recentErrors: async (since: Date) => (asked.push(since), lines),
+    });
+    const r = await operateOnce({ ...base, deploy: hosted, hostedLogs: true, recordOnly: true });
+    expect(r.recorded).toHaveLength(1);
+    expect(asked[0]!.toISOString()).toBe("2026-10-19T23:00:00.000Z");
+    lines = [];
+    await operateOnce({ ...base, deploy: hosted, hostedLogs: true, recordOnly: true });
+    expect(asked[1]!.toISOString()).toBe(NOW().toISOString());
+    expect(await readFile(join(base.root, base.projectId, ".gitignore"), "utf8")).toContain("logs-checked-at");
+  });
+});
+
 describe("a service's first access key", () => {
   it("asks the hosted service with the key Karigor kept, and never claims a key it did not get", async () => {
     const { FakeDeploy } = await import("@karigor/deploy");

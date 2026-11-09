@@ -180,6 +180,15 @@ karigor watch <id> --every 15                  # checks the live site and fixes 
 
 Karigor uses the Vercel CLI's own login (`vercel login`), or a token in `VERCEL_TOKEN`.
 
+Other free hosts:
+
+- **Netlify** (web apps and simple websites): `--deploy netlify`. Install its command line once (`npm install -g netlify-cli`) and put a personal access token in `NETLIFY_AUTH_TOKEN` (app.netlify.com/user/applications). The app is built on this computer with the settings saved on Netlify, then each version is published as it was checked.
+- **Cloudflare Pages** (simple websites): `--deploy cloudflare`. Install Wrangler once (`npm install -g wrangler`), and set `CLOUDFLARE_API_TOKEN` (a token allowed to edit Pages) and `CLOUDFLARE_ACCOUNT_ID`.
+
+A service (an API) goes on Vercel or this computer.
+
+`karigor watch` also reads a Vercel app's own logs since the last look: a request that failed or an error the app logged becomes a problem to fix, like downtime does.
+
 ### Phone apps
 
 Once a web app is online at its Vercel address, Karigor can make an **Android app** and an **iPhone app** for it: press **Make phone apps** on the chat page, or run `karigor phone-apps <id>`. Both open the live app with its own name, colours and icon, so every new release reaches the phones without a new build.
