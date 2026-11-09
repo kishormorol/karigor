@@ -42,9 +42,19 @@ export class RunningServer {
     this.listeners.push(f);
   }
 
+  /** The port the app says it listens on, when that is not the one it was given. */
+  private otherPort(): number | undefined {
+    for (const m of this.out.matchAll(/\b(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1?\]):(\d{2,5})\b/g)) {
+      const p = Number(m[1]);
+      if (p !== this.port) return p;
+    }
+    return undefined;
+  }
+
   /** Poll `path` until it answers below 400, the process exits, or time runs out. */
   async waitHealthy(path: string, timeoutMs: number): Promise<{ ok: boolean; output: string }> {
-    const deadline = Date.now() + timeoutMs;
+    const started = Date.now();
+    const deadline = started + timeoutMs;
     let last = "";
     while (Date.now() < deadline) {
       if (!this.alive) return { ok: false, output: `the app stopped (exit ${this.exited}) before it answered:\n${this.out.slice(-3000)}` };
@@ -52,9 +62,13 @@ export class RunningServer {
       if (r.ok) return { ok: true, output: `${this.url}${path} answered ${r.status}` };
       last = `${r.status}: ${r.output}`;
       if (r.status >= 400) return { ok: false, output: `${this.url}${path} answered ${last}\n${this.out.slice(-3000)}` };
+      // An app that announced another port will never answer on this one: say so without waiting out the clock.
+      const other = this.otherPort();
+      if (other !== undefined && Date.now() - started > Math.min(10_000, timeoutMs / 2)) return { ok: false, output: `${wrongPort(other, this.port)}\n${this.out.slice(-3000)}` };
       await new Promise((res) => setTimeout(res, 250));
     }
-    return { ok: false, output: `${this.url}${path} did not answer within ${Math.round(timeoutMs / 1000)}s (${last})\n${this.out.slice(-3000)}` };
+    const other = this.otherPort();
+    return { ok: false, output: `${other !== undefined ? `${wrongPort(other, this.port)}\n` : ""}${this.url}${path} did not answer within ${Math.round(timeoutMs / 1000)}s (${last})\n${this.out.slice(-3000)}` };
   }
 
   /** Stop the whole process group, politely first. */
@@ -81,6 +95,9 @@ export class RunningServer {
     }
   }
 }
+
+const wrongPort = (other: number, given: number) =>
+  `the app started on port ${other}, not on the port it was given (PORT=${given}): its start command or its code fixes the port. Karigor chooses the port for every preview and release, so the app must listen on the PORT setting (for example a plain \`next start\`, with no -p).`;
 
 /** Start `argv` in `cwd` with `PORT` set, in its own process group so it can be stopped as a whole. */
 export function startServer(argv: string[], cwd: string, port: number, env: NodeJS.ProcessEnv = {}): RunningServer {

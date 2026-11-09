@@ -118,11 +118,11 @@ export class LocalDeploy implements DeployAdapter {
 
   async preview(r: DeployRequest): Promise<DeployResult> {
     const prepared = await this.prepare(r);
-    if (!prepared.ok) return { ok: false, id: r.version, output: `the release could not be built\n${prepared.output}` };
+    if (!prepared.ok) return { ok: false, id: r.version, reason: "the release could not be built", output: `the release could not be built\n${prepared.output}` };
     await this.previews.get(r.version)?.stop();
     const port = await freePort();
     const s = await this.start(r.version, port);
-    if (!s.ok) return { ok: false, id: r.version, output: `${prepared.output}\nthe preview did not become healthy:\n${s.output}` };
+    if (!s.ok) return { ok: false, id: r.version, reason: s.output.split("\n")[0] ?? "", output: `${prepared.output}\nthe preview did not become healthy:\n${s.output}` };
     this.previews.set(r.version, s.server);
     return { ok: true, url: s.server.url, id: r.version, output: `${prepared.output}\npreview running at ${s.server.url}; ${s.output}` };
   }

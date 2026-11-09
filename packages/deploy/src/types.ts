@@ -19,6 +19,8 @@ export interface DeployResult {
   id?: string;
   /** What happened, for the deploy record's body. */
   output: string;
+  /** When it failed: the cause in one line, for the run log. */
+  reason?: string;
 }
 
 /** The release that is live now, when there is one. Rollback returns to it. */

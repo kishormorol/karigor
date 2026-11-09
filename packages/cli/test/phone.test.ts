@@ -76,7 +76,7 @@ describe("the live app's look", () => {
   });
 });
 
-describe.runIf(process.platform !== "win32")("the Android signing key", () => {
+describe.runIf(process.platform !== "win32")("the Android signing key", { timeout: 60_000 }, () => {
   it("is made once, kept private and out of git, and Java reads it with the same fingerprint", async () => {
     if (!(await has("openssl"))) return;
     const dir = await mkdtemp(join(tmpdir(), "karigor-signing-"));

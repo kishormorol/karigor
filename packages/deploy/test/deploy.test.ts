@@ -62,6 +62,17 @@ describe("LocalDeploy", { timeout: 60_000 }, () => {
     expect(p.output).toMatch(/stopped|could not start/);
   });
 
+  it("a release that fixes its own port is told so, without waiting out the clock", async () => {
+    const { ws, deploy } = await setup();
+    const sha = await commit(ws, { "fixed-port": "" });
+    const t = Date.now();
+    const p = await deploy.preview(req(ws, 1, sha));
+    expect(p.ok).toBe(false);
+    expect(p.reason).toMatch(/^the app started on port \d+, not on the port it was given \(PORT=\d+\)/);
+    expect(p.output).toMatch(/must listen on the PORT setting/);
+    expect(Date.now() - t).toBeLessThan(9_000);
+  });
+
   it("a failing build never reaches a server", async () => {
     const { ws, deploy } = await setup();
     const sha = await commit(ws, { "build-fail": "" });

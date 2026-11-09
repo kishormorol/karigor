@@ -281,7 +281,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
     };
     await store.writeArtifact(record);
     await append({ type: "artifact-written", by: "system", kind: "deploy-record", id: record.meta.id });
-    if (!res.ok) log(`  the preview failed: ${res.output.split("\n").at(-1) ?? ""}`);
+    if (!res.ok) log(`  the preview failed: ${res.reason ?? res.output.split("\n").filter((l) => l.trim()).at(-1) ?? ""}`);
     return record as Awaited<ReturnType<typeof deployRecords>>[number];
   };
   /**

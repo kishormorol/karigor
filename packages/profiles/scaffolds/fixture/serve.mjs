@@ -1,8 +1,9 @@
 import { createServer } from "node:http";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 if (existsSync("start-fail")) { console.error("Error: could not start"); process.exit(1); }
-const port = Number(process.env.PORT ?? 3000);
-createServer((req, res) => {
+// `fixed-port` makes the app ignore PORT, as a start command with its own port does.
+const port = existsSync("fixed-port") ? 0 : Number(process.env.PORT ?? 3000);
+const server = createServer((req, res) => {
   if (req.url === "/health") {
     // `needs-setting` names environment variables the app cannot work without.
     const needs = existsSync("needs-setting") ? readFileSync("needs-setting", "utf8").split(/\s+/).filter(Boolean) : [];
@@ -18,4 +19,4 @@ createServer((req, res) => {
   }
   res.writeHead(200, { "content-type": "text/plain" });
   res.end(`fixture app: ${existsSync("src") ? readdirSync("src").sort().join(", ") : ""}\n`);
-}).listen(port, "127.0.0.1", () => console.log(`listening on ${port}`));
+}).listen(port, "127.0.0.1", () => console.log(port ? `listening on ${port}` : `listening on http://localhost:${server.address().port}`));
