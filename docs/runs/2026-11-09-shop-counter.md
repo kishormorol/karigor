@@ -22,6 +22,12 @@ The idea, as given: *a shop counter for a small grocery. The owner adds products
 
 The other pieces passed tests, lint, the diff-matches-spec review and the skeptic first time.
 
+## What the run found in Karigor itself
+
+After all 14 pieces were built, the release check failed twice with "no browser journeys ran", and Karigor went back to planning to fix journeys that did exist. The real cause was Karigor's own command runner. The app's 56 journeys (28, each at desktop and phone size) took longer than the 10-minute limit, partly because some of them waited 30 seconds for a menu link that never appeared. When the limit stopped `pnpm`, it exited cleanly, and the runner only treated a stop as a timeout when the process failed, so it counted as a successful run with no report.
+
+Fixed in commit 4925f02: timeouts are judged by the runner's own clock, the whole process group (browser and app server included) is stopped, journeys get 30 minutes, and a timeout is reported as one, naming the slow or stuck journeys. The run was stopped and resumed on the fixed code; the planner's extra piece from the misleading message stays in its backlog.
+
 ## Progress and cost when this was written
 
 | | |
