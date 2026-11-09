@@ -26,7 +26,12 @@ describe("ClaudeCodeAdapter (offline, scripted CLI)", () => {
     }
     expect(seen!.input).toBe("idea");
     expect(seen!.args).toContain("--json-schema");
-    expect(seen!.args[seen!.args.indexOf("--model") + 1]).toBe("haiku");
+    // A full model id, so an alias remapped in the person's settings cannot change what runs.
+    expect(seen!.args[seen!.args.indexOf("--model") + 1]).toBe("claude-haiku-5-5");
+    // None of the person's connectors, skills or commands; and no cache written for a one-off prompt.
+    expect(seen!.args).toContain("--strict-mcp-config");
+    expect(seen!.args).toContain("--disable-slash-commands");
+    expect(seen!.env["DISABLE_PROMPT_CACHING"]).toBe("1");
     expect(seen!.args[seen!.args.indexOf("--effort") + 1]).toBe("low");
     expect(seen!.args[seen!.args.indexOf("--system-prompt") + 1]).toBe("sys");
     expect(seen!.args).not.toContain("--bare");
@@ -39,8 +44,8 @@ describe("ClaudeCodeAdapter (offline, scripted CLI)", () => {
 
   it("maps tiers to claude-code/ model ids, which the budget treats as flat-rate", () => {
     const a = new ClaudeCodeAdapter({ exec: cli({}) });
-    expect(a.modelFor("judgment")).toBe("claude-code/opus");
-    expect(a.modelFor("routine")).toBe("claude-code/haiku");
+    expect(a.modelFor("judgment")).toBe("claude-code/claude-opus-5-5");
+    expect(a.modelFor("routine")).toBe("claude-code/claude-haiku-5-5");
     expect(new ClaudeCodeAdapter({ exec: cli({}), judgmentModel: "fable" }).modelFor("judgment")).toBe("claude-code/fable");
   });
 

@@ -1,5 +1,5 @@
 import type { ModelTier } from "@karigor/store";
-import { CLAUDE_CODE_DEFAULTS, execWithDeadline, type Exec } from "../adapters/claude-code.js";
+import { CLAUDE_CODE_DEFAULTS, ISOLATION_ARGS, execWithDeadline, type Exec } from "../adapters/claude-code.js";
 import type { Usage } from "../adapters/types.js";
 import { quotaFrom } from "../quota.js";
 import type { AgentAdapter, AgentRequest, AgentResponse } from "./types.js";
@@ -79,7 +79,9 @@ export const ALLOWED_COMMANDS = [
 const TOOLS = "Read,Edit,Write,Bash,Glob,Grep";
 
 export interface ClaudeCodeAgentOptions {
+  /** Model id for a piece that already failed its checks once. */
   judgmentModel?: string;
+  /** Model id for a first try. */
   routineModel?: string;
   effort?: { judgment: "low" | "medium" | "high" | "xhigh" | "max"; routine: "low" | "medium" | "high" | "xhigh" | "max" };
   binary?: string;
@@ -116,8 +118,8 @@ export class ClaudeCodeAgent implements AgentAdapter {
   private readonly exec: Exec;
 
   constructor(opts: ClaudeCodeAgentOptions = {}) {
-    this.judgmentModel = opts.judgmentModel ?? "opus";
-    this.routineModel = opts.routineModel ?? "sonnet";
+    this.judgmentModel = opts.judgmentModel ?? CLAUDE_CODE_DEFAULTS.judgmentModel;
+    this.routineModel = opts.routineModel ?? CLAUDE_CODE_DEFAULTS.buildModel;
     this.effort = opts.effort ?? { judgment: "high", routine: "medium" };
     this.binary = opts.binary ?? CLAUDE_CODE_DEFAULTS.binary;
     this.timeoutMs = opts.timeoutMs ?? 60 * 60 * 1000;
@@ -146,6 +148,7 @@ export class ClaudeCodeAgent implements AgentAdapter {
       "--settings", settings,
       "--max-turns", String(req.maxTurns ?? this.maxTurns),
       "--no-session-persistence",
+      ...ISOLATION_ARGS,
     ];
     const env = { ...process.env };
     delete env["CLAUDECODE"];

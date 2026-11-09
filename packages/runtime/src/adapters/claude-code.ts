@@ -36,9 +36,9 @@ export const execWithDeadline: Exec = (file, args, input, { timeoutMs, env, cwd 
 const defaultExec: Exec = execWithDeadline;
 
 export interface ClaudeCodeAdapterOptions {
-  /** Model alias or id for decisions and reviews. */
+  /** Model id for decisions and reviews. */
   judgmentModel?: string;
-  /** Model alias or id for routine work. */
+  /** Model id for routine work. */
   routineModel?: string;
   effort?: { judgment: "low" | "medium" | "high" | "xhigh" | "max"; routine: "low" | "medium" | "high" | "xhigh" | "max" };
   /** Path to the claude binary. */
@@ -47,14 +47,27 @@ export interface ClaudeCodeAdapterOptions {
   exec?: Exec;
 }
 
+/**
+ * Full model ids, never the aliases ("opus", "sonnet"): a person's Claude Code settings can point
+ * an alias at another model, and Karigor's cost and quality must not change with that.
+ */
 export const CLAUDE_CODE_DEFAULTS = {
-  judgmentModel: "opus",
-  routineModel: "haiku",
+  judgmentModel: "claude-opus-5-5",
+  routineModel: "claude-haiku-5-5",
+  /** The developer's model on a first try. */
+  buildModel: "claude-sonnet-5-5",
   effort: { judgment: "high", routine: "low" },
   binary: "claude",
   /** Judgment calls at high effort can run a long time; the kernel's retries cover the rest. */
   timeoutMs: 40 * 60 * 1000,
 } as const;
+
+/**
+ * Karigor's calls carry only Karigor's own prompt: none of the person's connectors (their tool
+ * lists add thousands of tokens to every call, and a build has no business reading someone's
+ * drive) and none of their skills or commands.
+ */
+export const ISOLATION_ARGS = ["--strict-mcp-config", "--disable-slash-commands"] as const;
 
 /** Shape of `claude -p --output-format json` that we rely on. */
 interface CliResult {
@@ -108,9 +121,11 @@ export class ClaudeCodeAdapter implements ModelAdapter {
       "--system-prompt", req.system,
       "--no-session-persistence",
       "--tools", "",
+      ...ISOLATION_ARGS,
     ];
     // A nested Claude Code session must not be mistaken for the parent; strip the markers.
-    const env = { ...process.env };
+    // One question, one answer: nothing reads a cache of this prompt again, and writing one costs more than sending it plain.
+    const env: NodeJS.ProcessEnv = { ...process.env, DISABLE_PROMPT_CACHING: "1" };
     delete env["CLAUDECODE"];
     delete env["CLAUDE_CODE_ENTRYPOINT"];
     const zero: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };

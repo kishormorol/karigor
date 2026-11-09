@@ -30,7 +30,11 @@ describe("ClaudeCodeAgent (offline)", () => {
     const a2 = seen!.args;
     expect(a2[a2.indexOf("--permission-mode") + 1]).toBe("acceptEdits");
     expect(a2[a2.indexOf("--tools") + 1]).toBe("Read,Edit,Write,Bash,Glob,Grep");
-    expect(a2[a2.indexOf("--model") + 1]).toBe("sonnet");
+    expect(a2[a2.indexOf("--model") + 1]).toBe("claude-sonnet-5-5");
+    expect(a2).toContain("--strict-mcp-config");
+    expect(a2).toContain("--disable-slash-commands");
+    // The developer works over many turns, so its cache stays on.
+    expect(seen!.env["DISABLE_PROMPT_CACHING"]).toBeUndefined();
     expect(a2[a2.indexOf("--max-turns") + 1]).toBe("80");
     expect(a2).toContain("Bash(sudo:*)");
     expect(a2).toContain("Bash(pnpm:*)");
@@ -60,7 +64,7 @@ describe("ClaudeCodeAgent (offline)", () => {
 describe.runIf(process.env["KARIGOR_REAL_MODEL"] === "1")("ClaudeCodeAgent (live)", () => {
   it("creates a file in the workspace when asked", async () => {
     const ws = await Workspace.create(join(await mkdtemp(join(tmpdir(), "karigor-agent-live-")), "ws"), fixture);
-    const a = new ClaudeCodeAgent({ routineModel: "haiku", effort: { judgment: "low", routine: "low" } });
+    const a = new ClaudeCodeAgent({ routineModel: "claude-haiku-5-5", effort: { judgment: "low", routine: "low" } });
     const r = await a.act({ ...req, cwd: ws.dir, user: "Create the file src/greet.js exporting a function greet(name) that returns 'hello ' + name. Then run the shell command `node test.mjs` and, if it prints a JSON report, run `node -e \"require('fs').writeFileSync('ran.txt', 'ok')\"`. Reply with one sentence." });
     expect(r.ok, r.ok ? "" : r.message).toBe(true);
     expect(await readFile(join(ws.dir, "src/greet.js"), "utf8")).toMatch(/greet/);
