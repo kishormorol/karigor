@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { FsStore, addGiven, noopCommitter, type Event, type ProjectState } from "@karigor/store";
 import { fixture } from "@karigor/profiles";
 import { Workspace, run } from "@karigor/sandbox";
-import { MockAgent, type AgentRequest } from "@karigor/runtime";
+import { MockAgent, type AgentAdapter, type AgentRequest } from "@karigor/runtime";
 import { createProject, runProject, scriptedAdapter, type ScriptOptions } from "../src/index.js";
 
 const NOW = () => new Date("2026-10-17T00:00:00.000Z");
@@ -120,6 +120,17 @@ describe("build crew: real workspace with a scripted agent", { timeout: 120_000 
     const ws = await Workspace.open(join(root, projectId, "workspace"));
     expect((await ws.itemCommits("b2")).length).toBe(2);
     expect(await readFile(join(ws.dir, "src/b2.js"), "utf8")).toMatch(/"1"/);
+  });
+
+  it("a first try at a piece runs on the cheaper model, and a piece that failed its checks is retried on the stronger one", async () => {
+    const { root, projectId } = await fresh();
+    const inner = devAgent({ failTestsFor: (id, round) => id === "b2" && round === 0 });
+    const tiers: Record<string, string> = {};
+    // Not named "mock", so the tier it is asked for is the real one.
+    const agent: AgentAdapter = { name: "scripted-developer", modelFor: () => "mock", act: (req) => ((tiers[req.key.split(":").at(-1)!] = req.tier), inner.act(req)) };
+    const state = await runProject({ ...opts(root, projectId, inner), agent });
+    expect(state.items["b2"]).toMatchObject({ status: "done", failCount: 1 });
+    expect(tiers).toMatchObject({ "b1@0": "routine", "b2@0": "routine", "b2@1": "judgment", "b3@0": "routine" });
   });
 
   it("a dropped item's commits are reverted so its half-done work does not ship", async () => {

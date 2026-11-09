@@ -52,6 +52,8 @@ export interface ServerOptions {
    * `marginPct`, comes off its owner's credit, and a build needs credit to start. A person's own key is never charged.
    */
   metered?: { marginPct: number };
+  /** Which models build: free, cheap or best. Unset: cheap when builds are charged for, else the adapter's own default. */
+  tier?: string;
   /** Buying credit: the providers people may pay with, and the amounts (USD) they may buy. */
   billing?: { providers: PaymentProvider[]; packs: number[] };
   /** How long a project paused for the usage allowance waits before trying again (default 30 minutes). */
@@ -194,7 +196,9 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
     return JSON.parse(json) as T;
   };
   const problems = new Map<string, string>();
-  const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}) };
+  // People who pay per build get the cheap models unless whoever runs this says otherwise.
+  const tier = o.tier ?? (o.metered ? "cheap" : undefined);
+  const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}), ...(tier ? { tier } : {}) };
 
   const retries = new Map<string, ReturnType<typeof setTimeout>>();
   const phoneJobs = new Map<string, Promise<void>>();

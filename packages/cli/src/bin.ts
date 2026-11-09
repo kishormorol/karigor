@@ -39,7 +39,7 @@ const langFor = async (store: FsStore, state?: ProjectState): Promise<Lang> =>
 const runFlags = (c: Command) =>
   c
     .option("--adapter <name>", "claude-code (your Claude Code login, no key), claude (API key), ollama (local, free) or demo (offline)", "claude-code")
-    .option("--tier <tier>", "free, cheap or best (asked once; default best for claude-code and ollama, which cost nothing per call; free for demo; cheap for claude)")
+    .option("--tier <tier>", "which models build, asked once: cheap (a mid-priced model decides and reviews, the cheapest builds, a failed piece is retried by the stronger one), best (the strongest decides and reviews, a strong one builds) or free (local models). Default: best for claude-code and ollama, which cost nothing per call; cheap for claude; free for demo")
     .option("--profile <name>", "target profile for real builds", "web-app")
     .option("--deploy <target>", "where releases go: local (this computer, free), vercel (VERCEL_TOKEN), netlify (NETLIFY_AUTH_TOKEN; web apps and simple websites), cloudflare (CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID; simple websites) or none; default: the project's last target, else local")
     .option("--port <n>", "port for the live app on the local target (default: the port it last went live on, else 3000)");

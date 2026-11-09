@@ -59,6 +59,7 @@ To run it as a service for many people (sign-in by email, credit for builds):
   RESEND_API_KEY, KARIGOR_MAIL_FROM         send those emails through Resend (without them, links go to this log)
   KARIGOR_WELCOME_CREDIT=1                  USD of credit for each new sign-up (with KARIGOR_SIGNUP=open)
   KARIGOR_METERED=20                        charge builds on this Karigor's model key: cost plus this % margin
+  KARIGOR_TIER=cheap                        which models build: cheap or best (default cheap when builds are charged for)
   KARIGOR_CREDIT_PACKS=5,10,25              the amounts (USD) people may buy
   PADDLE_API_KEY, PADDLE_PRODUCT_ID, PADDLE_WEBHOOK_SECRET   pay by card worldwide (webhook: <KARIGOR_URL>/api/billing/notice/paddle)
   SSLCOMMERZ_STORE_ID, SSLCOMMERZ_STORE_PASSWORD, KARIGOR_BDT_PER_USD   pay by bKash, Nagad or a Bangladeshi card
@@ -106,6 +107,7 @@ const { server } = createKarigorServer({
     : {}),
   ...billingFromEnv(process.env["KARIGOR_URL"] ?? `http://localhost:${v.port}`),
   ...(process.env["KARIGOR_WELCOME_CREDIT"] ? { welcomeCreditUsd: Number(process.env["KARIGOR_WELCOME_CREDIT"]) } : {}),
+  ...(process.env["KARIGOR_TIER"] ? { tier: process.env["KARIGOR_TIER"] } : {}),
   ...(process.env["KARIGOR_METERED"] !== undefined ? { metered: { marginPct: Number(process.env["KARIGOR_METERED"]) || 0 } } : {}),
   ...(process.env["KARIGOR_APPS_URL"] || process.env["KARIGOR_SERVE_APPS"] === "1" ? { apps: process.env["KARIGOR_APPS_URL"] ? { url: process.env["KARIGOR_APPS_URL"] } : {} } : {}),
   log: (l) => console.log(l),

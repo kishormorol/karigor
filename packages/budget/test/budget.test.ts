@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadTemplate } from "@karigor/process";
 import type { MetaOf } from "@karigor/store";
-import { check, costOf, estimate, meter, priceFor, record, renderMeter } from "../src/index.js";
+import { ROLE_PRIORS, TIER_MODELS, check, costOf, estimate, meter, modelsFor, priceFor, record, renderMeter } from "../src/index.js";
 
 describe("prices", () => {
   it("prices a call with cache reads and writes", () => {
@@ -37,10 +37,32 @@ describe("estimate", () => {
     expect(big.phaseBudgets["build"]).toBeGreaterThan(small.phaseBudgets["build"]! * 5);
     expect(big.phaseBudgets["specify"]).toBe(small.phaseBudgets["specify"]);
   });
-  it("keeps the best tier for a typical idea in the single-digit dollars", async () => {
+  it("prices each tier with its own models: cheap is well under half of best", async () => {
     const t = await loadTemplate("iterative");
-    const best = estimate(t)[2]!;
-    expect(best.total).toBeLessThan(10);
+    const [, cheap, best] = estimate(t);
+    expect(cheap!.models).toEqual(TIER_MODELS.cheap);
+    expect(best!.models).toEqual(TIER_MODELS.best);
+    // Ceilings for a twelve-piece app, with the safety margin in. The real fourteen-piece run cost about USD 35 before these changes.
+    expect(best!.total).toBeLessThan(35);
+    expect(cheap!.total).toBeLessThan(best!.total * 0.45);
+    expect(cheap!.total).toBeLessThan(14);
+  });
+  it("a provider that costs nothing per call gets a zero budget at every tier", async () => {
+    const t = await loadTemplate("iterative");
+    for (const e of estimate(t, { flatModel: "claude-code/claude-opus-5-5" })) expect(e.total).toBe(0);
+  });
+  it("a first try at a piece is priced on the build model and a retry on the judgment model", async () => {
+    const t = await loadTemplate("iterative");
+    const cheapBuild = (attemptsPerItem: number) => estimate(t, { expectedItems: 10, attemptsPerItem, margin: 1 })[1]!.phaseBudgets["build"]!;
+    const perRetry = (cheapBuild(2) - cheapBuild(1)) / 10;
+    // One more attempt per piece: the developer again on the judgment model, plus both reviews again.
+    const expected = costOf(ROLE_PRIORS.developer, TIER_MODELS.cheap.judgment) + costOf(ROLE_PRIORS.reviewer, TIER_MODELS.cheap.judgment) + costOf(ROLE_PRIORS.skeptic, TIER_MODELS.cheap.judgment);
+    expect(perRetry).toBeCloseTo(expected, 4);
+    expect(costOf(ROLE_PRIORS.developer, TIER_MODELS.cheap.build)).toBeLessThan(costOf(ROLE_PRIORS.developer, TIER_MODELS.cheap.judgment) / 10);
+  });
+  it("the free tier on a Claude provider means the cheap models", () => {
+    expect(modelsFor("free")).toEqual(TIER_MODELS.cheap);
+    expect(modelsFor("best").judgment).toBe("claude-opus-5-5");
   });
 });
 

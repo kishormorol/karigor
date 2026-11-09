@@ -50,7 +50,7 @@ export interface RunOptions {
   retarget?: (kind: string) => Promise<{ profile: Profile; deploy?: DeployAdapter } | undefined>;
   /** Skip the profile's install step (tests). */
   skipInstall?: boolean;
-  /** Chosen once, when the kernel asks. Defaults to `free` for mock/local adapters, else `cheap`. */
+  /** Chosen once, when the kernel asks. Defaults to `free` for the mock adapter, `best` where calls cost nothing extra, else `cheap`. */
   tier?: BudgetTier;
   clock?: () => Date;
   committer?: Committer;
@@ -61,6 +61,12 @@ export interface RunOptions {
   /** Observe every event after it is persisted. Tests throw here to simulate a crash. */
   onEvent?: (event: Event) => void;
   log?: (line: string) => void;
+}
+
+/** How to price a budget for this provider: one that costs nothing per call gets a zero budget at every tier. */
+export function estimateFor(adapter: ModelAdapter): { flatModel?: string; freeModel: string } {
+  const model = adapter.modelFor("judgment");
+  return { ...(isFlatRate(model) ? { flatModel: model } : {}), freeModel: adapter.name === "mock" ? "mock" : "ollama/local" };
 }
 
 /** Templates a released project re-enters with; never chosen for a new idea. */
@@ -155,9 +161,9 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
     await store.writeArtifact({ meta: m, body: renderLedgerBody(m) });
   };
   const estimateCall = (role: Role, tier: ModelTier) => {
-    const p = ROLE_PRIORS[role];
-    const model = tier === "mock" ? "mock" : opts.adapter.modelFor(tier);
-    return costOf({ inputTokens: p.inputTokens, outputTokens: p.outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 }, model);
+    // The developer may run on its own models (the tier's build model first, the judgment model on a retry).
+    const model = tier === "mock" ? "mock" : role === "developer" && opts.agent ? opts.agent.modelFor(tier) : opts.adapter.modelFor(tier);
+    return costOf(ROLE_PRIORS[role], model);
   };
   /** Maintenance cycles spend from their own slice (`m<cycle>:<phase>`), never from the first build's. */
   const budgetPhase = (phase: string) => (state.cycle > 0 ? `m${state.cycle}:${phase}` : phase);
@@ -400,7 +406,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
   };
 
   // ---- one worker invocation ---------------------------------------------
-  const invoke = async (role: ProducingRole, key: string, phase: string, extra: Partial<RoleContext> & { itemId?: string } = {}) => {
+  const invoke = async (role: ProducingRole, key: string, phase: string, extra: Partial<RoleContext> & { itemId?: string } = {}, round = 0) => {
     const feedback = extra.purpose === "shrink" ? undefined : await feedbackFor(role, phase, extra.itemId);
     const ctx = roleContext(phase, { ...extra, ...(feedback ? { feedback } : {}) });
     const onAttempt = async (attempt: number, tier: ModelTier) => {
@@ -410,7 +416,8 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
     };
     const result =
       role === "developer" && agentic
-        ? await runAgentWorker({ key, ctx, agent: opts.agent!, budget: budgetFor(phase, role, extra.itemId), workspace: await getWorkspace(), stackGuide: opts.profile!.stackGuide, onAttempt })
+        ? // A piece that already failed its checks goes to the stronger model; first tries stay on the cheaper one.
+          await runAgentWorker({ key, ctx, agent: opts.agent!, budget: budgetFor(phase, role, extra.itemId), workspace: await getWorkspace(), stackGuide: opts.profile!.stackGuide, onAttempt, ...(round > 0 ? { tier: "judgment" as const } : {}) })
         : await runWorker({ role, key, ctx, adapter: opts.adapter, budget: budgetFor(phase, role, extra.itemId), onAttempt });
     await saveLedger();
     if (result.downgraded && !state.downgradedPhases.includes(phase)) await append({ type: "budget-downgraded", by: "system", phase, from: "judgment", to: "routine" });
@@ -476,7 +483,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
         case "selectTemplate":
           throw new RunError("machine asked for a template after one was selected");
         case "chooseBudget": {
-          const tiers = estimate(template, { judgmentModel: opts.adapter.modelFor("judgment"), routineModel: opts.adapter.modelFor("routine"), freeModel: opts.adapter.name === "mock" ? "mock" : "ollama/local" });
+          const tiers = estimate(template, estimateFor(opts.adapter));
           const flat = isFlatRate(opts.adapter.modelFor("judgment"));
           // Flat-rate providers (a subscription, a local model) cost nothing per call, so the strongest models are the sensible default.
           const tier = opts.tier ?? (opts.adapter.name === "mock" ? "free" : flat ? "best" : "cheap");
@@ -505,7 +512,7 @@ async function runProjectLocked(opts: RunOptions): Promise<ProjectState> {
             extra.deploy = await ensurePreview(action.key, action.phase);
             extra.deployTarget = opts.deploy.describe();
           }
-          const { result, outcome } = await invoke(action.role, action.key, action.phase, extra);
+          const { result, outcome } = await invoke(action.role, action.key, action.phase, extra, action.round ?? 0);
           const batch = eventsFor(action, outcome);
           if (result.outcome === "over-budget") {
             if (result.budgetAction === "park" && action.itemId) {

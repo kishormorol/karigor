@@ -18,7 +18,7 @@ import { liveRecord } from "./render.js";
 import { stagePlan } from "./stages.js";
 
 export { stagePlan, type StagePlan } from "./stages.js";
-import { runProject, type RunOptions } from "./run.js";
+import { estimateFor, runProject, type RunOptions } from "./run.js";
 
 export type Severity = MetaOf<"work-item">["severity"];
 export type SignalSource = MetaOf<"work-item">["source"];
@@ -153,7 +153,7 @@ export async function startMaintenance(store: FsStore, o: { adapter: ModelAdapte
   const cycle = state.cycle + 1;
   if (state.ledgerId) {
     const ledger = await store.readArtifact("cost-ledger", state.ledgerId);
-    const tiers = estimate(template, { expectedItems: Math.max(2, open.length * 2), judgmentModel: o.adapter.modelFor("judgment"), routineModel: o.adapter.modelFor("routine"), freeModel: o.adapter.name === "mock" ? "mock" : "ollama/local" });
+    const tiers = estimate(template, { expectedItems: Math.max(2, open.length * 2), ...estimateFor(o.adapter) });
     const t = tiers.find((x) => x.tier === state.budgetTier)!;
     const phaseBudgets = { ...ledger.meta.phaseBudgets };
     for (const [phase, amount] of Object.entries(t.phaseBudgets)) phaseBudgets[`m${cycle}:${phase}`] = amount;
@@ -268,7 +268,7 @@ export async function startStage(store: FsStore, o: { adapter: ModelAdapter; tem
   if (state.ledgerId) {
     const ledger = await store.readArtifact("cost-ledger", state.ledgerId);
     const expectedItems = Math.min(15, plan.next.featureIds.length * 2) + open.length;
-    const tiers = estimate(template, { expectedItems, judgmentModel: o.adapter.modelFor("judgment"), routineModel: o.adapter.modelFor("routine"), freeModel: o.adapter.name === "mock" ? "mock" : "ollama/local" });
+    const tiers = estimate(template, { expectedItems, ...estimateFor(o.adapter) });
     const t = tiers.find((x) => x.tier === state.budgetTier)!;
     const phaseBudgets = { ...ledger.meta.phaseBudgets };
     for (const [phase, amount] of Object.entries(t.phaseBudgets)) phaseBudgets[`m${cycle}:${phase}`] = amount;

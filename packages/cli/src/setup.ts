@@ -1,5 +1,6 @@
 /** Turning plain choices (which model, where to deploy) into run options. Shared by the CLI and the server. */
 import { FsStore } from "@karigor/store";
+import { modelsFor } from "@karigor/budget";
 import { FakeSandbox } from "@karigor/gates";
 import { ClaudeAdapter, ClaudeCodeAdapter, ClaudeCodeAgent, ModelAgent, OllamaAdapter, type AgentAdapter, type ModelAdapter } from "@karigor/runtime";
 import { BUILDABLE, profileFor, type Profile } from "@karigor/profiles";
@@ -9,13 +10,19 @@ import type { RunOptions } from "./run.js";
 
 export const ADAPTERS = ["claude-code", "claude", "ollama", "demo"] as const;
 
-/** `apiKey` is used for this adapter only and never written anywhere. */
-export function adapterFor(name: string, o: { apiKey?: string } = {}): ModelAdapter {
+/** Without a choice: free for the demo, cheap where each call is paid for, best where calls cost nothing extra. */
+export function defaultTier(adapter: string): Tier {
+  return adapter === "demo" ? "free" : adapter === "claude" ? "cheap" : "best";
+}
+
+/** The tier picks the models. `apiKey` is used for this adapter only and never written anywhere. */
+export function adapterFor(name: string, o: { apiKey?: string; tier?: Tier } = {}): ModelAdapter {
+  const m = modelsFor(o.tier ?? defaultTier(name));
   switch (name) {
     case "claude-code":
-      return new ClaudeCodeAdapter();
+      return new ClaudeCodeAdapter({ judgmentModel: m.judgment, routineModel: m.routine });
     case "claude":
-      return new ClaudeAdapter(o.apiKey ? { apiKey: o.apiKey } : {});
+      return new ClaudeAdapter({ ...(o.apiKey ? { apiKey: o.apiKey } : {}), judgmentModel: m.judgment, routineModel: m.routine });
     case "ollama":
       return new OllamaAdapter();
     case "demo":
@@ -25,10 +32,16 @@ export function adapterFor(name: string, o: { apiKey?: string } = {}): ModelAdap
   }
 }
 
-/** Claude Code works in the workspace with its own tools; any other model writes whole files through ModelAgent. */
-export function agentFor(name: string, adapter: ModelAdapter): AgentAdapter | undefined {
+/**
+ * Claude Code works in the workspace with its own tools; any other model writes whole files through ModelAgent.
+ * The developer's first try runs on the tier's build model; a piece that failed its checks is retried on the judgment model.
+ */
+export function agentFor(name: string, adapter: ModelAdapter, o: { apiKey?: string; tier?: Tier } = {}): AgentAdapter | undefined {
   if (name === "demo") return undefined;
-  return name === "claude-code" ? new ClaudeCodeAgent() : new ModelAgent(adapter);
+  const m = modelsFor(o.tier ?? defaultTier(name));
+  if (name === "claude-code") return new ClaudeCodeAgent({ judgmentModel: m.judgment, routineModel: m.build });
+  if (name === "claude") return new ModelAgent(new ClaudeAdapter({ ...(o.apiKey ? { apiKey: o.apiKey } : {}), judgmentModel: m.judgment, routineModel: m.build }));
+  return new ModelAgent(adapter);
 }
 
 /** Where releases go. Without a choice, the target the project last used, else this computer. */
@@ -98,15 +111,20 @@ export async function projectPort(root: string, projectId: string, given?: strin
 }
 
 export async function runOptions(root: string, projectId: string, o: RunFlags, extra: { apiKey?: string; log?: (line: string) => void } = {}): Promise<RunOptions> {
-  const adapter = adapterFor(o.adapter, extra.apiKey ? { apiKey: extra.apiKey } : {});
-  const agent = agentFor(o.adapter, adapter);
-  const tier = tierFrom(o.tier);
-  const base = { root, projectId, adapter, ...(tier ? { tier } : {}), ...(extra.log ? { log: extra.log } : {}) };
+  const asked = tierFrom(o.tier);
+  const store = await FsStore.open(root, projectId);
+  const state = await store.replay();
+  // A project keeps the tier it was started on: its budget and its models were chosen together.
+  const tier = state.budgetTier ?? asked ?? defaultTier(o.adapter);
+  if (asked && asked !== tier) extra.log?.(`this project is on the ${tier} tier, chosen when it started; --tier ${asked} is not applied`);
+  const keyed = { tier, ...(extra.apiKey ? { apiKey: extra.apiKey } : {}) };
+  const adapter = adapterFor(o.adapter, keyed);
+  const agent = agentFor(o.adapter, adapter, keyed);
+  const base = { root, projectId, adapter, tier, ...(extra.log ? { log: extra.log } : {}) };
   // The demo adapter has no real developer, so it keeps the fake sandbox. Real adapters build for real.
   if (!agent) return { ...base, sandbox: new FakeSandbox() };
-  const store = await FsStore.open(root, projectId);
   // A project keeps the kind of software it was first built as; a new one may become any buildable kind.
-  const chosen = (await store.replay()).targetProfile;
+  const chosen = state.targetProfile;
   const kinds: readonly string[] = BUILDABLE;
   const open = kinds.includes(o.profile);
   const profile = profileFor(open && chosen && kinds.includes(chosen) ? chosen : o.profile);

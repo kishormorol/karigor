@@ -306,6 +306,40 @@ describe("a service's first access key", () => {
   });
 });
 
+describe("the tier picks the models", () => {
+  it("cheap: a mid-priced model decides and reviews, the cheapest builds; best: the strongest decides, a strong one builds", async () => {
+    const { adapterFor, agentFor, defaultTier } = await import("../src/index.js");
+    const models = (name: string, tier?: "cheap" | "best") => {
+      const a = adapterFor(name, { apiKey: "not-a-real-key", ...(tier ? { tier } : {}) });
+      const dev = agentFor(name, a, { apiKey: "not-a-real-key", ...(tier ? { tier } : {}) })!;
+      return [a.modelFor("judgment"), a.modelFor("routine"), dev.modelFor("routine"), dev.modelFor("judgment")];
+    };
+    expect(models("claude", "cheap")).toEqual(["claude-sonnet-5-5", "claude-haiku-5-5", "claude-haiku-5-5", "claude-sonnet-5-5"]);
+    expect(models("claude", "best")).toEqual(["claude-opus-5-5", "claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]);
+    // The same on a Claude Code login, where the tier used to change nothing.
+    expect(models("claude-code", "cheap")).toEqual(["claude-code/claude-sonnet-5-5", "claude-code/claude-haiku-5-5", "claude-code/claude-haiku-5-5", "claude-code/claude-sonnet-5-5"]);
+    expect(models("claude-code", "best")).toEqual(["claude-code/claude-opus-5-5", "claude-code/claude-haiku-5-5", "claude-code/claude-sonnet-5-5", "claude-code/claude-opus-5-5"]);
+    // Without a choice: cheap where each call is paid for, best where calls cost nothing extra.
+    expect([defaultTier("claude"), defaultTier("claude-code"), defaultTier("ollama"), defaultTier("demo")]).toEqual(["cheap", "best", "best", "free"]);
+    expect(models("claude")).toEqual(models("claude", "cheap"));
+    expect(models("claude-code")).toEqual(models("claude-code", "best"));
+  });
+
+  it("a project keeps the tier it was started on, and says so when another is asked for", async () => {
+    const { runOptions } = await import("../src/index.js");
+    const root = await mkdtemp(join(tmpdir(), "karigor-tier-"));
+    const fresh = await createProject(root, "A page for my bakery", { committer: noopCommitter });
+    const asked = await runOptions(root, fresh, { adapter: "claude-code", profile: "web-app", deploy: "none", tier: "cheap" });
+    expect([asked.tier, asked.adapter.modelFor("judgment"), asked.agent?.modelFor("routine")]).toEqual(["cheap", "claude-code/claude-sonnet-5-5", "claude-code/claude-haiku-5-5"]);
+    const store = await FsStore.open(root, fresh, { committer: noopCommitter });
+    await store.appendEvent({ type: "budget-chosen", by: "user", tier: "best", ledgerId: "cost-1" });
+    const said: string[] = [];
+    const later = await runOptions(root, fresh, { adapter: "claude-code", profile: "web-app", deploy: "none", tier: "cheap" }, { log: (l) => said.push(l) });
+    expect([later.tier, later.adapter.modelFor("judgment")]).toEqual(["best", "claude-code/claude-opus-5-5"]);
+    expect(said.join("\n")).toMatch(/this project is on the best tier/);
+  });
+});
+
 describe("a project keeps its kind of software", () => {
   it("reopens as the kind it was built as, and a new one may become any buildable kind", async () => {
     const { runOptions } = await import("../src/index.js");
