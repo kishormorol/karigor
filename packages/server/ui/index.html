@@ -216,7 +216,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   <div class="brand"><div class="mark" aria-hidden="true">K</div><span>Karigor</span></div>
   <div class="title" id="title"></div>
   <button class="chip" id="cost" hidden></button>
-  <span class="chip" id="credit" hidden></span>
+  <button class="chip" id="credit" type="button" hidden></button>
   <button class="iconbtn" id="langBtn" type="button" lang="bn">বাংলা</button>
   <button class="iconbtn" id="projectsBtn" aria-haspopup="dialog">Projects</button>
 </header>
@@ -260,6 +260,16 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     </form>
     <div id="personLink"></div>
     <div class="row"><button class="btn quiet" id="peopleClose" type="button">Close</button></div>
+  </div>
+</dialog>
+
+<dialog id="creditDialog">
+  <div class="sheet">
+    <h2 id="creditTitle">Add credit</h2>
+    <p id="creditText" style="margin:0;color:var(--muted);font-size:14px"></p>
+    <div id="creditOptions" style="display:flex;flex-direction:column;gap:10px"></div>
+    <p class="meta" id="creditProblem" style="padding:0"></p>
+    <div class="row"><button class="btn quiet" id="creditClose" type="button">Close</button></div>
   </div>
 </dialog>
 
@@ -335,6 +345,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       cantLoad: "Could not load that project.", loading: "Loading…", noProjects: "No projects yet.", cantReach: "Can't reach Karigor",
       tierNames: { free: "free", cheap: "cheap", best: "best" },
       emailTitle: "Sign in to Karigor", emailText: "Give your email and we send you a link that signs you in. No password to remember. New here? The same link makes your account.", emailLabel: "Your email", emailSend: "Send my link", emailSent: (e) => `Check ${e} for a sign-in link. It works once, for 15 minutes.`, linkExpired: "That sign-in link was already used or is too old. Ask for a new one.",
+      addCredit: "Add credit", creditNow: (n) => `You have $${n.toFixed(2)} of credit. A build uses what the AI really costs, plus a small fee; nothing is charged when you use your own key. Credit does not expire.`,
+      payWith: (l) => `Pay with ${l}`, paidOk: "Thank you. Your credit is added as soon as the payment is confirmed (usually within a minute).", paidNo: "The payment did not go through. Nothing was charged.", close: "Close",
       credit: (n) => `Credit: $${n.toFixed(2)}`, creditOut: "Your credit has run out. Add credit to keep building; what you built stays.",
       signupTitle: "Welcome. What should we call you?", signupText: "Your name is all it takes. Your projects are yours: other people here cannot see them.", yourName: "Your name", join: "Start",
       saveLink: "You're in. Save this link: it signs you in on another phone or computer, and it is shown only once.", carryOn: "Continue",
@@ -384,6 +396,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       cantLoad: "প্রকল্পটি খোলা যায়নি।", loading: "খোলা হচ্ছে…", noProjects: "এখনো কোনো প্রকল্প নেই।", cantReach: "Karigor-এর সঙ্গে যোগাযোগ করা যাচ্ছে না",
       tierNames: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" },
       emailTitle: "Karigor-এ সাইন ইন করুন", emailText: "আপনার ইমেইল দিন, আমরা সাইন ইন করার একটি লিংক পাঠাব। কোনো পাসওয়ার্ড মনে রাখতে হবে না। নতুন? একই লিংকে আপনার অ্যাকাউন্ট তৈরি হবে।", emailLabel: "আপনার ইমেইল", emailSend: "লিংক পাঠান", emailSent: (e) => `${e} ঠিকানায় সাইন ইন লিংক দেখুন। এটি একবার, ১৫ মিনিটের জন্য কাজ করে।`, linkExpired: "এই সাইন ইন লিংকটি আগেই ব্যবহার হয়েছে বা অনেক পুরোনো। নতুন একটি চান।",
+      addCredit: "ক্রেডিট যোগ করুন", creditNow: (n) => `আপনার ক্রেডিট $${n.toFixed(2)}। একটি তৈরিতে AI-এর আসল খরচ আর সামান্য ফি কাটা হয়; নিজের কী ব্যবহার করলে কিছুই কাটা হয় না। ক্রেডিটের মেয়াদ শেষ হয় না।`,
+      payWith: (l) => `${l} দিয়ে দিন`, paidOk: "ধন্যবাদ। টাকা নিশ্চিত হলেই ক্রেডিট যোগ হবে (সাধারণত এক মিনিটের মধ্যে)।", paidNo: "টাকা দেওয়া হয়নি। কিছু কাটা হয়নি।", close: "বন্ধ করুন",
       credit: (n) => `ক্রেডিট: $${n.toFixed(2)}`, creditOut: "আপনার ক্রেডিট শেষ। তৈরি চালিয়ে যেতে ক্রেডিট যোগ করুন; যা তৈরি হয়েছে তা থাকবে।",
       signupTitle: "স্বাগতম। আপনাকে কী নামে ডাকব?", signupText: "শুধু আপনার নামটুকুই লাগবে। আপনার প্রকল্প শুধু আপনার: এখানকার অন্যরা সেগুলো দেখতে পারেন না।", yourName: "আপনার নাম", join: "শুরু করুন",
       saveLink: "আপনি যোগ দিয়েছেন। এই লিংকটি রেখে দিন: অন্য ফোন বা কম্পিউটার থেকে এটি দিয়েই ঢুকবেন, আর এটি একবারই দেখানো হয়।", carryOn: "এগিয়ে যান",
@@ -978,6 +992,31 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     const n = config.metered && config.me ? config.me.creditUsd : undefined;
     $("credit").hidden = typeof n !== "number";
     if (typeof n === "number") { $("credit").textContent = t("credit", n); $("credit").classList.toggle("out", n <= 0); $("credit").title = n <= 0 ? t("creditOut") : ""; }
+  }
+  /** Buying credit: an amount and a way to pay, then the provider's own payment page. */
+  async function showCredit_buy() {
+    $("creditTitle").textContent = t("addCredit");
+    $("creditClose").textContent = t("close");
+    $("creditProblem").textContent = "";
+    $("creditOptions").replaceChildren();
+    $("creditDialog").showModal();
+    try {
+      const b = await api("/api/billing");
+      $("creditText").textContent = t("creditNow", b.creditUsd ?? 0);
+      $("creditOptions").replaceChildren(...b.providers.map((pr) => el("div", { style: "display:flex;flex-direction:column;gap:6px" },
+        el("strong", { style: "font-size:14px" }, t("payWith", pr.label)),
+        el("div", { class: "row" }, b.packs.map((usd) => el("button", { class: "btn quiet", type: "button", onclick: async (e) => {
+          e.target.disabled = true;
+          try { const r = await api("/api/billing/checkout", { method: "POST", body: JSON.stringify({ usd, provider: pr.name }) }); const u = safeUrl(r.url); if (u) location.href = u; }
+          catch (err) { $("creditProblem").textContent = err.message; e.target.disabled = false; }
+        } }, `$${usd}`))))));
+    } catch (err) { $("creditProblem").textContent = err.message; }
+  }
+  $("credit").addEventListener("click", showCredit_buy);
+  $("creditClose").addEventListener("click", () => $("creditDialog").close());
+  {
+    const paid = new URLSearchParams(location.search).get("paid");
+    if (paid !== null) { hint.textContent = t(paid === "1" ? "paidOk" : "paidNo"); history.replaceState(null, "", location.pathname + location.hash); }
   }
   function start() {
     api("/api/config").then((c) => { config = c; $("composer").hidden = $("projectsBtn").hidden = false; $("keyBtn").hidden = !c.needsKey; $("peopleBtn").hidden = !(c.me && c.me.admin && c.me.people); showCredit(); route(); }).catch((err) => {

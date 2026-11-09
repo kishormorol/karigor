@@ -9,6 +9,7 @@ import { adminLink, ownerAccessKey, phoneBuildFile, projectPhoneApps, canStartMa
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
 import type { Mailer } from "./mail.js";
+import type { PaymentProvider } from "./billing.js";
 import { People, balanceOf, type Person } from "./people.js";
 import { AppPorts, LiveApps, publicAppUrl } from "./apps.js";
 
@@ -51,6 +52,8 @@ export interface ServerOptions {
    * `marginPct`, comes off its owner's credit, and a build needs credit to start. A person's own key is never charged.
    */
   metered?: { marginPct: number };
+  /** Buying credit: the providers people may pay with, and the amounts (USD) they may buy. */
+  billing?: { providers: PaymentProvider[]; packs: number[] };
   /** How long a project paused for the usage allowance waits before trying again (default 30 minutes). */
   resumeEveryMs?: number;
   log?: (line: string) => void;
@@ -108,6 +111,18 @@ async function body(req: IncomingMessage): Promise<Record<string, unknown>> {
   } catch {
     throw new HttpError(400, "the request was not valid JSON");
   }
+}
+
+/** The body as text, for notices whose signature covers the exact bytes. */
+async function rawBody(req: IncomingMessage): Promise<string> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const c of req) {
+    size += (c as Buffer).length;
+    if (size > MAX_BODY) throw new HttpError(413, "that message is too long");
+    chunks.push(c as Buffer);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 /** A file's raw bytes, refused once past `max`. */
@@ -327,6 +342,28 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       return send(res, known ? 200 : 404, {});
     }
     if (!path.startsWith("/api/")) throw new HttpError(404, "not found");
+    // A payment provider telling us a payment finished, or a payer's browser coming back. Credit is
+    // added only for what the provider itself confirms, once per payment.
+    const notice = /^\/api\/billing\/(notice|return)\/(paddle|sslcommerz)$/.exec(path);
+    if (notice && (method === "POST" || method === "GET") && o.billing) {
+      const provider = o.billing.providers.find((x) => x.name === notice[2]);
+      if (!provider) throw new HttpError(404, "not found");
+      const raw = method === "GET" ? url.search.slice(1) : await rawBody(req);
+      const paid = await provider.confirm({ headers: req.headers, raw }).catch((e: Error) => {
+        log(`payment notice from ${provider.name} could not be checked: ${e.message}`);
+        return undefined;
+      });
+      if (paid) {
+        const added = await people.addCredit(paid.personId, paid.usd, paid.ref).catch(() => false);
+        if (added) log(`credit: USD ${paid.usd} for ${paid.personId} (${paid.ref})`);
+      }
+      if (notice[1] === "return") {
+        res.writeHead(303, { location: paid ? "/?paid=1" : "/?paid=0", ...SECURITY_HEADERS });
+        res.end();
+        return;
+      }
+      return send(res, 200, { ok: true });
+    }
     if (method === "POST" && path === "/api/signin/email") {
       // The same answer whether or not the address is known, so this cannot be used to find out who has an account.
       if (!o.emailSignIn || !o.token) throw new HttpError(404, "not found");
@@ -363,6 +400,26 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       return send(res, 401, { error: errorIn(langOf(req), error), signup: !!o.signup, ...(o.emailSignIn ? { email: true } : {}) });
     }
 
+    if (path === "/api/billing" && method === "GET") {
+      if (!o.billing) throw new HttpError(404, "not found");
+      return send(res, 200, { packs: o.billing.packs, providers: o.billing.providers.map((x) => ({ name: x.name, label: x.label })), ...(viewer.admin ? {} : { creditUsd: balanceOf((await people.byId(viewer.person.id)) ?? viewer.person) }) });
+    }
+    if (path === "/api/billing/checkout" && method === "POST") {
+      if (!o.billing) throw new HttpError(404, "not found");
+      if (viewer.admin) throw new HttpError(400, "whoever runs this Karigor does not need credit");
+      const b = await body(req);
+      const usd = Number(b["usd"]);
+      if (!o.billing.packs.includes(usd)) throw new HttpError(400, "choose one of the amounts shown");
+      const provider = o.billing.providers.find((x) => x.name === b["provider"]);
+      if (!provider) throw new HttpError(400, "choose a way to pay");
+      try {
+        const r = await provider.checkout({ personId: viewer.person.id, name: viewer.person.name, ...(viewer.person.email ? { email: viewer.person.email } : {}), usd, returnUrl: "/?paid=1" });
+        return send(res, 200, { url: r.url });
+      } catch (e) {
+        log(`checkout with ${provider.name} failed: ${(e as Error).message}`);
+        throw new HttpError(502, "the payment page could not be opened; try again in a minute");
+      }
+    }
     if (path === "/api/people" || path.startsWith("/api/people/")) {
       if (!viewer.admin) throw new HttpError(403, "only whoever runs this Karigor can add people");
       if (method === "GET" && path === "/api/people") {

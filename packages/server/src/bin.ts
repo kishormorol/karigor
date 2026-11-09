@@ -3,6 +3,19 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { logMailer, resendMailer } from "./mail.js";
+import { PaddleProvider, SslCommerzProvider, type PaymentProvider } from "./billing.js";
+
+/** The payment providers whose settings are present. */
+function billingFromEnv(publicUrl: string): { billing?: { providers: PaymentProvider[]; packs: number[] } } {
+  const e = process.env;
+  const sandbox = e["KARIGOR_PAYMENTS_SANDBOX"] === "1";
+  const providers: PaymentProvider[] = [];
+  if (e["PADDLE_API_KEY"] && e["PADDLE_PRODUCT_ID"] && e["PADDLE_WEBHOOK_SECRET"]) providers.push(new PaddleProvider({ apiKey: e["PADDLE_API_KEY"], productId: e["PADDLE_PRODUCT_ID"], webhookSecret: e["PADDLE_WEBHOOK_SECRET"], sandbox }));
+  if (e["SSLCOMMERZ_STORE_ID"] && e["SSLCOMMERZ_STORE_PASSWORD"]) providers.push(new SslCommerzProvider({ storeId: e["SSLCOMMERZ_STORE_ID"], storePassword: e["SSLCOMMERZ_STORE_PASSWORD"], bdtPerUsd: Number(e["KARIGOR_BDT_PER_USD"] ?? 122), publicUrl, sandbox }));
+  if (!providers.length) return {};
+  const packs = (e["KARIGOR_CREDIT_PACKS"] ?? "5,10,25").split(",").map(Number).filter((n) => n > 0);
+  return { billing: { providers, packs } };
+}
 import { People } from "./people.js";
 import { createKarigorServer } from "./server.js";
 
@@ -45,7 +58,11 @@ To run it as a service for many people (sign-in by email, credit for builds):
   KARIGOR_EMAIL_SIGNIN=1                    people sign in with a one-time link sent to their email
   RESEND_API_KEY, KARIGOR_MAIL_FROM         send those emails through Resend (without them, links go to this log)
   KARIGOR_WELCOME_CREDIT=1                  USD of credit for each new sign-up (with KARIGOR_SIGNUP=open)
-  KARIGOR_METERED=20                        charge builds on this Karigor's model key: cost plus this % margin`);
+  KARIGOR_METERED=20                        charge builds on this Karigor's model key: cost plus this % margin
+  KARIGOR_CREDIT_PACKS=5,10,25              the amounts (USD) people may buy
+  PADDLE_API_KEY, PADDLE_PRODUCT_ID, PADDLE_WEBHOOK_SECRET   pay by card worldwide (webhook: <KARIGOR_URL>/api/billing/notice/paddle)
+  SSLCOMMERZ_STORE_ID, SSLCOMMERZ_STORE_PASSWORD, KARIGOR_BDT_PER_USD   pay by bKash, Nagad or a Bangladeshi card
+  KARIGOR_PAYMENTS_SANDBOX=1                use the providers' test systems`);
   process.exit(0);
 }
 
@@ -84,6 +101,7 @@ const { server } = createKarigorServer({
         },
       }
     : {}),
+  ...billingFromEnv(process.env["KARIGOR_URL"] ?? `http://localhost:${v.port}`),
   ...(process.env["KARIGOR_WELCOME_CREDIT"] ? { welcomeCreditUsd: Number(process.env["KARIGOR_WELCOME_CREDIT"]) } : {}),
   ...(process.env["KARIGOR_METERED"] !== undefined ? { metered: { marginPct: Number(process.env["KARIGOR_METERED"]) || 0 } } : {}),
   ...(process.env["KARIGOR_APPS_URL"] || process.env["KARIGOR_SERVE_APPS"] === "1" ? { apps: process.env["KARIGOR_APPS_URL"] ? { url: process.env["KARIGOR_APPS_URL"] } : {} } : {}),
