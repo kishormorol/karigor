@@ -54,11 +54,11 @@ export async function acquireRunLock(dir: string): Promise<() => Promise<void>> 
   };
 }
 
-/** The lock and the inbox are working files, not history. */
-async function ignoreInProjectGit(dir: string): Promise<void> {
+/** The lock and the inbox are working files, not history; secrets Karigor keeps never enter it either. */
+export async function ignoreInProjectGit(dir: string, lines: string[] = ["run.lock", "inbox/"]): Promise<void> {
   const f = join(dir, ".gitignore");
   const text = await readFile(f, "utf8").catch(() => "");
-  const missing = ["run.lock", "inbox/"].filter((l) => !text.split("\n").includes(l));
+  const missing = lines.filter((l) => !text.split("\n").includes(l));
   if (missing.length) await writeFile(f, text + (text && !text.endsWith("\n") ? "\n" : "") + missing.join("\n") + "\n", "utf8");
 }
 
