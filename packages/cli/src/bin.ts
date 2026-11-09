@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore, ideaLanguage, languageOf, queueInbox, runningPid, type ProjectState } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, ownerAccessKey, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, ownerAccessKey, projectPhoneApps, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { liveRecord, renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject, runWaiting } from "./run.js";
@@ -323,6 +323,23 @@ runFlags(program.command("access-key").argument("<projectId>").argument("[name]"
     const r = await ownerAccessKey(opts.deploy, name, { projectDir: store.dir, ...(live?.url ? { url: live.url } : {}) });
     console.log(r.output);
     if (!r.ok) process.exitCode = 1;
+  });
+
+runFlags(program.command("phone-apps").argument("<projectId>"))
+  .description("make an Android app and an iPhone app that open the live web app; built on GitHub (needs `gh auth login` once)")
+  .action(async (projectId: string, o: RunFlags) => {
+    const root = program.opts<{ root: string }>().root;
+    const opts = await runOptions(root, projectId, o);
+    const store = await FsStore.open(root, projectId);
+    const s = await projectPhoneApps({ store, ...(opts.deploy ? { deploy: opts.deploy } : {}), log: (l) => console.log(l) });
+    if (s.status === "failed") {
+      console.log(`Not made: ${s.error}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`Phone apps, version 1.${s.versionCode}:`);
+    for (const f of s.files ?? []) console.log(`  ${join(store.dir, "phone-builds", f.path)}`);
+    console.log("app-release.apk installs on an Android phone directly; app-release.aab is for the Play Store; App-simulator.zip runs in Xcode's iPhone simulator.");
   });
 
 runFlags(program.command("watch").argument("<projectId>"))

@@ -170,9 +170,9 @@ Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (k
 
 7. ~~Growing systems: stages, people and roles, browser journeys, a kit for systems~~
 
-The web-app profile also has file uploads, scheduled jobs, email and SMS, and can be added to a phone's home screen.
+The web-app profile also has file uploads, scheduled jobs, email and SMS, and can be added to a phone's home screen. Once it is online, `karigor phone-apps` makes an Android app (a Trusted Web Activity: APK and Play Store bundle, signed with a key Karigor keeps) and an iPhone app (a web view, built for the simulator until there is an Apple account), built by GitHub Actions in a private repository of their own.
 
-Next: a full recorded idea-to-production run on a real model, phone apps (Android and iOS) for web apps, Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
+Next: a full recorded idea-to-production run on a real model, Cloudflare and Netlify targets, log drains from hosted targets, and a design pass on the UI with people who are not programmers.
 
 ## Development
 

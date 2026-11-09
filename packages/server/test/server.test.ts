@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -236,6 +236,28 @@ describe("server", { timeout: 180_000 }, () => {
       await writeFile(join(root, id, "workspace", "package.json"), JSON.stringify({ scripts: { "key:new": "tsx scripts/key-new.ts" } }));
       expect((await call(`/api/projects/${id}`)).json["accessKey"]).toBeDefined();
     }
+  });
+
+  it("offers phone apps only for an app online at https, and serves only the files the build made", async () => {
+    const { k, call, root, base } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    // on this computer the app lives at http://localhost, which phones cannot be given
+    expect((await call(`/api/projects/${id}`)).json["phone"]).toBeUndefined();
+    const r = await call(`/api/projects/${id}/phone`, { method: "POST", body: "{}" });
+    expect(r.status).toBe(409);
+    expect(r.json["error"]).toMatch(/https address/);
+    // a build that finished earlier can be downloaded; nothing else can
+    await mkdir(join(root, id, "phone-builds", "v1", "android"), { recursive: true });
+    await writeFile(join(root, id, "phone-builds", "v1", "android", "app-release.apk"), "apk-bytes");
+    await writeFile(join(root, id, "phone-builds", "v1", "android", "other.apk"), "not listed");
+    await writeFile(join(root, id, "phone-apps.json"), JSON.stringify({ status: "ready", packageId: "app.karigor.x", versionCode: 1, startedAt: new Date().toISOString(), files: [{ path: "v1/android/app-release.apk", bytes: 9 }] }));
+    const dl = await fetch(`${base}/api/projects/${id}/phone/v1/android/app-release.apk`);
+    expect(dl.status).toBe(200);
+    expect(dl.headers.get("content-disposition")).toBe('attachment; filename="app-release.apk"');
+    expect(await dl.text()).toBe("apk-bytes");
+    expect((await call(`/api/projects/${id}/phone/v1/android/other.apk`)).status).toBe(404);
+    expect((await call(`/api/projects/${id}/phone/v1/android/..%2F..%2Fphone-apps.json`)).status).toBe(404);
   });
 
   it("deletes a project and everything about it, but not while it is being built", async () => {

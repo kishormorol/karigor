@@ -180,6 +180,18 @@ karigor watch <id> --every 15                  # checks the live site and fixes 
 
 Karigor uses the Vercel CLI's own login (`vercel login`), or a token in `VERCEL_TOKEN`.
 
+### Phone apps
+
+Once a web app is online at its Vercel address, Karigor can make an **Android app** and an **iPhone app** for it: press **Make phone apps** on the chat page, or run `karigor phone-apps <id>`. Both open the live app with its own name, colours and icon, so every new release reaches the phones without a new build.
+
+They are built in the cloud on GitHub, because building phone apps needs tools most computers do not have. Sign the GitHub command line in once on the computer that runs Karigor (`gh auth login`). Karigor keeps the apps in a private repository of their own (the app's code stays with you), and a build takes about ten minutes. You then get:
+
+- `app-release.apk`: install it on an Android phone directly, to try it or to share with your team.
+- `app-release.aab` and a 512-pixel icon: what the Play Store asks for. Publishing needs a Google Play developer account (a one-time fee).
+- `App-simulator.zip`: the iPhone app for Xcode's simulator. Putting it on real iPhones and in the App Store needs an Apple Developer account, and Apple expects more than a web page inside an app.
+
+Karigor makes the Android signing key once and keeps it in `phone-signing/` in the project. Keep a copy of that folder somewhere safe: the Play Store accepts updates only signed with the same key.
+
 ## 10. What to expect
 
 Karigor builds web apps that work on phones and computers, from a single-person tool to a system with several roles: sign-in for many people with roles and permissions, invitations by link, an activity log, forms, searchable and sortable lists, records with money and stock, dashboards with charts, CSV export for spreadsheets, photos and documents up to 4 MB, jobs that run on a schedule by themselves (a reminder every morning), and email and SMS. Each stage is at most 15 pieces of work, complete and tested end to end, including in a real browser for each kind of user.
@@ -208,6 +220,8 @@ Not yet supported: files over 4 MB, WhatsApp, anything that updates on screen wi
 | `karigor fix <id>` | Start a fix round now |
 | `karigor grow <id> [--all]` | Build the next stage (or every remaining one) |
 | `karigor admin-link <id> <email> ["name"]` | A one-time link to set your admin password |
+| `karigor access-key <id> ["name"]` | For a service: an access key, shown once |
+| `karigor phone-apps <id>` | Make the Android and iPhone apps for a web app that is online |
 | `karigor correct <id> <decisionId> "<text>"` | Change a decision made for you |
 | `karigor reopen <id>` | Bring parked work back after a stop |
 | `karigor dismiss <id> <workItemId>` | Close a request you no longer want |

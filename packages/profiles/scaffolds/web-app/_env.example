@@ -38,3 +38,7 @@ TWILIO_FROM=
 # bn: Twilio-র বদলে যেকোনো এসএমএস গেটওয়ের ওয়েব ঠিকানা, যাতে {to} আর {text} আছে, আপনার এসএমএস কোম্পানির অ্যাকাউন্ট থেকে (যেমন কোনো দেশি কোম্পানির API কীসহ "এসএমএস পাঠান" লিংক)।
 # karigor: service sms-gateway
 SMS_GATEWAY_URL=
+# Optional: set by Karigor when it makes the app's phone apps, so Android opens the app full screen. Leave it to Karigor.
+# bn: Karigor অ্যাপের ফোন অ্যাপ বানানোর সময় এটি নিজে বসায়, যাতে অ্যান্ড্রয়েডে অ্যাপটি পুরো স্ক্রিনে খোলে। এটি Karigor-এর ওপর ছেড়ে দিন।
+# karigor: generate
+ANDROID_APP_LINKS=

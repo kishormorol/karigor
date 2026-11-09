@@ -11,6 +11,7 @@ import { estimate, isFlatRate } from "@karigor/budget";
 import type { SecurityFinding, UrlCheck } from "@karigor/gates";
 import type { ModelAdapter } from "@karigor/runtime";
 import { LocalSandbox, Workspace, checkUrl, run as runCommand } from "@karigor/sandbox";
+import { makePhoneApps, type PhoneExec, type PhoneState } from "./phone.js";
 import { LocalDeploy, startServer, type DeployAdapter, type RunningServer } from "@karigor/deploy";
 import { generateSettingValue, readSettings, type MissingSetting } from "@karigor/profiles";
 import { liveRecord } from "./render.js";
@@ -359,6 +360,37 @@ export async function ownerAccessKey(deploy: DeployAdapter | undefined, name = "
   const r = await runCommand("pnpm", ["-s", "key:new", who], { cwd: dir, env: await deploy.settingsEnv(), timeoutMs: 120_000 });
   const key = /\bkey_[A-Za-z0-9_-]{16,}/.exec(r.stdout)?.[0];
   return { ok: r.code === 0 && !!key, ...(key ? { key } : {}), output: (r.stdout + (r.code === 0 ? "" : `\n${r.stderr}`)).trim() };
+}
+
+/**
+ * Phone apps for a live web app: an Android app and an iPhone app that open it, built in the cloud
+ * (see phone.ts). Android's full-screen trust is switched on through the app's ANDROID_APP_LINKS setting.
+ */
+export async function projectPhoneApps(o: { store: FsStore; deploy?: DeployAdapter; lang?: "en" | "bn"; log?: (line: string) => void; wait?: boolean; exec?: PhoneExec; fetcher?: typeof fetch }): Promise<PhoneState> {
+  const state = await o.store.replay();
+  if (state.targetProfile && state.targetProfile !== "web-app") throw new Error("phone apps are made for web apps; this project is another kind");
+  const live = await liveRecord(o.store, state);
+  if (!live?.url) throw new Error("it is not online yet");
+  const deploy = o.deploy;
+  return makePhoneApps({
+    projectDir: o.store.dir,
+    slug: new URL(live.url).hostname.split(".")[0]!,
+    url: live.url,
+    ...(o.lang ? { lang: o.lang } : {}),
+    ...(o.log ? { log: o.log } : {}),
+    ...(o.wait !== undefined ? { wait: o.wait } : {}),
+    ...(o.exec ? { exec: o.exec } : {}),
+    ...(o.fetcher ? { fetcher: o.fetcher } : {}),
+    ...(deploy
+      ? {
+          setAppLinks: (value: string) =>
+            provideSettings({ store: o.store, deploy, values: { ANDROID_APP_LINKS: value }, by: "system", ...(o.log ? { log: o.log } : {}) }).then(
+              (r) => ({ ok: r.stored.includes("ANDROID_APP_LINKS") && !/did not pick them up/.test(r.output), output: r.output }),
+              (e: Error) => ({ ok: false, output: e.message }),
+            ),
+        }
+      : {}),
+  });
 }
 
 /** The production URL to watch for a hosted target (a local target is watched by `serve`). */

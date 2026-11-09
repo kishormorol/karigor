@@ -6,3 +6,4 @@ export * from "./setup.js";
 export * from "./starters.js";
 export * from "./starters-bn.js";
 export * from "./words.js";
+export * from "./phone.js";

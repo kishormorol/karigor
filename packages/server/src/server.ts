@@ -4,7 +4,7 @@ import { readFile, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FsStore, GivenError, GIVEN_LIMITS, addGiven, queueInbox, runningPid } from "@karigor/store";
-import { adminLink, ownerAccessKey, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
+import { adminLink, ownerAccessKey, phoneBuildFile, projectPhoneApps, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
 import { People, type Person } from "./people.js";
@@ -169,6 +169,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
   const flags = { adapter: o.adapter, profile: o.profile ?? "web-app", port: String(o.appPort ?? 3000), ...(o.deploy ? { deploy: o.deploy } : {}) };
 
   const retries = new Map<string, ReturnType<typeof setTimeout>>();
+  const phoneJobs = new Map<string, Promise<void>>();
   const startRun = (id: string, kind: "run" | "fix" | "grow", apiKey?: string): boolean => {
     if (runs.has(id)) return false;
     clearTimeout(retries.get(id));
@@ -327,6 +328,19 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       return send(res, 201, { projectId: id });
     }
 
+    // A phone app the cloud build made, as a download.
+    const pf = /^\/api\/projects\/([^/]+)\/phone\/(v\d+\/(?:android|ios)\/[A-Za-z0-9._-]+)$/.exec(path);
+    if (method === "GET" && pf) {
+      const pid = pf[1]!;
+      if (!ID.test(pid) || !sees(viewer, pid)) throw new HttpError(404, "no such project");
+      const file = await phoneBuildFile(join(o.root, pid), pf[2]!);
+      if (!file) throw new HttpError(404, "not found");
+      const data = await readFile(file);
+      res.writeHead(200, { "content-type": "application/octet-stream", "content-disposition": `attachment; filename="${pf[2]!.split("/").at(-1)}"`, "content-length": String(data.length), "cache-control": "no-store", ...SECURITY_HEADERS });
+      res.end(data);
+      return;
+    }
+
     const m = /^\/api\/projects\/([^/]+)(?:\/([a-z]+))?$/.exec(path);
     if (!m) throw new HttpError(404, "not found");
     const id = m[1]!;
@@ -345,7 +359,8 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
         busy = true;
         try {
           const s = await stat(join(o.root, id, "events.jsonl"));
-          const sig = `${s.size}:${s.mtimeMs}:${await isRunning(id)}:${problems.get(id) ?? ""}`;
+          const phone = await stat(join(o.root, id, "phone-apps.json")).then((x) => x.mtimeMs, () => 0);
+          const sig = `${s.size}:${s.mtimeMs}:${await isRunning(id)}:${problems.get(id) ?? ""}:${phone}`;
           if (sig !== last) {
             last = sig;
             res.write(`data: ${JSON.stringify(await view(id, lang))}\n\n`);
@@ -476,6 +491,20 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
         throw new HttpError(400, "the sign-in link could not be made here; ask whoever runs this Karigor");
       }
       return send(res, 200, await publicUrls({ link }));
+    }
+    if (method === "POST" && action === "phone") {
+      // Phone apps are made in the background (about ten minutes in the cloud); the page shows how it goes.
+      const b = await body(req);
+      const v = await view(id);
+      if (!v.phone) throw new HttpError(409, "phone apps need the app online at an https address");
+      if (phoneJobs.has(id) || v.phone.status === "building") throw new HttpError(409, "the phone apps are being made right now");
+      const opts = await runOptions(o.root, id, await flagsFor(id), { log: (l) => log(`[${id}] ${l}`) });
+      const store = await FsStore.open(o.root, id);
+      const job = projectPhoneApps({ store, ...(opts.deploy ? { deploy: opts.deploy } : {}), ...(isLang(b["lang"]) ? { lang: b["lang"] } : {}), log: (l) => log(`[${id}] ${l}`) })
+        .then(() => undefined, (e: Error) => log(`[${id}] phone apps: ${e.message}`))
+        .finally(() => phoneJobs.delete(id));
+      phoneJobs.set(id, job);
+      return send(res, 202, { started: true });
     }
     if (method === "POST" && action === "key") {
       // A service's owner gets an access key with every permission, shown once.

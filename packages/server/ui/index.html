@@ -308,6 +308,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       signInTitle: "Your way in", signInText: "Your app has its own sign-in. Give your email and name to become its first admin; you get a one-time link to choose your password. Then add the people who work with you from People inside the app.",
       keyTitle: "Your access key", keyText: "This is a service other programs call. Each program sends an access key with every call. Get the first one here; it can make more keys for other programs and turn them off.", keyName: "Who will use it", getKey: "Get an access key", makingKey: "Making your key…",
       keyReady: "Copy this key now and keep it somewhere safe. It is shown only once; if it is lost, get a new one here.", copy: "Copy", copied: "Copied", readDocs: "How to call it (docs)",
+      phoneTitle: "Phone apps", phoneText: "An Android app and an iPhone app that open this app, with its own icon. They show the live app, so every change reaches phones at once. They are built in the cloud on GitHub and take about ten minutes.",
+      makePhone: "Make phone apps", makePhoneAgain: "Make them again", phoneBuilding: "Being made in the cloud. This takes about ten minutes; you can leave this page.", phoneWatch: "Watch the build",
+      phoneReady: (v) => `Version ${v} is ready.`, phoneFailed: "They were not made:", phoneFile: { "app-release.apk": "Android app (install it on a phone directly)", "app-release.aab": "Android app for the Play Store", "play-512.png": "Icon for the Play Store listing", "App-simulator.zip": "iPhone app for Xcode's simulator" },
+      phoneStores: "To publish: the Play Store needs a Google Play developer account (a one-time fee); the App Store needs an Apple Developer account, and Apple asks for more than a web page inside an app.",
       email: "Your email", yourNameOpt: "Your name", getLink: "Get my sign-in link", makingLink: "Making your sign-in link…",
       linkReady: "Open this link once to choose your password. It works one time only, so do not share it.", choosePassword: "Choose my password",
       needsBefore: "Built. It needs a few things from you before it goes online", needsLive: "Online, but it needs a few things from you",
@@ -351,6 +355,10 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       signInTitle: "আপনার প্রবেশপথ", signInText: "আপনার অ্যাপের নিজস্ব সাইন ইন আছে। প্রথম অ্যাডমিন হতে আপনার ইমেইল আর নাম দিন; পাসওয়ার্ড বেছে নেওয়ার জন্য একবারের একটি লিংক পাবেন। তারপর অ্যাপের ভেতরে People থেকে আপনার সহকর্মীদের যোগ করুন।",
       keyTitle: "আপনার অ্যাক্সেস কী", keyText: "এটি অন্য প্রোগ্রামের জন্য একটি সেবা। প্রতিটি প্রোগ্রাম প্রতিবার একটি অ্যাক্সেস কী পাঠায়। প্রথম কীটি এখান থেকে নিন; এটি দিয়ে অন্য প্রোগ্রামের জন্য আরও কী বানানো আর বন্ধ করা যায়।", keyName: "কে ব্যবহার করবে", getKey: "অ্যাক্সেস কী দিন", makingKey: "কী তৈরি হচ্ছে…",
       keyReady: "কীটি এখনই কপি করে নিরাপদ জায়গায় রাখুন। এটি শুধু একবারই দেখানো হয়; হারিয়ে গেলে এখান থেকে নতুন একটি নিন।", copy: "কপি", copied: "কপি হয়েছে", readDocs: "কীভাবে ব্যবহার করবেন (ডকস)",
+      phoneTitle: "ফোন অ্যাপ", phoneText: "একটি অ্যান্ড্রয়েড অ্যাপ আর একটি আইফোন অ্যাপ, যা এই অ্যাপটি খোলে, নিজের আইকনসহ। এগুলো চালু অ্যাপটিই দেখায়, তাই প্রতিটি পরিবর্তন সঙ্গে সঙ্গে ফোনে পৌঁছায়। এগুলো GitHub-এ ক্লাউডে তৈরি হয়, প্রায় দশ মিনিট লাগে।",
+      makePhone: "ফোন অ্যাপ তৈরি করুন", makePhoneAgain: "আবার তৈরি করুন", phoneBuilding: "ক্লাউডে তৈরি হচ্ছে। প্রায় দশ মিনিট লাগবে; আপনি এই পাতা ছেড়ে যেতে পারেন।", phoneWatch: "তৈরি হওয়া দেখুন",
+      phoneReady: (v) => `সংস্করণ ${v} তৈরি।`, phoneFailed: "তৈরি হয়নি:", phoneFile: { "app-release.apk": "অ্যান্ড্রয়েড অ্যাপ (সরাসরি ফোনে ইনস্টল করুন)", "app-release.aab": "প্লে স্টোরের জন্য অ্যান্ড্রয়েড অ্যাপ", "play-512.png": "প্লে স্টোরের পাতার আইকন", "App-simulator.zip": "Xcode-এর সিমুলেটরের জন্য আইফোন অ্যাপ" },
+      phoneStores: "প্রকাশ করতে: প্লে স্টোরের জন্য একটি Google Play ডেভেলপার অ্যাকাউন্ট লাগে (একবারের ফি); অ্যাপ স্টোরের জন্য Apple Developer অ্যাকাউন্ট লাগে, আর Apple অ্যাপের ভেতরে শুধু একটি ওয়েব পেজের চেয়ে বেশি কিছু চায়।",
       email: "আপনার ইমেইল", yourNameOpt: "আপনার নাম", getLink: "আমার সাইন ইন লিংক দিন", makingLink: "সাইন ইন লিংক তৈরি হচ্ছে…",
       linkReady: "পাসওয়ার্ড বেছে নিতে এই লিংকটি একবার খুলুন। এটি শুধু একবারই কাজ করে, তাই কাউকে দেবেন না।", choosePassword: "পাসওয়ার্ড বেছে নিন",
       needsBefore: "তৈরি হয়ে গেছে। অনলাইনে যাওয়ার আগে আপনার কাছ থেকে কয়েকটি জিনিস দরকার", needsLive: "অনলাইনে আছে, তবে আপনার কাছ থেকে কয়েকটি জিনিস দরকার",
@@ -546,6 +554,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       view.stages ? el("details", { class: "more", open: true }, el("summary", {}, t("planParts")), el("ul", {}, view.stages.map((p) => el("li", {}, `${t("partState")[p.state]}: ${p.name}. ${p.goal}`)))) : null,
       view.signIn ? signInBlock() : null,
       view.accessKey ? keyBlock(view.accessKey) : null,
+      view.phone ? phoneBlock(view.phone) : null,
       view.nextStage && !view.running ? el("div", { class: "row" }, el("button", { class: "btn", onclick: growNext }, t("buildNext", view.nextStage.name)), el("span", { class: "meta" }, t("tryFirst"))) : null,
       el("p", { class: "meta" }, t("writeBelow")),
     );
@@ -619,6 +628,33 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       } catch (err) { hint.textContent = err.message; btn.disabled = false; }
     });
     box.append(el("p", { class: "meta" }, t("keyText")), form);
+    return box;
+  }
+
+  /** Phone apps for a web app that is online: start them, see them being made, download them. */
+  function phoneBlock(p) {
+    const box = el("div", { class: "card", style: "gap:10px" }, el("h3", {}, t("phoneTitle")));
+    const runLink = safeUrl(p.runUrl);
+    const start = el("button", { class: "btn", type: "button" }, t(p.status === "none" ? "makePhone" : "makePhoneAgain"));
+    start.addEventListener("click", async () => {
+      start.disabled = true;
+      const id = current;
+      try { await api(`/api/projects/${id}/phone`, { method: "POST", body: JSON.stringify({ lang }) }); hint.textContent = t("phoneBuilding"); }
+      catch (err) { hint.textContent = err.message; start.disabled = false; }
+    });
+    if (p.status === "none") box.append(el("p", { class: "meta" }, t("phoneText")), el("div", { class: "row" }, start));
+    else if (p.status === "building") box.append(el("p", {}, t("phoneBuilding")), runLink ? el("a", { href: runLink, target: "_blank", rel: "noopener noreferrer" }, t("phoneWatch")) : null);
+    else {
+      if (p.status === "failed") box.append(el("p", {}, `${t("phoneFailed")} ${p.error || ""}`));
+      if (p.files && p.files.length) {
+        if (p.status === "ready") box.append(el("p", {}, t("phoneReady", p.version)));
+        box.append(el("ul", {}, p.files.map((f) => {
+          const name = f.path.split("/").pop();
+          return el("li", {}, el("a", { href: `/api/projects/${current}/phone/${f.path.split("/").map(encodeURIComponent).join("/")}`, download: name }, t("phoneFile")[name] || name), el("span", { class: "meta" }, ` ${(f.bytes / 1048576).toFixed(1)} MB`));
+        })), el("p", { class: "meta" }, t("phoneStores")));
+      }
+      box.append(el("div", { class: "row" }, start, runLink && p.status === "failed" ? el("a", { href: runLink, target: "_blank", rel: "noopener noreferrer" }, t("phoneWatch")) : null));
+    }
     return box;
   }
 

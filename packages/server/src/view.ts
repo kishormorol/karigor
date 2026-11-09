@@ -2,7 +2,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FsStore, listGiven, type BacklogItem, type ProjectState } from "@karigor/store";
 import { meter } from "@karigor/budget";
-import { liveRecord, reasonIn, renderExplain, stagePlan, storyWords, type Lang } from "@karigor/cli";
+import { liveRecord, phoneState, reasonIn, renderExplain, stagePlan, storyWords, type Lang } from "@karigor/cli";
 import { readSettings } from "@karigor/profiles";
 
 /** Everything the chat page shows about one project, in plain language. */
@@ -32,6 +32,8 @@ export interface ProjectView {
   signIn?: boolean;
   /** A service (api): its owner can get an access key here; `docs` is its docs page. */
   accessKey?: { docs?: string };
+  /** A web app online at an https address can have phone apps; their latest state when made. */
+  phone?: { status: "none" | "building" | "ready" | "failed"; version?: string; files?: { path: string; bytes: number }[]; runUrl?: string; error?: string };
   /** Files the person added (a logo, a price list). */
   files: { name: string; bytes: number; kind: string }[];
   /** The event log as plain sentences, oldest first. */
@@ -98,6 +100,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
   const waitingFor = state.status === "waiting" ? settings.filter((s) => state.waitingFor?.includes(s.name)).map((s) => ({ name: s.name, note: s.note, ...(s.noteBn ? { noteBn: s.noteBn } : {}), kind: s.kind, ...(s.service ? { service: s.service } : {}) })) : [];
   const pkg = live ? (JSON.parse(await readFile(join(store.dir, "workspace", "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> }) : {};
   const signIn = !!live && !!pkg.scripts?.["admin:link"];
+  const phone = await phoneView(store.dir, state, live?.url);
   const accessKey = live && pkg.scripts?.["key:new"] ? { ...(live.url ? { docs: `${live.url.replace(/\/$/, "")}/docs` } : {}) } : undefined;
   return {
     id: store.projectId,
@@ -122,6 +125,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
     ...(stages ? { stages } : {}),
     ...(signIn ? { signIn } : {}),
     ...(accessKey ? { accessKey } : {}),
+    ...(phone ? { phone } : {}),
     files: (await listGiven(store.dir)).map((f) => ({ name: f.name, bytes: f.bytes, kind: f.kind })),
     ...(state.status === "finished" && plan.next && plan.stages.length > 1 ? { nextStage: { name: plan.next.name, goal: plan.next.goal } } : {}),
     story: (await renderExplain(store, events, lang)).split("\n").filter(Boolean),
@@ -154,4 +158,19 @@ export async function listProjects(root: string): Promise<ProjectListing[]> {
     }
   }
   return out.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+/** Phone apps are offered for a web app online at an https address. A build left "building" for over 90 minutes stopped (Karigor was restarted). */
+async function phoneView(dir: string, state: ProjectState, url: string | undefined): Promise<ProjectView["phone"]> {
+  if (!url || !/^https:\/\//.test(url) || (state.targetProfile && state.targetProfile !== "web-app")) return undefined;
+  const s = await phoneState(dir);
+  if (!s) return { status: "none" };
+  const stale = s.status === "building" && Date.now() - Date.parse(s.startedAt) > 90 * 60 * 1000;
+  return {
+    status: stale ? "failed" : s.status,
+    version: `1.${s.versionCode}`,
+    ...(s.files?.length ? { files: s.files } : {}),
+    ...(s.runUrl ? { runUrl: s.runUrl } : {}),
+    ...(stale ? { error: "the build stopped before it finished; make them again" } : s.error ? { error: s.error } : {}),
+  };
 }

@@ -20,6 +20,8 @@ const EXACT: Record<string, string> = {
   "it is not online yet": "এটি এখনো অনলাইনে আসেনি",
   "this app has no sign-in to set up": "এই অ্যাপে সাইন ইন ঠিক করার কিছু নেই",
   "this app has no access keys": "এই অ্যাপে অ্যাক্সেস কী নেই",
+  "phone apps need the app online at an https address": "ফোন অ্যাপের জন্য অ্যাপটিকে একটি https ঠিকানায় অনলাইনে থাকতে হবে",
+  "the phone apps are being made right now": "ফোন অ্যাপগুলো এখনই তৈরি হচ্ছে",
   "the access key could not be made here; ask whoever runs this Karigor": "অ্যাক্সেস কী এখানে তৈরি করা গেল না; যিনি এই Karigor চালান তাকে জিজ্ঞেস করুন",
   "the sign-in link could not be made here; ask whoever runs this Karigor": "সাইন ইন লিংকটি এখানে তৈরি করা গেল না; যিনি এই Karigor চালান তাকে জিজ্ঞেস করুন",
   "this Karigor needs an access link; ask whoever runs it": "এই Karigor খুলতে একটি প্রবেশ লিংক লাগে; যিনি এটি চালান তাকে জিজ্ঞেস করুন",
