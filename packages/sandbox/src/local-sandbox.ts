@@ -10,6 +10,8 @@ import type { Workspace } from "./workspace.js";
 
 export interface LocalSandboxOptions {
   timeoutMs?: number;
+  /** How long the browser journeys may take (default 30 minutes). */
+  journeysTimeoutMs?: number;
   fetchImpl?: typeof fetch;
   /** Largest diff handed to reviewers, in characters. */
   maxDiffChars?: number;
@@ -28,10 +30,10 @@ export class LocalSandbox implements Sandbox {
     private readonly opts: LocalSandboxOptions = {},
   ) {}
 
-  private async cmd(argv: string[] | undefined, what: string, env?: NodeJS.ProcessEnv): Promise<CommandResult & { stdout: string; stderr: string; code: number | null }> {
+  private async cmd(argv: string[] | undefined, what: string, env?: NodeJS.ProcessEnv, timeoutMs?: number): Promise<CommandResult & { stdout: string; stderr: string; code: number | null; timedOut?: boolean }> {
     if (!argv || argv.length === 0) return { ok: true, output: `no ${what} command for the ${this.profile.name} profile`, stdout: "", stderr: "", code: 0 };
     const [c, ...args] = argv;
-    const r = await run(c!, args, { cwd: this.workspace.dir, timeoutMs: this.opts.timeoutMs ?? 10 * 60 * 1000, ...(env ? { env } : {}) });
+    const r = await run(c!, args, { cwd: this.workspace.dir, timeoutMs: timeoutMs ?? this.opts.timeoutMs ?? 10 * 60 * 1000, ...(env ? { env } : {}) });
     return { ok: r.code === 0, output: clip(`$ ${argv.join(" ")}\n${r.stdout}${r.stderr ? `\n${r.stderr}` : ""}`), ...r };
   }
 
@@ -85,10 +87,13 @@ export class LocalSandbox implements Sandbox {
       const b = await this.cmd(this.profile.commands.build, "build", env);
       if (!b.ok) return { available: true, passed: 0, failed: 1, failures: ["the app did not build, so no journey could run"], output: b.output };
       out.push("built on a fresh, empty database");
-      const r = await this.cmd(c.e2e, "journeys", env);
+      // Every journey runs twice (desktop and phone) in a real browser; a large app needs more than the usual limit.
+      const limit = this.opts.journeysTimeoutMs ?? 30 * 60 * 1000;
+      const r = await this.cmd(c.e2e, "journeys", env, limit);
       const report = await readFile(join(fresh, "report.json"), "utf8").catch(() => "");
       const counts = this.profile.parseJourneys(report);
-      if (!report && !r.ok) counts.failures.push("the journeys did not run; see the output");
+      if (r.timedOut) counts.failures.push(`the journeys did not finish within ${Math.round(limit / 60_000)} minutes; the output shows which ones were slow or stuck (a journey waiting for something that never appears takes its full timeout)`);
+      else if (!report && !r.ok) counts.failures.push("the journeys did not run; see the output");
       return { available: true, ...counts, failed: Math.max(counts.failed, r.ok ? 0 : 1), output: clip([...out, r.output].join("\n"), 12_000) };
     } finally {
       await rm(fresh, { recursive: true, force: true });
