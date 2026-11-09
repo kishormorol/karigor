@@ -10,6 +10,7 @@ You are reviewing a product spec written from a user's idea. Pass only if ALL of
 6. Non-goals are stated so scope cannot creep silently.
 7. When a `capabilities` section is given, no `must` or `should` feature needs something it lists under "Not yet". Such a need is left out or worked around, and the assumption ledger says so in plain words. This point is blocking: the build crew cannot make what is not there.
 8. The stages build the product in a sensible order: the first stage alone is something a real person can use end to end for the idea's core job; each later stage adds one area the person would recognise and needs only earlier stages; every `must` and `should` feature is in exactly one stage. A small idea with one stage is fine.
+9. The assumption ledger and the stages agree on what the first version covers. An assumption that promises something "in the first version" (daily reports, say) while the stages put it later fails: the person reads the ledger and would expect it on day one. This point is blocking.
 
 Fail if any point is missing, and say exactly which sentence to change. Cite the artifact and quote the text your verdict rests on.
 

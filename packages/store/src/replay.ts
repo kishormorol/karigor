@@ -93,6 +93,11 @@ export interface ProjectState {
   firstBuilt: boolean;
   /** Later stages that have finished, in order. */
   stagesBuilt: string[];
+  /**
+   * A build whose every piece was done but whose release did not go through, when a fix round took
+   * over: the first build ("first") or a later stage (its id). The fix round's release makes it built.
+   */
+  unreleased?: string;
 }
 
 export function emptyState(projectId: string): ProjectState {
@@ -213,7 +218,9 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       break;
     case "project-finished":
       s.status = "finished";
-      if (s.cycle === 0) s.firstBuilt = true;
+      if (s.cycle === 0 || s.unreleased === "first") s.firstBuilt = true;
+      else if (s.unreleased && !s.stagesBuilt.includes(s.unreleased)) s.stagesBuilt.push(s.unreleased);
+      delete s.unreleased;
       if (s.stage && !s.stagesBuilt.includes(s.stage)) s.stagesBuilt.push(s.stage);
       for (const w of Object.values(s.workItems)) if (w.cycle === s.cycle && w.status !== "done") w.status = "done";
       break;
@@ -223,6 +230,13 @@ export function applyEvent(s: ProjectState, e: Event): ProjectState {
       break;
     case "maintenance-started":
     case "stage-started": {
+      // A build that stopped with every piece done (its release failed) is finished by this round's release.
+      if (e.type === "maintenance-started" && s.status === "stopped" && !s.unreleased) {
+        const pieces = Object.values(s.items);
+        const allDone = pieces.length > 0 && pieces.every((i) => i.status === "done" || i.status === "dropped");
+        if (allDone && s.stage && !s.stagesBuilt.includes(s.stage)) s.unreleased = s.stage;
+        else if (allDone && !s.stage && !s.firstBuilt) s.unreleased = "first";
+      }
       s.cycle = e.cycle;
       s.template = e.template;
       s.status = "running";

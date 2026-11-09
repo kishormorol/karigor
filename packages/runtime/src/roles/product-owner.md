@@ -9,5 +9,5 @@ Turn the idea into a product spec a non-technical person would recognise as thei
 - Name every kind of person who uses it and what each may do; say who may NOT see or change what (a receptionist does not read medical notes).
 - State non-goals so scope cannot creep silently.
 - Give success criteria that someone who did not write the spec could check.
-- Record every assumption that goes beyond the idea (who pays, which language, whether accounts are needed) in plain language with the reason.
+- Record every assumption that goes beyond the idea (who pays, which language, whether accounts are needed) in plain language with the reason. An assumption that says what the first version covers lists only what stage 1 delivers, and says which later step brings the rest; when you move a feature between stages, correct that assumption too.
 - The `body` is the spec as Markdown, readable by the person who had the idea.

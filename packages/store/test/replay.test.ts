@@ -83,6 +83,47 @@ describe("replay", () => {
     expect(after.workItems["work-2"]?.status).toBe("todo");
   });
 
+  it("a build whose release failed counts as built once a fix round releases it, but not when pieces were left undone", () => {
+    const build = (left: "done" | "parked") => {
+      n = 0;
+      return [
+        ev({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" }),
+        ev({ type: "template-selected", by: "selector", template: "iterative", targetProfile: "web-app" }),
+        ev({ type: "budget-chosen", by: "user", tier: "free", ledgerId: "cost-1" }),
+        ev({ type: "item-status", by: "system", itemId: "b1", status: "done" }),
+        ev({ type: "item-status", by: "system", itemId: "b2", status: left }),
+        ev({ type: "project-stopped", by: "system", reason: "gate \"preview-healthy\" failed in release after 3 failures" }),
+        ev({ type: "signal-received", by: "system", workItemId: "work-1", source: "error", severity: "high", fingerprint: "release:r1" }),
+        ev({ type: "maintenance-started", by: "system", cycle: 1, template: "maintenance", workItemIds: ["work-1"] }),
+      ];
+    };
+    const events = build("done");
+    expect(replay("p1", events)).toMatchObject({ firstBuilt: false, unreleased: "first" });
+    // A fix round that stops too leaves it waiting for the next one.
+    events.push(ev({ type: "project-stopped", by: "system", reason: "x" }), ev({ type: "maintenance-started", by: "system", cycle: 2, template: "maintenance", workItemIds: ["work-1"] }), ev({ type: "project-finished", by: "system" }));
+    const after = replay("p1", events);
+    expect(after.firstBuilt).toBe(true);
+    expect(after.unreleased).toBeUndefined();
+    const partial = [...build("parked"), ev({ type: "project-finished", by: "system" })];
+    expect(replay("p1", partial).firstBuilt).toBe(false);
+
+    // The same for a later stage.
+    n = 0;
+    const stage = replay("p1", [
+      ev({ type: "project-created", by: "system", projectId: "p1", ideaId: "idea-1" }),
+      ev({ type: "template-selected", by: "selector", template: "iterative", targetProfile: "web-app" }),
+      ev({ type: "budget-chosen", by: "user", tier: "free", ledgerId: "cost-1" }),
+      ev({ type: "project-finished", by: "system" }),
+      ev({ type: "stage-started", by: "user", cycle: 1, stageId: "reports", template: "stage", workItemIds: [] }),
+      ev({ type: "item-status", by: "system", itemId: "r1", status: "done" }),
+      ev({ type: "project-stopped", by: "system", reason: "release failed" }),
+      ev({ type: "signal-received", by: "system", workItemId: "work-1", source: "error", severity: "high", fingerprint: "release:r2" }),
+      ev({ type: "maintenance-started", by: "system", cycle: 2, template: "maintenance", workItemIds: ["work-1"] }),
+      ev({ type: "project-finished", by: "system" }),
+    ]);
+    expect(stage.stagesBuilt).toEqual(["reports"]);
+  });
+
   it("a project waits for the person and resumes when they give what it needs", () => {
     n = 0;
     const base = [
