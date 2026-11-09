@@ -36,7 +36,8 @@ export interface VercelDeployOptions {
   pollMs?: number;
 }
 
-export const DEFAULT_ENV_NAMES = ["DATABASE_URL", "DATABASE_AUTH_TOKEN"];
+/** Host settings passed to every deployment by name: the database, and the Karigor page allowed to show the app in its preview. */
+export const DEFAULT_ENV_NAMES = ["DATABASE_URL", "DATABASE_AUTH_TOKEN", "KARIGOR_EDITOR_ORIGIN"];
 
 /** The first hosted target: Vercel's free hobby tier, driven through the `vercel` CLI. */
 export class VercelDeploy implements DeployAdapter {

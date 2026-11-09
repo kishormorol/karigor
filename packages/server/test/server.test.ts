@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressInfo } from "node:net";
@@ -236,6 +236,19 @@ describe("server", { timeout: 180_000 }, () => {
       await writeFile(join(root, id, "workspace", "package.json"), JSON.stringify({ scripts: { "key:new": "tsx scripts/key-new.ts" } }));
       expect((await call(`/api/projects/${id}`)).json["accessKey"]).toBeDefined();
     }
+  });
+
+  it("records an edit made by pointing for the fast lane, and offers pointing only for apps with the edit helper", async () => {
+    const { k, call, root } = await start();
+    const id = (await call("/api/projects", { method: "POST", body: JSON.stringify({ idea: "Tool lending" }) })).json["projectId"] as string;
+    await k.idle();
+    const v = (await call(`/api/projects/${id}`)).json;
+    expect(v["editable"]).toBeUndefined();
+    const r = await call(`/api/projects/${id}/feedback`, { method: "POST", body: JSON.stringify({ text: "Changes I made by pointing at the app:\n- Remove: the Card \"Tips\"", edit: true }) });
+    expect(r.status).toBe(202);
+    await k.idle();
+    const events = (await readFile(join(root, id, "events.jsonl"), "utf8")).split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; fingerprint?: string });
+    expect(events.find((e) => e.type === "signal-received")?.fingerprint).toMatch(/^edit:/);
   });
 
   it("offers phone apps only for an app online at https, and serves only the files the build made", async () => {

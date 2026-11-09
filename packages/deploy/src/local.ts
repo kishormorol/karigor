@@ -197,7 +197,7 @@ export class LocalDeploy implements DeployAdapter {
    * every release, so data survives an update and a rollback instead of staying behind in an old release.
    */
   async settingsEnv(): Promise<Record<string, string>> {
-    const env: Record<string, string> = { SITE_URL: this.productionUrl, ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
+    const env: Record<string, string> = { SITE_URL: this.productionUrl, ...(process.env["KARIGOR_EDITOR_ORIGIN"] ? { KARIGOR_EDITOR_ORIGIN: process.env["KARIGOR_EDITOR_ORIGIN"] } : {}), ...(this.o.profile.localSettings ?? {}), ...(await this.storedSettings()) };
     for (const [k, v] of Object.entries(env)) {
       if (!v.startsWith("file:./")) continue;
       const path = join(this.o.projectDir, v.slice("file:./".length));

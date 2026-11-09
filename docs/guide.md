@@ -141,7 +141,9 @@ karigor grow <id> --all    # every remaining stage, one after another
 
 ## 7. Change it
 
-Tell Karigor in your own words, one thing per message:
+**By pointing.** On the chat page, press **Change it by pointing** under your live app. Your app opens beside a list of changes. Click a part to pick it, then choose Move up, Move down or Remove, or type what should change. Drag a card, a row or a form field to a new place. Double-click words to change them. Drop a photo on a part to use it there. Nothing changes until you press **Send changes**. Then Karigor makes the changes with the same tests as any other change, but skips the longer reviews, so small edits are live in minutes. (The button shows for web apps made from the current template; older apps do not have the part that makes pointing possible.)
+
+**By writing.** Tell Karigor in your own words, one thing per message:
 
 ```sh
 karigor feedback <id> "On the sales list, tapping anywhere on a sale should open it, not just the time."

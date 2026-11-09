@@ -83,6 +83,15 @@ header {
 .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--mine); color: var(--mine-text); display: grid; place-items: center; font-size: 15px; font-weight: 800; }
 .title { flex: 1; min-width: 0; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; border: 0; }
+#previewDialog { width: min(1180px, calc(100% - 16px)); height: calc(100% - 16px); max-height: none; }
+.preview { display: grid; grid-template-columns: 1fr 320px; height: 100%; }
+.preview .bar { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.preview .bar h2 { margin: 0; font-size: 16px; flex: 1; min-width: 0; }
+.preview iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+.preview .side { border-left: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+.preview .side ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.preview { grid-template-rows: auto 1fr; }
+@media (max-width: 760px) { .preview { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; } .preview .side { border-left: 0; border-top: 1px solid var(--line); max-height: 40vh; } }
 .chip.out { background: var(--bad-soft); color: var(--bad); }
 .iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; height: 36px; padding: 0 12px; font-size: 14px; }
 
@@ -263,6 +272,25 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   </div>
 </dialog>
 
+<dialog id="previewDialog">
+  <div class="preview">
+    <div class="bar">
+      <h2 id="previewTitle">Change it by pointing</h2>
+      <label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="pointToggle" checked> <span id="pointLabel">Point and change</span></label>
+      <button class="btn quiet" id="previewClose" type="button">Close</button>
+    </div>
+    <iframe id="previewFrame" title="Your app" referrerpolicy="no-referrer"></iframe>
+    <div class="side">
+      <p class="meta" id="previewHelp" style="padding:0"></p>
+      <div id="previewPicked"></div>
+      <strong id="pendingTitle" style="font-size:14px"></strong>
+      <ol id="pendingList"></ol>
+      <div class="row"><button class="btn" id="sendEdits" type="button" disabled>Send changes</button></div>
+      <p class="meta" id="previewProblem" style="padding:0"></p>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="creditDialog">
   <div class="sheet">
     <h2 id="creditTitle">Add credit</h2>
@@ -345,6 +373,12 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       cantLoad: "Could not load that project.", loading: "Loading…", noProjects: "No projects yet.", cantReach: "Can't reach Karigor",
       tierNames: { free: "free", cheap: "cheap", best: "best" },
       emailTitle: "Sign in to Karigor", emailText: "Give your email and we send you a link that signs you in. No password to remember. New here? The same link makes your account.", emailLabel: "Your email", emailSend: "Send my link", emailSent: (e) => `Check ${e} for a sign-in link. It works once, for 15 minutes.`, linkExpired: "That sign-in link was already used or is too old. Ask for a new one.",
+      changeByPointing: "Change it by pointing", pointAndChange: "Point and change",
+      previewHelp: "Click a part to pick it. Drag a card, row or field to move it. Double-click words to change them. Drop a photo on a part to use it there. Nothing changes until you send.",
+      pickedPart: (d) => `Picked: ${d}`, moveUp: "Move up", moveDown: "Move down", removeIt: "Remove it", whatChange: "What should change here?", addChange: "Add",
+      changesToSend: (n) => `Changes to send (${n})`, sendChanges: "Send changes", sentChanges: "Sent. The changes are being made; the app updates when they pass their checks.", noChanges: "Nothing yet.",
+      on_page: (p) => `on the page ${p}`, moveBefore: (a, b) => `Move ${a} to just before ${b}`, moveAfter: (a, b) => `Move ${a} to just after ${b}`,
+      changeWords: (a, b, c) => `Change the words "${b}" to "${c}" (${a})`, usePhoto: (n, a) => `Use the photo ${n} (just added) for ${a}`, moveUpOf: (a) => `Move up by one: ${a}`, moveDownOf: (a) => `Move down by one: ${a}`, removeOf: (a) => `Remove: ${a}`,
       addCredit: "Add credit", creditNow: (n) => `You have $${n.toFixed(2)} of credit. A build uses what the AI really costs, plus a small fee; nothing is charged when you use your own key. Credit does not expire.`,
       payWith: (l) => `Pay with ${l}`, paidOk: "Thank you. Your credit is added as soon as the payment is confirmed (usually within a minute).", paidNo: "The payment did not go through. Nothing was charged.", close: "Close",
       credit: (n) => `Credit: $${n.toFixed(2)}`, creditOut: "Your credit has run out. Add credit to keep building; what you built stays.",
@@ -396,6 +430,12 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       cantLoad: "প্রকল্পটি খোলা যায়নি।", loading: "খোলা হচ্ছে…", noProjects: "এখনো কোনো প্রকল্প নেই।", cantReach: "Karigor-এর সঙ্গে যোগাযোগ করা যাচ্ছে না",
       tierNames: { free: "বিনা খরচের", cheap: "সস্তা", best: "সেরা" },
       emailTitle: "Karigor-এ সাইন ইন করুন", emailText: "আপনার ইমেইল দিন, আমরা সাইন ইন করার একটি লিংক পাঠাব। কোনো পাসওয়ার্ড মনে রাখতে হবে না। নতুন? একই লিংকে আপনার অ্যাকাউন্ট তৈরি হবে।", emailLabel: "আপনার ইমেইল", emailSend: "লিংক পাঠান", emailSent: (e) => `${e} ঠিকানায় সাইন ইন লিংক দেখুন। এটি একবার, ১৫ মিনিটের জন্য কাজ করে।`, linkExpired: "এই সাইন ইন লিংকটি আগেই ব্যবহার হয়েছে বা অনেক পুরোনো। নতুন একটি চান।",
+      changeByPointing: "দেখিয়ে বদলান", pointAndChange: "দেখিয়ে বদলান",
+      previewHelp: "কোনো অংশ বাছতে তাতে ক্লিক করুন। কার্ড, সারি বা ঘর সরাতে টেনে নিন। লেখা বদলাতে দুবার ক্লিক করুন। কোনো অংশে ছবি ছেড়ে দিলে সেখানে সেই ছবি বসবে। পাঠানোর আগে কিছুই বদলায় না।",
+      pickedPart: (d) => `বাছা হয়েছে: ${d}`, moveUp: "ওপরে সরান", moveDown: "নিচে সরান", removeIt: "সরিয়ে দিন", whatChange: "এখানে কী বদলাবে?", addChange: "যোগ করুন",
+      changesToSend: (n) => `পাঠানোর মতো বদল (${n})`, sendChanges: "বদলগুলো পাঠান", sentChanges: "পাঠানো হয়েছে। বদলগুলো করা হচ্ছে; পরীক্ষায় পাস করলে অ্যাপ নিজে থেকে বদলাবে।", noChanges: "এখনো কিছু নেই।",
+      on_page: (p) => `on the page ${p}`, moveBefore: (a, b) => `Move ${a} to just before ${b}`, moveAfter: (a, b) => `Move ${a} to just after ${b}`,
+      changeWords: (a, b, c) => `Change the words "${b}" to "${c}" (${a})`, usePhoto: (n, a) => `Use the photo ${n} (just added) for ${a}`, moveUpOf: (a) => `Move up by one: ${a}`, moveDownOf: (a) => `Move down by one: ${a}`, removeOf: (a) => `Remove: ${a}`,
       addCredit: "ক্রেডিট যোগ করুন", creditNow: (n) => `আপনার ক্রেডিট $${n.toFixed(2)}। একটি তৈরিতে AI-এর আসল খরচ আর সামান্য ফি কাটা হয়; নিজের কী ব্যবহার করলে কিছুই কাটা হয় না। ক্রেডিটের মেয়াদ শেষ হয় না।`,
       payWith: (l) => `${l} দিয়ে দিন`, paidOk: "ধন্যবাদ। টাকা নিশ্চিত হলেই ক্রেডিট যোগ হবে (সাধারণত এক মিনিটের মধ্যে)।", paidNo: "টাকা দেওয়া হয়নি। কিছু কাটা হয়নি।", close: "বন্ধ করুন",
       credit: (n) => `ক্রেডিট: $${n.toFixed(2)}`, creditOut: "আপনার ক্রেডিট শেষ। তৈরি চালিয়ে যেতে ক্রেডিট যোগ করুন; যা তৈরি হয়েছে তা থাকবে।",
@@ -580,7 +620,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       el("h2", {}, s.headline),
       el("p", {}, s.whatItDoes),
       el("p", {}, el("strong", {}, t("howToUse")), s.howToUse),
-      url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, t("openIt")), el("span", { class: "meta" }, url)) : null,
+      url ? el("div", { class: "row" }, el("a", { class: "btn", href: url, target: "_blank", rel: "noopener noreferrer" }, t("openIt")), view.editable && !view.running ? el("button", { class: "btn quiet", type: "button", onclick: () => openPreview(url) }, t("changeByPointing")) : null, el("span", { class: "meta" }, url)) : null,
       view.stages ? el("details", { class: "more", open: true }, el("summary", {}, t("planParts")), el("ul", {}, view.stages.map((p) => el("li", {}, `${t("partState")[p.state]}: ${p.name}. ${p.goal}`)))) : null,
       view.signIn ? signInBlock() : null,
       view.accessKey ? keyBlock(view.accessKey) : null,
@@ -993,6 +1033,88 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     $("credit").hidden = typeof n !== "number";
     if (typeof n === "number") { $("credit").textContent = t("credit", n); $("credit").classList.toggle("out", n <= 0); $("credit").title = n <= 0 ? t("creditOut") : ""; }
   }
+  /**
+   * Changing the app by pointing: the live app in a frame, with its edit helper switched on. Each gesture
+   * becomes one line of a change request (in English, which the developer reads), sent together as one fast-lane edit.
+   */
+  let preview = null;
+  const partWords = (d, page) => {
+    const name = d.name ? ` "${d.name}"` : d.text ? ` showing "${d.text.slice(0, 60)}"` : "";
+    return `the ${d.kind}${name}${d.position ? ` (${d.position})` : ""}${d.inside ? ` in the ${d.inside}` : ""} ${t("on_page", page)}`;
+  };
+  function openPreview(url) {
+    const origin = new URL(url).origin;
+    preview = { id: current, origin, edits: [], picked: null };
+    $("previewTitle").textContent = t("changeByPointing");
+    $("pointLabel").textContent = t("pointAndChange");
+    $("previewClose").textContent = t("close");
+    $("sendEdits").textContent = t("sendChanges");
+    $("previewHelp").textContent = t("previewHelp");
+    $("previewProblem").textContent = "";
+    $("pointToggle").checked = true;
+    $("previewFrame").src = url;
+    drawEdits();
+    $("previewDialog").showModal();
+  }
+  const pointing = () => { const f = $("previewFrame").contentWindow; if (preview && f) f.postMessage({ type: "karigor:edit", on: $("pointToggle").checked }, preview.origin); };
+  $("pointToggle").addEventListener("change", pointing);
+  $("previewClose").addEventListener("click", () => { $("previewDialog").close(); $("previewFrame").src = "about:blank"; preview = null; });
+  function addEdit(line) { preview.edits.push(line); drawEdits(); }
+  function drawEdits() {
+    if (!preview) return;
+    $("pendingTitle").textContent = t("changesToSend", preview.edits.length);
+    $("pendingList").replaceChildren(...(preview.edits.length ? preview.edits.map((x, i) => el("li", {}, x, " ", el("button", { class: "linkbtn subtle", type: "button", "aria-label": t("remove"), onclick: () => { preview.edits.splice(i, 1); drawEdits(); } }, "×"))) : [el("li", { class: "meta", style: "list-style:none;margin-left:-18px" }, t("noChanges"))]));
+    $("sendEdits").disabled = !preview.edits.length;
+    const p = preview.picked;
+    if (!p) return $("previewPicked").replaceChildren();
+    const words = el("input", { maxlength: "300", placeholder: t("whatChange"), style: "flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface)" });
+    const what = partWords(p.target, p.page);
+    $("previewPicked").replaceChildren(el("div", { class: "card", style: "padding:10px 12px;gap:8px" },
+      el("p", { style: "font-size:14px" }, t("pickedPart", what)),
+      el("div", { class: "row" },
+        el("button", { class: "btn quiet", type: "button", onclick: () => addEdit(t("moveUpOf", what)) }, t("moveUp")),
+        el("button", { class: "btn quiet", type: "button", onclick: () => addEdit(t("moveDownOf", what)) }, t("moveDown")),
+        el("button", { class: "btn quiet", type: "button", onclick: () => addEdit(t("removeOf", what)) }, t("removeIt"))),
+      el("form", { class: "inline-form", onsubmit: (e) => { e.preventDefault(); if (words.value.trim()) { addEdit(`${what}: ${words.value.trim()}`); words.value = ""; } } }, words, el("button", { class: "btn" }, t("addChange")))));
+  }
+  window.addEventListener("message", async (e) => {
+    if (!preview || e.origin !== preview.origin || e.source !== $("previewFrame").contentWindow) return;
+    const m = e.data || {};
+    const page = typeof m.page === "string" ? m.page.slice(0, 200) : "/";
+    if (m.type === "karigor:ready") return pointing();
+    const d = m.target && typeof m.target === "object" ? m.target : null;
+    if (!d) return;
+    if (m.type === "karigor:pick") { preview.picked = { target: d, page }; return drawEdits(); }
+    if (m.type === "karigor:move") {
+      const other = m.before || m.after;
+      if (other && typeof other === "object") addEdit(t(m.before ? "moveBefore" : "moveAfter", partWords(d, page), partWords(other, page)));
+      return;
+    }
+    if (m.type === "karigor:text" && typeof m.after === "string") return addEdit(t("changeWords", partWords(d, page), String(m.before).slice(0, 200), m.after.slice(0, 200)));
+    if (m.type === "karigor:file" && m.file instanceof File) {
+      $("previewProblem").textContent = t("uploading", m.file.name);
+      try {
+        const res = await fetch(`/api/projects/${preview.id}/files?name=${encodeURIComponent(m.file.name)}`, { method: "POST", body: m.file, headers: { "content-type": "application/octet-stream", "x-karigor-lang": lang } });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || t("wrong", res.status));
+        $("previewProblem").textContent = "";
+        addEdit(t("usePhoto", j.name, partWords(d, page)));
+      } catch (err) { $("previewProblem").textContent = t("cantAdd", m.file.name, err.message); }
+    }
+  });
+  $("sendEdits").addEventListener("click", async () => {
+    if (!preview || !preview.edits.length) return;
+    $("sendEdits").disabled = true;
+    const text = `Changes I made by pointing at the app:\n${preview.edits.map((x) => `- ${x}`).join("\n")}`;
+    try {
+      await api(`/api/projects/${preview.id}/feedback`, { method: "POST", body: JSON.stringify(withKey({ text, edit: true })) });
+      preview.edits = [];
+      preview.picked = null;
+      drawEdits();
+      $("previewProblem").textContent = t("sentChanges");
+    } catch (err) { $("previewProblem").textContent = err.message; $("sendEdits").disabled = false; }
+  });
+
   /** Buying credit: an amount and a way to pay, then the provider's own payment page. */
   async function showCredit_buy() {
     $("creditTitle").textContent = t("addCredit");

@@ -70,7 +70,7 @@ export function PublicShell({ brand, children }: { brand?: string; children: Rea
 /** Page title with an optional small label above and actions on the right. */
 export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
+    <div data-k="PageHeader" data-k-name={title} className="flex flex-wrap items-end justify-between gap-4">
       <div className="flex flex-col gap-1.5">
         {eyebrow && <span className="text-[13px] font-semibold uppercase tracking-[0.06em] text-muted">{eyebrow}</span>}
         <h1 className="m-0 text-[28px] font-bold leading-tight tracking-tight sm:text-[32px]">{title}</h1>
@@ -83,7 +83,7 @@ export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?:
 
 export function Card({ title, actions, children, className, padded = true }: { title?: string; actions?: ReactNode; children: ReactNode; className?: string; padded?: boolean }) {
   return (
-    <section className={cx("overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface", className)}>
+    <section data-k="Card" data-k-name={title} className={cx("overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface", className)}>
       {(title || actions) && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/70 px-5 py-4">
           {title && <h2 className="m-0 text-[17px] font-semibold">{title}</h2>}
@@ -104,7 +104,7 @@ export function Card({ title, actions, children, className, padded = true }: { t
 export function ListRow({ leading, title, detail, status, amount, action, children }: { leading?: ReactNode; title: ReactNode; detail?: ReactNode; status?: ReactNode; amount?: ReactNode; action?: ReactNode; children?: ReactNode }) {
   const indent = leading ? "pl-14 sm:pl-0" : undefined;
   return (
-    <div className="flex flex-col gap-3 border-b border-line/70 px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
+    <div data-k="ListRow" data-k-name={typeof title === "string" ? title : undefined} className="flex flex-col gap-3 border-b border-line/70 px-5 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         {leading}
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -149,7 +149,7 @@ export function StatGrid({ children }: { children: ReactNode }) {
 /** A headline number. `tone` colours money: owed red, paid green. `progress` (0–100) adds a bar. */
 export function Stat({ label, value, hint, tone = "neutral", progress }: { label: string; value: ReactNode; hint?: ReactNode; tone?: "neutral" | "owed" | "paid"; progress?: number }) {
   return (
-    <div className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-5">
+    <div data-k="Stat" data-k-name={label} className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-5">
       <span className="text-[13px] font-medium text-muted">{label}</span>
       <span className={cx("text-[28px] font-bold tabular-nums tracking-tight", tone === "owed" && "text-owed", tone === "paid" && "text-paid")}>{value}</span>
       {progress !== undefined && <Progress value={progress} label={label} />}
@@ -216,7 +216,7 @@ export function Alert({ tone = "info", children }: { tone?: "success" | "error" 
 
 export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
+    <div data-k="EmptyState" data-k-name={title} className="flex flex-col items-center gap-2 px-6 py-10 text-center">
       <p className="m-0 text-[15px] font-semibold">{title}</p>
       {children && <p className="m-0 max-w-sm text-sm text-muted">{children}</p>}
       {action && <div className="mt-2">{action}</div>}
@@ -252,7 +252,7 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   const noteId = `${id}-note`;
   const note = error ?? hint;
   return (
-    <div className="flex flex-col gap-1.5 text-sm font-medium">
+    <div data-k="Field" data-k-name={label} className="flex flex-col gap-1.5 text-sm font-medium">
       <label htmlFor={id}>{label}</label>
       {child ? cloneElement(child, { id, ...(note ? { "aria-describedby": noteId } : {}) }) : children}
       {note && (

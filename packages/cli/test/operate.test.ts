@@ -239,6 +239,32 @@ describe("the owner's first link for a hosted app", () => {
   });
 });
 
+describe("the fast lane for edits made by pointing", { timeout: 120_000 }, () => {
+  it("takes the quick-edit process only when every open request is such an edit", async () => {
+    const { editSignal, startMaintenance } = await import("../src/index.js");
+    const { base } = await released();
+    const store = await FsStore.open(base.root, base.projectId, { clock: NOW, committer: noopCommitter });
+    const edit = editSignal("Changes I made by pointing at the app:\n- Move up by one: the Field \"Price\"");
+    expect(edit.fingerprint).toMatch(/^edit:/);
+    await recordSignals(store, [edit]);
+    await startMaintenance(store, { adapter: base.adapter });
+    expect((await store.replay()).template).toBe("quick-edit");
+    const { base: other } = await released();
+    const store2 = await FsStore.open(other.root, other.projectId, { clock: NOW, committer: noopCommitter });
+    await recordSignals(store2, [edit, feedbackSignal("The total is wrong")]);
+    await startMaintenance(store2, { adapter: other.adapter });
+    expect((await store2.replay()).template).toBe("maintenance");
+  });
+
+  it("finishes a quick edit with tests and a release", async () => {
+    const { base } = await released();
+    const { editSignal } = await import("../src/index.js");
+    const r = await operateOnce({ ...base, signals: [editSignal("Changes I made by pointing at the app:\n- Remove: the Card \"Tips\"")] });
+    expect(r.cycle).toBe(1);
+    expect(r.state.status).toBe("finished");
+  });
+});
+
 describe("errors in a hosted app's logs", { timeout: 120_000 }, () => {
   it("become work items, and each look starts where the last one ended", async () => {
     const { base, deploy } = await released();

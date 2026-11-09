@@ -42,6 +42,15 @@ export function feedbackSignal(text: string): Signal {
   return { source: "feedback", severity: "medium", title: t.split("\n")[0]!.slice(0, 120), description: t, fingerprint: `feedback:${hash(t.toLowerCase().replace(/\s+/g, " "))}` };
 }
 
+/**
+ * A change the person made by pointing at the app in Karigor's preview (moving a part, changing its
+ * words, dropping a photo). Its fingerprint starts with "edit:", so a fix round made only of these takes the fast lane.
+ */
+export function editSignal(text: string): Signal {
+  const t = text.trim();
+  return { source: "feedback", severity: "low", title: t.split("\n")[0]!.slice(0, 120), description: t, fingerprint: `edit:${hash(t.toLowerCase().replace(/\s+/g, " "))}` };
+}
+
 /** The same error with different numbers, ids or quoted values is one problem. */
 export function normaliseError(line: string): string {
   return line
@@ -138,7 +147,9 @@ export async function startMaintenance(store: FsStore, o: { adapter: ModelAdapte
   const state = await store.replay();
   if (!canStartMaintenance(state)) return undefined;
   const open = Object.entries(state.workItems).filter(([, w]) => w.status !== "done").map(([id]) => id);
-  const template = await loadTemplate("maintenance", o.templatesDir);
+  // Only edits made by pointing: the fast lane, with the same tests but fewer reviews.
+  const quick = open.every((id) => state.workItems[id]!.fingerprint.startsWith("edit:"));
+  const template = await loadTemplate(quick ? "quick-edit" : "maintenance", o.templatesDir);
   const cycle = state.cycle + 1;
   if (state.ledgerId) {
     const ledger = await store.readArtifact("cost-ledger", state.ledgerId);
@@ -149,7 +160,7 @@ export async function startMaintenance(store: FsStore, o: { adapter: ModelAdapte
     const meta = { ...ledger.meta, phaseBudgets, budgetTotal: ledger.meta.budgetTotal + t.total };
     await store.writeArtifact({ meta, body: ledger.body.replace(/\n*$/, `\nFix round ${cycle}: ${t.currency} ${t.total.toFixed(2)} added.\n`) });
   }
-  await store.appendEvent({ type: "maintenance-started", by: "system", cycle, template: "maintenance", workItemIds: open });
+  await store.appendEvent({ type: "maintenance-started", by: "system", cycle, template: template.name, workItemIds: open });
   await store.commit(`karigor: fix round ${cycle} for ${open.length} work item(s)`);
   return cycle;
 }
@@ -614,7 +625,7 @@ export async function provideSettings(o: { store: FsStore; deploy: DeployAdapter
 }
 
 /** sha256 (first 16 hex) of every UI kit the template has shipped, so an untouched copy can be upgraded. */
-export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248dbf5f92f9", "20952f55754c07f0"];
+export const UI_KIT_HISTORY = ["7e71e280ccaa32d8", "3efd564f773868ca", "c1ae248dbf5f92f9", "20952f55754c07f0", "72ded2c89ed3f9e2"];
 
 /**
  * Bring an app built from an older template up to the current UI kit: copy `src/components/ui.tsx`

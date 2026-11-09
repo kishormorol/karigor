@@ -64,7 +64,7 @@ export interface RunOptions {
 }
 
 /** Templates a released project re-enters with; never chosen for a new idea. */
-const CONTINUATION_TEMPLATES = new Set(["maintenance", "stage"]);
+const CONTINUATION_TEMPLATES = new Set(["maintenance", "stage", "quick-edit"]);
 
 export class RunError extends Error {
   override name = "RunError";
@@ -99,9 +99,9 @@ export async function runProject(opts: RunOptions): Promise<ProjectState> {
     try {
       const queued = await drainInbox<{ kind: string; text: string }>(dir);
       if (queued.length) {
-        const { feedbackSignal, recordSignals } = await import("./operate.js");
+        const { editSignal, feedbackSignal, recordSignals } = await import("./operate.js");
         const store = await FsStore.open(opts.root, opts.projectId, { ...(opts.clock ? { clock: opts.clock } : {}), ...(opts.committer ? { committer: opts.committer } : {}) });
-        await recordSignals(store, queued.filter((q) => q.kind === "feedback").map((q) => feedbackSignal(q.text)), opts.clock);
+        await recordSignals(store, queued.filter((q) => q.kind === "feedback" || q.kind === "edit").map((q) => (q.kind === "edit" ? editSignal(q.text) : feedbackSignal(q.text))), opts.clock);
       }
     } finally {
       await release();

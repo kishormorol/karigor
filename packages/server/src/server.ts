@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { meter } from "@karigor/budget";
 import { FsStore, GivenError, GIVEN_LIMITS, addGiven, queueInbox, runningPid } from "@karigor/store";
-import { adminLink, ownerAccessKey, phoneBuildFile, projectPhoneApps, canStartMaintenance, correctAssumption, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
+import { adminLink, ownerAccessKey, phoneBuildFile, projectPhoneApps, canStartMaintenance, correctAssumption, editSignal, createProject, feedbackSignal, growOnce, ideaFor, isLang, type Lang, operateOnce, pausedForAllowance, provideSettings, recordSignals, runOptions, runProject, STARTERS, STARTERS_BN } from "@karigor/cli";
 import { listProjects, projectView } from "./view.js";
 import { errorIn } from "./errors.js";
 import type { Mailer } from "./mail.js";
@@ -328,7 +328,7 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
         "cache-control": "no-cache",
-        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-src http: https:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         ...SECURITY_HEADERS,
       });
       res.end(await readFile(UI_FILE, "utf8"));
@@ -532,10 +532,11 @@ export function createKarigorServer(o: ServerOptions): KarigorServer {
       });
       if (runs.has(id) || (await runningPid(store.dir))) {
         // A build is working on it (here, or in karigor serve or a CLI run): the message waits in the inbox.
-        await queueInbox(store.dir, { kind: "feedback", text: said });
+        await queueInbox(store.dir, { kind: b["edit"] === true ? "edit" : "feedback", text: said });
         return send(res, 202, { workItemId: null, fixing: false, queued: true });
       }
-      const [workItemId] = await recordSignals(store, [feedbackSignal(said)]);
+      // `edit`: a change made by pointing at the app in the preview, which takes the fast lane.
+      const [workItemId] = await recordSignals(store, [b["edit"] === true ? editSignal(said) : feedbackSignal(said)]);
       const fixing = !runs.has(id) && canStartMaintenance(await store.replay()) && mayBuild(viewer, optionalKey(b)) ? startRun(id, "fix", optionalKey(b)) : false;
       return send(res, 202, { workItemId: workItemId ?? null, fixing });
     }

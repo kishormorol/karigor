@@ -1,0 +1,45 @@
+name: quick-edit
+description: Entered when every open request is a small edit the person made by pointing at the app. Plan, change, check, release, fast.
+fitsWhen: |
+  The project is released and every open work item is an edit made in Karigor's preview
+  (move a part, change its words, swap a photo, change a colour). Never chosen for a new idea.
+initialPhase: triage
+limits:
+  projectFailures: 8
+phases:
+  triage:
+    description: Turn the edits into one or two small backlog items, each naming the page and the part.
+    roles: [planner]
+    budgetWeight: 1
+    transitions:
+      - to: build
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  build:
+    loop:
+      itemRoles: [developer]
+      # The same tests and lint as any change; the slower reviews are left for real changes.
+      itemGates: [tests-pass, lint-clean]
+      onItemFail:
+        - { action: retry, times: 2 }
+        - { action: park }
+      itemsPerSprint: 4
+    budgetWeight: 2
+    transitions:
+      - to: release
+        gates: [build-succeeds, security-scan-clean]
+        onFail:
+          - { action: retry, times: 1 }
+          - { action: stop }
+  release:
+    roles: [releaser]
+    budgetWeight: 1
+    transitions:
+      - to: done
+        gates: [preview-healthy, rollback-verified]
+        onFail:
+          - { action: retry, times: 2 }
+          - { action: stop }
+  done:
+    terminal: true

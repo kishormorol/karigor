@@ -68,12 +68,16 @@ describe("profiles", () => {
   it("web-app scaffold has the files the stack guide promises", async () => {
     const dir = await mkdtemp(join(tmpdir(), "karigor-webapp-"));
     await webApp.scaffold(dir);
-    for (const f of ["package.json", ".gitignore", ".env.example", "app/(app)/page.tsx", "app/(app)/layout.tsx", "app/login/page.tsx", "app/welcome/[token]/page.tsx", "app/api/health/route.ts", "src/db/schema.ts", "src/lib/access.ts", "src/server/people.ts", "src/server/auth.ts", "src/components/ui-client.tsx", "playwright.config.ts", "tests/e2e/helpers.ts", "scripts/admin-link.ts", "src/lib/health.ts", "tests/health.test.ts", "vitest.config.ts", "eslint.config.mjs", "src/server/messages.ts", "src/server/files.ts", "src/server/jobs.ts", "app/api/jobs/route.ts", "app/(app)/files/[id]/route.ts", "app/manifest.ts", "drizzle/0001_messages_files_jobs.sql", "app/.well-known/assetlinks.json/route.ts", "tests/app-links.test.ts"]) {
+    for (const f of ["package.json", ".gitignore", ".env.example", "app/(app)/page.tsx", "app/(app)/layout.tsx", "app/login/page.tsx", "app/welcome/[token]/page.tsx", "app/api/health/route.ts", "src/db/schema.ts", "src/lib/access.ts", "src/server/people.ts", "src/server/auth.ts", "src/components/ui-client.tsx", "playwright.config.ts", "tests/e2e/helpers.ts", "scripts/admin-link.ts", "src/lib/health.ts", "tests/health.test.ts", "vitest.config.ts", "eslint.config.mjs", "src/server/messages.ts", "src/server/files.ts", "src/server/jobs.ts", "app/api/jobs/route.ts", "app/(app)/files/[id]/route.ts", "app/manifest.ts", "drizzle/0001_messages_files_jobs.sql", "app/.well-known/assetlinks.json/route.ts", "tests/app-links.test.ts", "src/components/karigor-edit.tsx"]) {
       await expect(readFile(join(dir, f), "utf8"), f).resolves.toBeTruthy();
     }
     const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8"));
     expect(pkg.scripts.test).toMatch(/vitest run --reporter=json/);
     expect(webApp.stackGuide).toMatch(/src\/db\/schema.ts/);
+    // Karigor's edit mode: the helper is in the layout, framing is limited, and the blocks name themselves
+    expect(await readFile(join(dir, "app/layout.tsx"), "utf8")).toContain("<KarigorEdit />");
+    expect(await readFile(join(dir, "middleware.ts"), "utf8")).toMatch(/frame-ancestors 'self'/);
+    for (const k of ["Card", "ListRow", "Field", "Stat", "PageHeader", "EmptyState"]) expect(await readFile(join(dir, "src/components/ui.tsx"), "utf8")).toContain(`data-k="${k}"`);
     // what the guide tells the developer to use is really there, and the scheduler can reach it
     for (const m of ["sendEmail", "sendSms", "saveUpload", "JOBS"]) expect(webApp.stackGuide).toContain(m);
     // a fake key shaped like a real one stops the release at the security scan

@@ -32,6 +32,8 @@ export interface ProjectView {
   signIn?: boolean;
   /** A service (api): its owner can get an access key here; `docs` is its docs page. */
   accessKey?: { docs?: string };
+  /** The live app carries Karigor's edit helper, so the person can change it by pointing at it in a preview. */
+  editable?: boolean;
   /** A web app online at an https address can have phone apps; their latest state when made. */
   phone?: { status: "none" | "building" | "ready" | "failed"; version?: string; files?: { path: string; bytes: number }[]; runUrl?: string; error?: string };
   /** Files the person added (a logo, a price list). */
@@ -101,6 +103,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
   const pkg = live ? (JSON.parse(await readFile(join(store.dir, "workspace", "package.json"), "utf8").catch(() => "{}")) as { scripts?: Record<string, string> }) : {};
   const signIn = !!live && !!pkg.scripts?.["admin:link"];
   const phone = await phoneView(store.dir, state, live?.url);
+  const editable = !!live?.url && (!state.targetProfile || state.targetProfile === "web-app") && (await stat(join(store.dir, "workspace", "src", "components", "karigor-edit.tsx")).then(() => true, () => false));
   const accessKey = live && pkg.scripts?.["key:new"] ? { ...(live.url ? { docs: `${live.url.replace(/\/$/, "")}/docs` } : {}) } : undefined;
   return {
     id: store.projectId,
@@ -126,6 +129,7 @@ export async function projectView(store: FsStore, running: boolean, lang: Lang =
     ...(signIn ? { signIn } : {}),
     ...(accessKey ? { accessKey } : {}),
     ...(phone ? { phone } : {}),
+    ...(editable ? { editable } : {}),
     files: (await listGiven(store.dir)).map((f) => ({ name: f.name, bytes: f.bytes, kind: f.kind })),
     ...(state.status === "finished" && plan.next && plan.stages.length > 1 ? { nextStage: { name: plan.next.name, goal: plan.next.goal } } : {}),
     story: (await renderExplain(store, events, lang)).split("\n").filter(Boolean),

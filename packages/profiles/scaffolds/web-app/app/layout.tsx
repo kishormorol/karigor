@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app";
+import { KarigorEdit } from "@/components/karigor-edit";
 
 export const metadata: Metadata = { title: APP_NAME, description: APP_TAGLINE };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0e5e55" };
@@ -16,7 +17,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;600&display=swap" />
       </head>
-      <body className="min-h-screen bg-ground font-sans text-ink antialiased">{children}</body>
+      <body className="min-h-screen bg-ground font-sans text-ink antialiased">
+        {children}
+        <KarigorEdit />
+      </body>
     </html>
   );
 }

@@ -172,6 +172,10 @@ Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (k
 
 The web-app profile also has file uploads, scheduled jobs, email and SMS, and can be added to a phone's home screen. Once it is online, `karigor phone-apps` makes an Android app (a Trusted Web Activity: APK and Play Store bundle, signed with a key Karigor keeps) and an iPhone app (a web view, built for the simulator until there is an Apple account), built by GitHub Actions in a private repository of their own.
 
+Two ways to change a live app: write what you want, or **point at it**. The chat page shows the app in a preview where a click picks a part (named precisely: the Field "Price", 2 of 4, in the Card "New product" on /products), a drag moves a card, row or field, a double-click edits words and a dropped photo replaces a picture. Each gesture becomes one line of a change request that takes a fast lane (`quick-edit`: tests, lint, build, security scan, health and rollback checks, without the slower reviews). The app's own `frame-ancestors` lets only itself and Karigor's page frame it.
+
+Karigor can run as a service for many people: sign-in by an emailed one-time link, a credit balance per person, builds on the service's own model key charged at cost plus a set margin (your own key is never charged), and credit bought through Paddle (cards and wallets worldwide) or SSLCommerz (bKash, Nagad, Bangladeshi cards), counted only when the provider itself confirms the payment. `karigor-server --help` lists the settings.
+
 A second real run, of the shop-counter starter with stages, roles and browser journeys, is recorded in [`docs/runs/2026-11-09-shop-counter.md`](docs/runs/2026-11-09-shop-counter.md): the skeptic caught a promised backup that might never ship and a browser check that would always fail, before either reached the app.
 
 Next: live runs of the Netlify and Cloudflare targets on real accounts, and a design pass on the UI with people who are not programmers.

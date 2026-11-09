@@ -28,6 +28,7 @@ People, sign-in and roles (already built and tested; build on them, never add a 
 - Public pages (a booking form, a parent's lookup) go outside \`app/(app)/\` and are added to \`PUBLIC_PATHS\` in \`src/lib/session-cookie.ts\`.
 - The app's name and tagline are in \`src/lib/app.ts\`; set them in the first item.
 - People join by a one-time link an admin copies and sends (no email service needed). The first admin's link comes from \`pnpm admin:link <email> "<name>"\`; Karigor runs it for the person. Once hosted, Karigor asks \`POST /api/owner-link\` instead (src/server/owner-link.ts, guarded by OWNER_LINK_SECRET); keep that route and its setting as they are.
+- \`src/components/karigor-edit.tsx\` (in \`app/layout.tsx\`) lets the person change the app by pointing at it in Karigor's preview, and \`middleware.ts\` lets only the app and Karigor's preview (KARIGOR_EDITOR_ORIGIN) show it in a frame. Keep both. The kit's blocks carry \`data-k\` (what it is) and \`data-k-name\` (its name); a new reusable block in \`ui.tsx\` carries them too. Requests that start "Changes I made by pointing at the app" name parts that way: the Field "Price" (2 of 4) in the Card "New product" on the page /products.
 - \`app/.well-known/assetlinks.json/route.ts\` lets Android open the app's phone app full screen, from the ANDROID_APP_LINKS setting Karigor sets when it makes the phone apps. Keep it, and keep it in \`PUBLIC_PATHS\`.
 
 Built in and tested; use these rather than writing your own (an app made from an older template may lack them; add them only when an item needs them):

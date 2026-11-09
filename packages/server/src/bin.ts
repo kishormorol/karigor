@@ -85,6 +85,9 @@ if (!token && host !== "127.0.0.1" && host !== "localhost" && process.env["KARIG
   process.exit(1);
 }
 
+// Apps let this page show them in its preview (their frame-ancestors); deploy targets pass this on.
+process.env["KARIGOR_EDITOR_ORIGIN"] ??= new URL(process.env["KARIGOR_URL"] ?? `http://localhost:${v.port}`).origin;
+
 const { server } = createKarigorServer({
   root: v.root!,
   adapter: v.adapter!,
