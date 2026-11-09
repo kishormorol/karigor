@@ -172,7 +172,9 @@ Design documents live in [`docs/superpowers/specs/`](docs/superpowers/specs/) (k
 
 The web-app profile also has file uploads, scheduled jobs, email and SMS, and can be added to a phone's home screen. Once it is online, `karigor phone-apps` makes an Android app (a Trusted Web Activity: APK and Play Store bundle, signed with a key Karigor keeps) and an iPhone app (a web view, built for the simulator until there is an Apple account), built by GitHub Actions in a private repository of their own.
 
-Next: a full recorded idea-to-production run on a real model, live runs of the Netlify and Cloudflare targets on real accounts, and a design pass on the UI with people who are not programmers.
+A second real run, of the shop-counter starter with stages, roles and browser journeys, is recorded in [`docs/runs/2026-11-09-shop-counter.md`](docs/runs/2026-11-09-shop-counter.md): the skeptic caught a promised backup that might never ship and a browser check that would always fail, before either reached the app.
+
+Next: live runs of the Netlify and Cloudflare targets on real accounts, and a design pass on the UI with people who are not programmers.
 
 ## Development
 
