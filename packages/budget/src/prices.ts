@@ -8,6 +8,7 @@ export interface ModelPrice {
 }
 
 export interface Usage {
+  /** Everything sent, cached or not: cache reads and writes are counted in here too. */
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;

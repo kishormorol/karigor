@@ -74,13 +74,14 @@ export interface Meter {
   calls: number;
   /** Sum of API-equivalent costs, when calls ran on a flat-rate provider. */
   apiEquivalent: number;
+  /** `input` is everything sent, cached or not (an entry's `inputTokens` already includes its cache reads and writes). */
   tokens: { input: number; output: number };
 }
 
 export function meter(ledger: CostLedgerMeta): Meter {
   const phases = Object.keys(ledger.phaseBudgets).map((phase) => ({ phase, spent: spentInPhase(ledger, phase), budget: ledger.phaseBudgets[phase]! }));
   const apiEquivalent = round(ledger.entries.reduce((s, e) => s + (e.apiEquivalentCost ?? 0), 0));
-  const tokens = ledger.entries.reduce((t, e) => ({ input: t.input + e.inputTokens + e.cacheReadTokens + e.cacheWriteTokens, output: t.output + e.outputTokens }), { input: 0, output: 0 });
+  const tokens = ledger.entries.reduce((t, e) => ({ input: t.input + e.inputTokens, output: t.output + e.outputTokens }), { input: 0, output: 0 });
   return { currency: ledger.currency, tier: ledger.tier, total: spentTotal(ledger), budgetTotal: ledger.budgetTotal, phases, calls: ledger.entries.length, apiEquivalent, tokens };
 }
 

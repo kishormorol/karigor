@@ -89,9 +89,10 @@ export class ClaudeAdapter implements ModelAdapter {
   }
 }
 
-function toUsage(u: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number | null; cache_creation_input_tokens: number | null }): Usage {
+/** The API counts cached tokens apart from `input_tokens`; ours include them, which is what the price sum expects. */
+export function toUsage(u: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number | null; cache_creation_input_tokens: number | null }): Usage {
   return {
-    inputTokens: u.input_tokens,
+    inputTokens: u.input_tokens + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0),
     outputTokens: u.output_tokens,
     cacheReadTokens: u.cache_read_input_tokens ?? 0,
     cacheWriteTokens: u.cache_creation_input_tokens ?? 0,

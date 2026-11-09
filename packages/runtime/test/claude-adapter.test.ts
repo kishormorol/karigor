@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod/v4";
-import { ClaudeAdapter, CLAUDE_DEFAULTS } from "../src/index.js";
+import { ClaudeAdapter, CLAUDE_DEFAULTS, toUsage } from "../src/index.js";
 
 describe("ClaudeAdapter (offline)", () => {
   it("maps tiers to the configured models", () => {
@@ -10,6 +10,11 @@ describe("ClaudeAdapter (offline)", () => {
     expect(a.modelFor("mock")).toBe(CLAUDE_DEFAULTS.judgmentModel);
     const b = new ClaudeAdapter({ client: {} as never, judgmentModel: "claude-fable-5-1" });
     expect(b.modelFor("judgment")).toBe("claude-fable-5-1");
+  });
+  it("counts cached tokens inside the input, as the price sum expects", () => {
+    // The API reports cached tokens apart from input_tokens.
+    expect(toUsage({ input_tokens: 50, output_tokens: 9, cache_read_input_tokens: 700, cache_creation_input_tokens: 250 })).toEqual({ inputTokens: 1_000, outputTokens: 9, cacheReadTokens: 700, cacheWriteTokens: 250 });
+    expect(toUsage({ input_tokens: 50, output_tokens: 9, cache_read_input_tokens: null, cache_creation_input_tokens: null }).inputTokens).toBe(50);
   });
 });
 

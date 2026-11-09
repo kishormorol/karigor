@@ -45,7 +45,7 @@ Fixed in commit 7808392. A release that starts on another port is told so within
 | Spec, design, plan | done by about 14:15, one retry on the spec |
 | Built and checked | 9 of 14 pieces by 15:00 (about 6 minutes each, all four checks included) |
 | Model calls | 42 |
-| Cost | Nothing extra on the Claude subscription. The same calls would cost about USD 19 on the pay-per-token API (22.2M tokens in, 0.29M out, mostly cached context). |
+| Cost | Nothing extra on the Claude subscription. The same calls would cost about USD 19 on the pay-per-token API (11.1M tokens in, 0.29M out, mostly cached context). |
 
 ## Result
 
@@ -58,7 +58,7 @@ The app is live on this computer (`karigor serve p-mw9mo954-68f9 --port 3917`), 
 | Browser journeys | 33, each at desktop and phone size; all 66 runs passed before release |
 | Wall-clock time | 14:02 to 17:00 (EST), including two stops for the Karigor fixes above |
 | Model calls | 77 |
-| Cost | Nothing extra on the Claude subscription. About USD 35 on the pay-per-token API (41.9M tokens in, 0.48M out, mostly cached context). |
+| Cost | Nothing extra on the Claude subscription. About USD 35 on the pay-per-token API (21.0M tokens in, 0.48M out, mostly cached context). |
 
 Checked by hand in a browser after release, as the owner:
 
@@ -70,5 +70,7 @@ Checked by hand in a browser after release, as the owner:
 - A download address opened without signing in is sent to the sign-in page.
 
 Not checked by hand: a salesman's own sign-in on a phone, cancelling a sale, and the downloaded files. The journeys cover all three.
+
+A correction: this record first gave 41.9M tokens in (and 22.2M at 15:00). Karigor's meter was adding cached tokens to a count that already included them, so both were doubled; the figures above are the corrected ones. The dollar figures were never affected.
 
 One fault seen: on a short desktop window the bar holding the total and the Save sale button covers the bill's lines, so the quantity field is half hidden until the page is scrolled. It is a layout fault, not a wrong number, and is the kind of thing `karigor feedback` or pointing at the app is for.

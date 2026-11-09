@@ -90,4 +90,8 @@ describe("ledger", () => {
     expect(renderMeter(meter(sub))).toMatch(/Covered by your subscription; the same calls would cost about USD 0.42/);
     expect(renderMeter(m)).toMatch(/build\s+USD 0.2000 \/ 1.50\s+13%/);
   });
+  it("counts tokens sent once: an entry's input already includes what was cached", () => {
+    const l = record(ledger(), { ...entry("build", 0.1, "c1"), inputTokens: 1_000, cacheReadTokens: 700, cacheWriteTokens: 250, outputTokens: 40 });
+    expect(meter(l).tokens).toEqual({ input: 1_000, output: 40 });
+  });
 });

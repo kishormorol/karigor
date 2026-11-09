@@ -2,6 +2,7 @@ import type { z } from "zod/v4";
 import type { ModelTier, Role } from "@karigor/store";
 
 export interface Usage {
+  /** Everything sent, cached or not: cache reads and writes are counted in here too. */
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
