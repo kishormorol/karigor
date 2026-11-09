@@ -112,7 +112,9 @@ li.fail { color: var(--bad); }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 .card h2 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+.card h3 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .card p { margin: 0; }
+.card > ul:not([class]) { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 .card.result { border-color: var(--ok); background: linear-gradient(var(--ok-soft), var(--surface) 70%); }
 .card.problem { border-color: var(--bad); background: var(--bad-soft); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -151,6 +153,7 @@ li.fail { color: var(--bad); }
 .decisions .topic { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .decisions .was { text-decoration: line-through; color: var(--muted); font-size: 14px; }
 .linkbtn { border: 0; background: none; color: var(--accent); padding: 0; font-size: 14px; align-self: flex-start; }
+.linkbtn.subtle { color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 2px; min-height: 32px; }
 .inline-form { display: flex; gap: 6px; }
 .inline-form input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
 
@@ -297,7 +300,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
       demoLong: "Demo mode: the steps are real, the work is pretend. Nothing is actually built or put online.", demoShort: "Demo mode: the steps are real, the work is pretend.",
       steps: (n) => `${n} step${n === 1 ? "" : "s"}`, working: "Working", inTheWay: "Something got in the way", tryAgain: "Try again",
       piecesDone: (d, t, p) => `${d} of ${t} pieces done${p ? `, ${p} set aside` : ""}`, setAside: "Set aside for now", toHandle: (n) => `Waiting to be handled (${n})`,
-      stepLabels: ["Spec", "Design", "Plan", "Build", "Release"], progressLabel: "Progress through the process",
+      stepLabels: ["Understand", "Design", "Plan", "Build", "Go live"], progressLabel: "Progress through the process",
       howToUse: "How to use it: ", openIt: "Open it", planParts: "The plan, part by part", partState: { built: "Built", building: "Being built", later: "Later" },
       buildNext: (n) => `Build the next part: ${n}`, tryFirst: "Try what is there first; you can still send fixes.", writeBelow: "Something not right, or something to add? Write it below and a fix round starts on its own.",
       buildingNext: (s) => `Building the next part: ${s}.`,
@@ -450,10 +453,16 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     }
     return out;
   }
+  /** The process and the kind of software, in words someone who is not a programmer uses. */
+  const PROCESS_WORDS = { iterative: "a few pieces at a time, checking each one", linear: "in one go, checking each piece", "spike-then-build": "after first trying out the hardest part", stage: "adding the next part", maintenance: "fixing what was reported" };
+  const KIND_WORDS = { "web-app": "a web app people sign in to", "simple website": "a simple website", "service other programs call": "a service other programs call" };
   const friendly = (t) => t
     .replace(/^Project created\.$/, "Got it. I'll take it from here.")
-    .replace(/^Chose the "([^"]+)" process; building a (.+)\.$/, "Plan: the $1 process, building a $2.")
-    .replace(/^Budget tier: (\w+)\.$/, "Budget: the $1 tier.");
+    .replace(/^Chose the "([^"]+)" process; building a (.+)\.$/, (_, p, k) => `I'll build it as ${KIND_WORDS[k] ?? `a ${k}`}, ${PROCESS_WORDS[p] ?? `following the "${p}" process`}.`)
+    .replace(/^Budget tier: (\w+)\.$/, "Budget: the $1 tier.")
+    // Sprint numbers and item ids mean nothing to the person; the steps underneath name the pieces.
+    .replace(/^Sprint (\d+) started with .+\.$/, (_, n) => (n === "1" ? "Started building the first pieces." : "Started building the next pieces."))
+    .replace(/^স্প্রিন্ট (\d+) শুরু হলো: .+।$/, (_, n) => (n === "1" ? "প্রথম অংশগুলো তৈরি শুরু হলো।" : "পরের অংশগুলো তৈরি শুরু হলো।"));
 
   function render() {
     main.replaceChildren();
@@ -496,7 +505,8 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
     const pct = total ? Math.round((view.work.done / total) * 100) : view.status === "finished" ? 100 : 4;
     const open = view.workItems.filter((w) => w.status !== "done");
     return el("div", { class: "card" },
-      el("div", { class: "status" }, el("span", { class: `dot ${view.running ? "running" : view.status}` }), el("strong", {}, view.headline)),
+      // Once the result card says it is live, the headline would only repeat it.
+      view.status === "finished" && view.summary && !view.running ? null : el("div", { class: "status" }, el("span", { class: `dot ${view.running ? "running" : view.status}` }), el("strong", {}, view.headline)),
       stepper(),
       total ? el("div", { class: "progress", role: "progressbar", "aria-valuenow": pct, "aria-valuemin": 0, "aria-valuemax": 100 }, el("div", { style: `width:${pct}%` })) : null,
       total ? el("p", { class: "meta" }, t("piecesDone", view.work.done, total, view.work.parked.length)) : null,
@@ -511,7 +521,7 @@ dialog::backdrop { background: rgba(0,0,0,.35); }
   /** Deleting asks once more on the page itself, never with a browser dialog. */
   let deleting = null;
   function deleteRow() {
-    if (deleting !== current) return el("div", { class: "row" }, el("button", { class: "btn quiet", type: "button", onclick: () => { deleting = current; render(); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } }, t("deleteProject")));
+    if (deleting !== current) return el("div", { class: "row", style: "justify-content:flex-end" }, el("button", { class: "linkbtn subtle", type: "button", onclick: () => { deleting = current; render(); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); } }, t("deleteProject")));
     return el("div", { class: "card problem", style: "gap:10px" },
       el("p", {}, t("deleteSure")),
       el("div", { class: "row" },
