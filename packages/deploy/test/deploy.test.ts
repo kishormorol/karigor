@@ -123,7 +123,7 @@ describe("LocalDeploy", { timeout: 60_000 }, () => {
     expect((await deploy.preview(r)).ok).toBe(false);
     expect((await deploy.setSettings(ws.dir, { FAMILY_PASSCODE: "plum-tree-42" })).output).not.toMatch(/plum-tree/);
     const { stat: statFile } = await import("node:fs/promises");
-    expect((await statFile(join(projectDir, "run", "settings.json"))).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect((await statFile(join(projectDir, "run", "settings.json"))).mode & 0o777).toBe(0o600); // Windows has no owner-only mode
     expect(await readFile(join(projectDir, ".gitignore"), "utf8")).toMatch(/^run\/$/m);
     expect(await deploy.missingSettings(ws.dir)).toEqual([]);
     const p = await deploy.preview({ ...r, key: "k2" });

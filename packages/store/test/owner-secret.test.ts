@@ -17,7 +17,7 @@ describe("the owner secret Karigor keeps", () => {
     await gitCommitter.commit(dir, "before");
     await keepOwnerSecret(dir, { OWNER_LINK_SECRET: "s3cret", OTHER: "x" });
     expect(await ownerSecret(dir)).toBe("s3cret");
-    expect((await stat(join(dir, "owner-link-secret"))).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect((await stat(join(dir, "owner-link-secret"))).mode & 0o777).toBe(0o600); // Windows has no owner-only mode
     expect(await readFile(join(dir, ".gitignore"), "utf8")).toContain("owner-link-secret");
     await gitCommitter.commit(dir, "after");
     expect((await run("git", ["ls-files"], { cwd: dir })).stdout).not.toContain("owner-link-secret");

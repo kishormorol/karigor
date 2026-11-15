@@ -72,7 +72,7 @@ describe("ModelAgent", () => {
   });
 
   it("guards paths and caps context", async () => {
-    expect(safePath("/w", "src/a.ts")).toBe("/w/src/a.ts");
+    expect(safePath("/w", "src/a.ts")).toBe(join("/w", "src", "a.ts"));
     for (const p of ["../a", "/etc/passwd/../../a/../../..", ".git/config", "pnpm-lock.yaml", "a/node_modules/b", ""]) expect(safePath("/w", p), p).toBeUndefined();
     const dir = await mkdtemp(join(tmpdir(), "karigor-ma-"));
     await writeFile(join(dir, "big.ts"), "x".repeat(5000));

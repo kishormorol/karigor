@@ -1,6 +1,6 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FsStore, noopCommitter, type Event, type ProjectState } from "@karigor/store";
 import { FakeSandbox } from "@karigor/gates";
@@ -65,7 +65,7 @@ describe("resume after a crash", () => {
 
   it("resuming a finished project is a no-op", async () => {
     const r = await fullRun();
-    const again = await runProject({ root: r.store.dir.replace(/\/p1$/, ""), projectId: "p1", adapter: scriptedAdapter(), sandbox: new FakeSandbox(), clock: NOW, committer: noopCommitter });
+    const again = await runProject({ root: dirname(r.store.dir), projectId: "p1", adapter: scriptedAdapter(), sandbox: new FakeSandbox(), clock: NOW, committer: noopCommitter });
     expect(again.lastSeq).toBe(r.state.lastSeq);
   });
 });

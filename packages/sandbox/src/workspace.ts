@@ -1,4 +1,5 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
+import { basename, dirname, resolve } from "node:path";
 import type { Profile } from "@karigor/profiles";
 import { run, type ExecResult } from "./exec.js";
 
@@ -70,7 +71,8 @@ export class Workspace {
     await mkdir(dir, { recursive: true });
     const tar = `${dir}.tar`;
     await this.must(["archive", "--format=tar", "-o", tar, commit], "git archive", 120_000);
-    const r = await run("tar", ["-xf", tar, "-C", dir], { cwd: this.dir, timeoutMs: 120_000 });
+    // Relative names from the parent directory: GNU tar (Git Bash on Windows) reads "C:\..." as a remote host.
+    const r = await run("tar", ["-xf", basename(tar), "-C", basename(dir)], { cwd: dirname(resolve(dir)), timeoutMs: 120_000 });
     await rm(tar, { force: true });
     if (r.code !== 0) throw new WorkspaceError(`could not unpack ${commit}: ${(r.stderr || r.stdout).trim()}`);
   }
