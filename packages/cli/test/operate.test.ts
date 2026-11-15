@@ -211,6 +211,31 @@ describe("scheduled jobs on this computer", () => {
   });
 });
 
+describe("scheduled jobs on a hosted app", () => {
+  it("watch runs the live app's due jobs with the owner key, so jobs run more than the free plan's once a day", async () => {
+    const { runHostedJobs } = await import("../src/index.js");
+    const { keepOwnerSecret } = await import("@karigor/store");
+    const dir = await mkdtemp(join(tmpdir(), "karigor-hosted-jobs-"));
+    const record = (url: string) => ({ meta: { environment: "production", status: "deployed", version: "r1", target: "vercel", url } });
+    const fakeStore = (url: string) => ({ dir, readArtifact: async () => record(url) }) as never;
+    const state = { artifacts: { "deploy-record": ["d1"] } } as never;
+    const seen: { url: string; auth: string | null }[] = [];
+    const app = (async (url: string, init?: RequestInit) => {
+      seen.push({ url, auth: new Headers(init?.headers).get("authorization") });
+      return Response.json({ ran: [{ name: "remind", result: "ok" }] });
+    }) as typeof fetch;
+    // no key kept yet: nothing is called
+    expect(await runHostedJobs(fakeStore("https://shop.vercel.app/"), state, "/api/jobs", app)).toEqual([]);
+    await keepOwnerSecret(dir, { OWNER_LINK_SECRET: "k3y" });
+    expect(await runHostedJobs(fakeStore("https://shop.vercel.app/"), state, "/api/jobs", app)).toEqual(["scheduled job remind: ok"]);
+    expect(seen).toEqual([{ url: "https://shop.vercel.app/api/jobs", auth: "Bearer k3y" }]);
+    // a local release is run by serve, and a kind of software without jobs has nothing to call
+    expect(await runHostedJobs(fakeStore("http://localhost:3000"), state, "/api/jobs", app)).toEqual([]);
+    expect(await runHostedJobs(fakeStore("https://shop.vercel.app"), state, undefined, app)).toEqual([]);
+    expect(seen).toHaveLength(1);
+  });
+});
+
 describe("the owner's first link for a hosted app", () => {
   it("asks the live app with the key Karigor kept, and says plainly when it cannot", async () => {
     const { FakeDeploy } = await import("@karigor/deploy");

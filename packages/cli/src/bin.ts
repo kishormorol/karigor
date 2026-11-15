@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Command } from "commander";
 import { FsStore, ideaLanguage, languageOf, queueInbox, runningPid, type ProjectState } from "@karigor/store";
-import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, ownerAccessKey, projectPhoneApps, growOnce, hostedHealthUrl, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
+import { correctAssumption, feedbackSignal, fixRoundCostNote, adminLink, ownerAccessKey, projectPhoneApps, growOnce, hostedHealthUrl, runHostedJobs, dismissWorkItem, installUiKit, operateOnce, provideSettings, recordSignals, reopenProject, serveProject, stagePlan } from "./operate.js";
 import { readSettings } from "@karigor/profiles";
 import { liveRecord, renderCost, renderExplain, renderStatus } from "./render.js";
 import { createProject, runProject, runWaiting } from "./run.js";
@@ -354,6 +354,7 @@ runFlags(program.command("watch").argument("<projectId>"))
       const state = await store.replay();
       const url = o.url ?? (await hostedHealthUrl(store, state, opts.profile?.healthPath));
       const r = await operateOnce({ ...opts, audit: true, hostedLogs: true, ...(url ? { healthUrl: url } : {}) });
+      if (!o.url) for (const l of await runHostedJobs(store, r.state, opts.profile?.jobsPath)) console.log(l);
       console.log(r.cycle ? `Fix round ${r.cycle}: ${r.state.status}.` : r.recorded.length ? `${r.recorded.length} new problem(s) noted.` : `All quiet${url ? ` (${url} is healthy)` : ""}.`);
       if (!o.every) break;
       await new Promise((res) => setTimeout(res, Number(o.every) * 60_000));

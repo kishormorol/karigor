@@ -91,7 +91,7 @@ For a public link, use Vercel's free tier: create a token at vercel.com/account/
 
 ```sh
 VERCEL_TOKEN=... node packages/cli/dist/bin.js new "..." --deploy vercel --run
-node packages/cli/dist/bin.js watch <projectId> --every 15     # health and audit, fix rounds when needed
+node packages/cli/dist/bin.js watch <projectId> --every 15     # health, audit, the app's scheduled jobs, fix rounds when needed
 ```
 
 The web-app stores data in SQLite on your computer. On Vercel, give it a free [Turso](https://turso.tech) database by setting `DATABASE_URL` and `DATABASE_AUTH_TOKEN` before deploying; they are passed through by name and never written into the project. Secrets the app needs (a signing key) are made and stored automatically before the preview. Anything only you can choose or provide (a passcode, a database account) is listed by `karigor status`; give it with `karigor setup <id>` (it asks in plain words and hides what you type) or in the chat UI, and the live version is rebuilt with it. Values go only to Vercel's sensitive settings, or a private file on this computer for the local target; Karigor's own records keep names, never values (one exception: the `OWNER_LINK_SECRET` it made itself, kept in a private file so it can ask the app for your sign-in link). Without `VERCEL_TOKEN`, the Vercel CLI's own login (`vercel login`) is used.

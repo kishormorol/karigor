@@ -422,6 +422,17 @@ export async function projectPhoneApps(o: { store: FsStore; deploy?: DeployAdapt
   });
 }
 
+/**
+ * Run a hosted app's due scheduled jobs, as `serve` does on this computer, so jobs run more often than
+ * the free plan's once-a-day cron. Karigor signs with the owner key it already keeps.
+ */
+export async function runHostedJobs(store: FsStore, state: ProjectState, jobsPath: string | undefined, fetcher: typeof fetch = fetch): Promise<string[]> {
+  if (!jobsPath) return [];
+  const base = await hostedHealthUrl(store, state, "");
+  if (!base) return [];
+  return runScheduledJobs(`${base}${jobsPath}`, await ownerSecret(store.dir), fetcher);
+}
+
 /** The production URL to watch for a hosted target (a local target is watched by `serve`). */
 export async function hostedHealthUrl(store: FsStore, state: ProjectState, healthPath = "/"): Promise<string | undefined> {
   const live = await liveRecord(store, state);

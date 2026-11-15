@@ -1,7 +1,8 @@
 /**
  * Work that runs on a schedule by itself (a morning reminder, a nightly clean-up).
  * Add a job to JOBS; GET /api/jobs runs every job that is due. Hosted on Vercel's free plan it is
- * called once a day (vercel.json); on this computer `karigor serve` calls it every few minutes.
+ * called once a day (vercel.json), and every few minutes while `karigor watch --every` runs; on this
+ * computer `karigor serve` calls it every few minutes.
  * So a job must be safe to run late and to run again: check what is already done before doing it.
  */
 import { eq } from "drizzle-orm";
@@ -15,7 +16,7 @@ export const PERIOD_MS = { hour: HOUR_MS, day: 24 * HOUR_MS } as const;
 export interface Job {
   /** Stable name: it keys the last run. */
   name: string;
-  /** How often it should run at most. Hosted on the free plan, "hour" jobs still run only once a day. */
+  /** How often it should run at most. Hosted on the free plan, "hour" jobs run hourly only while `karigor watch --every` runs. */
   every: keyof typeof PERIOD_MS;
   run(database: Db, now: number): Promise<void>;
 }
@@ -50,7 +51,14 @@ export async function runDueJobs(jobs: Job[] = JOBS, database: Db = defaultDb, n
   return out;
 }
 
-/** Only the scheduler may run jobs: it sends `Authorization: Bearer <CRON_SECRET>`. */
-export function jobsAuthorized(authorization: string | null, secret: string | undefined = process.env.CRON_SECRET): boolean {
-  return !!secret && authorization === `Bearer ${secret}`;
+/**
+ * Only a scheduler may run jobs: Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`, and Karigor
+ * (`karigor watch`) sends its OWNER_LINK_SECRET, a key that can already do more than this.
+ */
+export function jobsAuthorized(
+  authorization: string | null,
+  secrets: string | undefined | (string | undefined)[] = [process.env.CRON_SECRET, process.env.OWNER_LINK_SECRET],
+): boolean {
+  const list = (Array.isArray(secrets) ? secrets : [secrets]).filter((s): s is string => !!s);
+  return !!authorization && list.some((s) => authorization === `Bearer ${s}`);
 }

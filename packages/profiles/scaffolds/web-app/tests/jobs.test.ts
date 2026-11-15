@@ -33,6 +33,8 @@ describe("scheduled jobs", () => {
     expect(jobsAuthorized("Bearer wrong", "s3cret")).toBe(false);
     expect(jobsAuthorized(null, "s3cret")).toBe(false);
     expect(jobsAuthorized("Bearer ", undefined)).toBe(false);
+    expect(jobsAuthorized("Bearer k3y", [undefined, "k3y"])).toBe(true);
+    expect(jobsAuthorized("Bearer ", [undefined, ""])).toBe(false);
     const prev = process.env.CRON_SECRET;
     process.env.CRON_SECRET = "s3cret";
     try {
