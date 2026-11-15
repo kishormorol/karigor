@@ -24,7 +24,7 @@
     "@karigor/sandbox": "workspace:*",
     "@karigor/store": "workspace:*",
     "commander": "^13.1.0",
-    "zod": "^3.25.76",
+    "zod": "^4.6.6",
     "@karigor/deploy": "workspace:*"
   },
   "bin": {
