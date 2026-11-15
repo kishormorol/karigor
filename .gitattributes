@@ -1,0 +1,3 @@
+# Text is kept with LF line endings on every computer: the scaffolds are copied into the apps Karigor
+# builds, and a Windows checkout with core.autocrlf would otherwise hand them CRLF.
+* text=auto eol=lf
