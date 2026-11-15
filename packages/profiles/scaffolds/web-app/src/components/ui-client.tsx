@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
+import { upload } from "@vercel/blob/client";
 import { Badge, Button, EmptyState, Input, Select, money, number, type Tone } from "./ui";
 
 const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(" ");
@@ -288,5 +289,53 @@ export function SubmitButton({ children, pending = "Saving…", variant = "prima
     <Button type="submit" variant={variant} full={full} disabled={status.pending} aria-disabled={status.pending}>
       {status.pending ? pending : children}
     </Button>
+  );
+}
+
+/** The 4 MB a file can be when it is sent with the form (kept in sync with MAX_UPLOAD_BYTES). */
+const FORM_FILE_BYTES = 4 * 1024 * 1024;
+
+/**
+ * A file chooser for a form saved with saveUploadFrom(formData, user.id). Small files go with the form.
+ * With `large` (pass largeUploadsEnabled() from the server page), a file over 4 MB is sent from the
+ * browser straight to file storage first and the form carries only its address.
+ */
+export function FileField({ label, large = false, accept, hint }: { label: string; large?: boolean; accept?: string; hint?: string }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState("");
+  const [state, setState] = useState<{ tone: "muted" | "owed"; text: string } | undefined>(hint ? { tone: "muted", text: hint } : undefined);
+  const id = useMemo(() => `file-${Math.random().toString(36).slice(2, 9)}`, []);
+  async function chosen() {
+    const f = input.current?.files?.[0];
+    setUrl("");
+    if (!f || f.size <= FORM_FILE_BYTES) return setState(hint ? { tone: "muted", text: hint } : undefined);
+    if (!large) return setState({ tone: "owed", text: "That file is too big. Files can be up to 4 MB." });
+    setState({ tone: "muted", text: "Sending the file… 0%" });
+    try {
+      const blob = await upload(f.name, f, {
+        access: "public",
+        handleUploadUrl: "/api/uploads",
+        multipart: f.size > 50 * 1024 * 1024,
+        onUploadProgress: (p) => setState({ tone: "muted", text: `Sending the file… ${Math.round(p.percentage)}%` }),
+      });
+      setUrl(blob.url);
+      // The file itself is already kept; do not send it again with the form.
+      if (input.current) input.current.value = "";
+      setState({ tone: "muted", text: `${f.name} is ready. Save to keep it.` });
+    } catch {
+      setState({ tone: "owed", text: "That file could not be sent. Check it is a photo, video or document and try again." });
+    }
+  }
+  return (
+    <div data-k="Field" data-k-name={label} className="flex flex-col gap-1.5 text-sm font-medium">
+      <label htmlFor={id}>{label}</label>
+      <Input ref={input} id={id} type="file" name="file" accept={accept} onChange={chosen} aria-describedby={state ? `${id}-note` : undefined} />
+      <input type="hidden" name="fileUrl" value={url} />
+      {state && (
+        <span id={`${id}-note`} role="status" className={cx("text-[13px] font-normal", state.tone === "owed" ? "text-owed" : "text-muted")}>
+          {state.text}
+        </span>
+      )}
+    </div>
   );
 }

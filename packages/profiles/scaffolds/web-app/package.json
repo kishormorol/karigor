@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.15.0",
+    "@vercel/blob": "^2.9.0",
     "drizzle-orm": "^0.45.4",
     "next": "^15.5.0",
     "react": "^19.1.0",

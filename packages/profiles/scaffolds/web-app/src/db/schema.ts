@@ -95,6 +95,8 @@ export const files = sqliteTable("files", {
   type: text("type").notNull(),
   size: integer("size").notNull(),
   data: blob("data", { mode: "buffer" }).notNull(),
+  /** Set for a large file kept in file storage (Vercel Blob) instead of `data`, which is then empty. */
+  url: text("url"),
   uploadedBy: text("uploaded_by"),
   createdAt: integer("created_at").notNull(),
 });

@@ -14,6 +14,10 @@ CRON_SECRET=
 # bn: অনলাইনে আসার পর অ্যাপের মালিককে প্রথম সাইন ইন লিংক দিতে Karigor যে গোপন চাবি ব্যবহার করে। এটি নিজে থেকে তৈরি হয়; কারও জানার দরকার নেই।
 # karigor: generate
 OWNER_LINK_SECRET=
+# Optional: to keep files over 4 MB (videos, big scans), a free Vercel Blob store's read-write token. Without it files can be up to 4 MB.
+# bn: ৪ MB-এর বড় ফাইল (ভিডিও, বড় স্ক্যান) রাখতে একটি বিনা খরচের Vercel Blob স্টোরের read-write টোকেন। এটি ছাড়া ফাইল ৪ MB পর্যন্ত রাখা যায়।
+# karigor: service vercel-blob
+BLOB_READ_WRITE_TOKEN=
 # Optional: to send emails (password resets, receipts), a free Resend account's API key. Until then emails are kept, not sent.
 # bn: ইমেইল পাঠাতে (পাসওয়ার্ড বদল, রসিদ) একটি বিনা খরচের Resend অ্যাকাউন্টের API কী। ততদিন ইমেইলগুলো রাখা থাকে, পাঠানো হয় না।
 # karigor: service resend

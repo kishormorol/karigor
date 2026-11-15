@@ -205,11 +205,13 @@ Karigor makes the Android signing key once and keeps it in `phone-signing/` in t
 
 ## 10. What to expect
 
-Karigor builds web apps that work on phones and computers, from a single-person tool to a system with several roles: sign-in for many people with roles and permissions, invitations by link, an activity log, forms, searchable and sortable lists, records with money and stock, dashboards with charts, CSV export for spreadsheets, photos and documents up to 4 MB, jobs that run on a schedule by themselves (a reminder every morning), and email and SMS. Each stage is at most 15 pieces of work, complete and tested end to end, including in a real browser for each kind of user.
+Karigor builds web apps that work on phones and computers, from a single-person tool to a system with several roles: sign-in for many people with roles and permissions, invitations by link, an activity log, forms, searchable and sortable lists, records with money and stock, dashboards with charts, CSV export for spreadsheets, photos and documents up to 4 MB (videos and big files up to 200 MB once you set up a free Vercel Blob store), jobs that run on a schedule by themselves (a reminder every morning; when hosted for free, once a day, or every few minutes while `karigor watch --every` runs), and email and SMS. Each stage is at most 15 pieces of work, complete and tested end to end, including in a real browser for each kind of user.
 
 Email and SMS go out once you have an account with an email service (Resend) or an SMS service (Twilio, or any SMS gateway with a web address, such as a local provider); until then the app keeps each message and shows it as not sent. Hosted on Vercel's free plan, scheduled jobs run once a day; under `karigor serve` on your computer they run every few minutes.
 
-Not yet supported: files over 4 MB, WhatsApp, anything that updates on screen without reloading, taking card or mobile-money payments inside the app (it records payments made elsewhere), and one installation serving several separate organisations. Karigor will work around them or leave them out and say so. Tips:
+A large file kept in a Vercel Blob store has a long, random web address. The app sends only signed-in people to it, but anyone who is handed that exact address can open the file, so keep anything very private under 4 MB, where it stays in the app's own database. Each person can add up to 1 GB of large files a day, and removing a file in the app removes it from the store too.
+
+Not yet supported: files over 4 MB without a file-storage account (or over 200 MB at all), WhatsApp, anything that updates on screen without reloading, taking card or mobile-money payments inside the app (it records payments made elsewhere), and one installation serving several separate organisations. Karigor will work around them or leave them out and say so. Tips:
 
 - Name each kind of person and what they may and may not see; the design plans for them from the start.
 - Try each stage before building the next; your feedback goes into the next stage.
